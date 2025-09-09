@@ -1,56 +1,29 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server-supabase.js",
-      "use": "@vercel/node"
-    }
-  ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/server-supabase.js"
-    },
-    {
-      "src": "/uploads/(.*)",
-      "dest": "/server-supabase.js"
-    },
-    {
-      "src": "/health",
-      "dest": "/server-supabase.js"
-    },
-    {
       "src": "/robots.txt",
-      "dest": "/public/robots.txt"
+      "dest": "/robots.txt"
     },
     {
       "src": "/sitemap.xml",
-      "dest": "/public/sitemap.xml"
+      "dest": "/sitemap.xml"
     },
     {
       "src": "/google78a51b05e2db952b.html",
-      "dest": "/public/google78a51b05e2db952b.html"
-    },
-    {
-      "src": "/(.*\\.html)$",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "/public/(.*)",
-      "dest": "/public/$1"
+      "dest": "/google78a51b05e2db952b.html"
     },
     {
       "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|txt|xml|json))$",
-      "dest": "/public/$1"
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*\\.html)$",
+      "dest": "/$1"
     },
     {
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "functions": {
-    "server-supabase.js": {
-      "maxDuration": 30
-    }
-  }
+  ]
 }
