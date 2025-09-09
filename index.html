@@ -183,16 +183,16 @@
                     </div>
                     <div class="flex items-center space-x-4 space-x-reverse">
                         <div class="flex items-center bg-white bg-opacity-20 px-4 py-2 rounded-lg space-x-4 space-x-reverse">
-                            <button onclick="window.location.href='public/subjects.html'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            <button onclick="window.location.href='subjects.html'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-book ml-1"></i>المواد الدراسية
                             </button>
-                            <button onclick="window.location.href='public/planner.html'" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            <button onclick="window.location.href='planner.html'" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-calendar-alt ml-1"></i>المخطط الدراسي
                             </button>
-                            <button onclick="window.location.href='public/study-timer.html'" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            <button onclick="window.location.href='study-timer.html'" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-clock ml-1"></i>مؤقت المذاكرة
                             </button>
-                            <button onclick="window.location.href='public/ai-assistant.html'" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            <button onclick="window.location.href='ai-assistant.html'" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-robot ml-1"></i>المساعد الذكي
                             </button>
                         </div>
@@ -240,19 +240,19 @@
             <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
                 <h2 class="text-xl font-bold text-gray-800 mb-6">الإجراءات السريعة</h2>
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <button onclick="window.location.href='public/study-timer.html'" class="bg-gradient-to-br from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                    <button onclick="window.location.href='study-timer.html'" class="bg-gradient-to-br from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
                         <i class="fas fa-clock text-3xl mb-3"></i>
                         <div class="text-sm font-medium">موقت المذاكرة</div>
                     </button>
-                    <button onclick="window.location.href='public/planner.html'" class="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                    <button onclick="window.location.href='planner.html'" class="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
                         <i class="fas fa-calendar text-3xl mb-3"></i>
                         <div class="text-sm font-medium">المخطط الدراسي</div>
                     </button>
-                    <button onclick="window.location.href='public/ai-assistant.html'" class="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                    <button onclick="window.location.href='ai-assistant.html'" class="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
                         <i class="fas fa-robot text-3xl mb-3"></i>
                         <div class="text-sm font-medium">المساعد الذكي</div>
                     </button>
-                    <button onclick="window.location.href='public/subjects.html'" class="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                    <button onclick="window.location.href='subjects.html'" class="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
                         <i class="fas fa-book text-3xl mb-3"></i>
                         <div class="text-sm font-medium">إدارة المواد</div>
                     </button>
@@ -275,7 +275,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Supabase Configuration -->
-    <script src="./public/js/supabase-config.js"></script>
+    <script src="./js/supabase-config.js"></script>
 
     <script>
         let currentUser = null;
@@ -307,7 +307,7 @@
                     console.log('⚠️ User not authenticated, redirecting...');
                     hideLoadingScreen();
                     setTimeout(() => {
-                        window.location.href = 'public/auth.html';
+                        window.location.href = 'auth.html';
                     }, 1000);
                 }
                 
@@ -331,7 +331,7 @@
                             إعادة تحميل
                         </button>
                         <br><br>
-                        <a href="public/auth.html" class="text-white underline">الذهاب لصفحة تسجيل الدخول</a>
+                        <a href="auth.html" class="text-white underline">الذهاب لصفحة تسجيل الدخول</a>
                     </div>
                 `;
             }
@@ -439,13 +439,13 @@
                 console.log('✅ User logged out successfully');
                 
                 // Redirect to auth page
-                window.location.href = 'public/auth.html';
+                window.location.href = 'auth.html';
                 
             } catch (error) {
                 console.error('❌ Error during logout:', error);
                 // Force redirect even if logout fails
                 localStorage.clear();
-                window.location.href = 'public/auth.html';
+                window.location.href = 'auth.html';
             }
         }
 
