@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO Meta Tags -->
+    <title>تسجيل الدخول - منصة الطالب الذكي | دخول آمن للمنصة التعليمية</title>
+    <meta name="description" content="سجل دخولك إلى منصة الطالب الذكي للوصول إلى المساعد الذكي، المخطط الدراسي، وجميع الأدوات التعليمية المتقدمة. تسجيل دخول آمن وسريع.">
+    <meta name="keywords" content="تسجيل دخول, منصة تعليمية, حساب طالب, دخول آمن, منصة الطالب الذكي, تعليم ذكي">
+    <meta name="author" content="فريق منصة الطالب الذكي">
+    <meta name="robots" content="noindex, nofollow">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="تسجيل الدخول - منصة الطالب الذكي">
+    <meta property="og:description" content="سجل دخولك إلى منصة الطالب الذكي للوصول إلى جميع الأدوات التعليمية المتقدمة">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://student-platform-eta.vercel.app/auth.html">
+    <meta property="og:site_name" content="منصة الطالب الذكي">
+    <meta property="og:locale" content="ar_SA">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://student-platform-eta.vercel.app/auth.html">
+    
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.1);
+        }
+        
+        .platform-logo {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .auth-button {
+            transition: all 0.3s ease;
+        }
+        
+        .auth-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .notification.success { background: #10b981; }
+        .notification.error { background: #ef4444; }
+        .notification.info { background: #3b82f6; }
+    </style>
+</head>
+<body>
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Auth Container -->
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="glass-effect rounded-3xl p-8 w-full max-w-md">
+            <!-- Logo and Title -->
+            <div class="text-center mb-8">
+                <div class="platform-logo text-4xl font-bold mb-2">
+                    <i class="fas fa-graduation-cap"></i>
+                    منصة الطالب الذكي
+                </div>
+                <p class="text-gray-600">مرحباً بك في رحلة التعلم الذكي</p>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="flex mb-6 bg-gray-100 rounded-xl p-1">
+                <button id="loginTab" onclick="showLogin()" class="flex-1 py-3 px-4 rounded-lg font-semibold transition-all bg-white text-blue-600 shadow-sm">
+                    تسجيل الدخول
+                </button>
+                <button id="registerTab" onclick="showRegister()" class="flex-1 py-3 px-4 rounded-lg font-semibold transition-all text-gray-600">
+                    إنشاء حساب
+                </button>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginForm">
+                <form onsubmit="return loginUser(event)">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">البريد الإلكتروني</label>
+                        <div class="relative">
+                            <input type="email" id="loginEmail" required 
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="أدخل بريدك الإلكتروني">
+                            <i class="fas fa-envelope absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">كلمة المرور</label>
+                        <div class="relative">
+                            <input type="password" id="loginPassword" required 
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="أدخل كلمة المرور">
+                            <i class="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" id="loginBtn" class="auth-button w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg">
+                        <i class="fas fa-sign-in-alt ml-2"></i>
+                        تسجيل الدخول
+                    </button>
+                    
+                    <div class="text-center my-4">
+                        <span class="text-gray-500">أو</span>
+                    </div>
+                    
+                    <button type="button" onclick="signInWithGoogle(event)" class="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300 flex items-center justify-center">
+                        <i class="fab fa-google mr-2"></i>
+                        تسجيل الدخول بجوجل
+                    </button>
+                </form>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="hidden">
+                <form onsubmit="return registerUser(event)">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">الاسم الكامل</label>
+                        <div class="relative">
+                            <input type="text" id="registerName" required 
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="أدخل اسمك الكامل">
+                            <i class="fas fa-user absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">البريد الإلكتروني</label>
+                        <div class="relative">
+                            <input type="email" id="registerEmail" required 
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="أدخل بريدك الإلكتروني">
+                            <i class="fas fa-envelope absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">كلمة المرور</label>
+                        <div class="relative">
+                            <input type="password" id="registerPassword" required 
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="أدخل كلمة المرور">
+                            <i class="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">تأكيد كلمة المرور</label>
+                        <div class="relative">
+                            <input type="password" id="registerConfirmPassword" required 
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="أعد إدخال كلمة المرور">
+                            <i class="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" id="registerBtn" class="auth-button w-full bg-gradient-to-r from-green-500 to-blue-600 text-white py-4 rounded-xl font-bold text-lg">
+                        <i class="fas fa-user-plus ml-2"></i>
+                        إنشاء حساب جديد
+                    </button>
+                    
+                    <div class="text-center my-4">
+                        <span class="text-gray-500">أو</span>
+                    </div>
+                    
+                    <button type="button" onclick="signInWithGoogle(event)" class="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300 flex items-center justify-center">
+                        <i class="fab fa-google mr-2"></i>
+                        التسجيل بجوجل
+                    </button>
+                </form>
+            </div>
+
+            <!-- Google Sign-in -->
+            <div class="mt-6">
+                <div class="text-center text-gray-500 mb-4">أو</div>
+                <button onclick="signInWithGoogle(event)" class="auth-button w-full flex items-center justify-center px-6 py-4 rounded-xl shadow-lg bg-white text-gray-700 hover:bg-gray-50 font-semibold text-lg border">
+                    <svg class="w-6 h-6 ml-3" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    تسجيل الدخول بجوجل
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Supabase Configuration -->
+    <script src="./js/supabase-config.js"></script>
+
+    <script>
+        // Real Supabase Authentication System
+        let isInitialized = false;
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Wait for supabase-config.js to load
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                if (window.initializeSupabase) {
+                    await window.initializeSupabase();
+                    isInitialized = true;
+                    console.log('✅ Auth page initialized with Supabase');
+                } else {
+                    throw new Error('Supabase configuration not loaded');
+                }
+                
+                // Check if user is already logged in
+                checkExistingLogin();
+            } catch (error) {
+                console.error('❌ Failed to initialize Supabase:', error);
+                showNotification('خطأ في الاتصال بقاعدة البيانات. يرجى التحقق من الاتصال بالإنترنت.', 'error');
+            }
+        });
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+        }
+
+        // Tab switching functions
+        function showLogin() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+            
+            document.getElementById('loginTab').className = 'flex-1 py-3 px-4 rounded-lg font-semibold transition-all bg-white text-blue-600 shadow-sm';
+            document.getElementById('registerTab').className = 'flex-1 py-3 px-4 rounded-lg font-semibold transition-all text-gray-600';
+        }
+
+        function showRegister() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            
+            document.getElementById('loginTab').className = 'flex-1 py-3 px-4 rounded-lg font-semibold transition-all text-gray-600';
+            document.getElementById('registerTab').className = 'flex-1 py-3 px-4 rounded-lg font-semibold transition-all bg-white text-blue-600 shadow-sm';
+        }
+
+        // Google Sign-in function
+        async function signInWithGoogle(event) {
+            event.preventDefault();
+            
+            if (!isInitialized) {
+                showNotification('جاري تحميل النظام، يرجى المحاولة مرة أخرى', 'info');
+                return;
+            }
+
+            const googleBtn = event.target;
+            const originalText = googleBtn.innerHTML;
+            googleBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>جاري تسجيل الدخول...';
+            googleBtn.disabled = true;
+
+            try {
+                console.log('🔐 Attempting Google sign-in');
+                
+                if (!window.supabaseAuth || !window.supabaseAuth.signInWithGoogle) {
+                    throw new Error('Supabase authentication not available');
+                }
+
+                // For OAuth, this will redirect to Google and then back to our app
+                const { error } = await window.supabaseAuth.signInWithGoogle();
+                
+                if (error) {
+                    console.error('❌ Google sign-in error:', error);
+                    
+                    let errorMessage = 'حدث خطأ في تسجيل الدخول بجوجل';
+                    
+                    if (error.message.includes('popup')) {
+                        errorMessage = 'يرجى السماح بالنوافذ المنبثقة والمحاولة مرة أخرى';
+                    } else if (error.message.includes('network')) {
+                        errorMessage = 'تحقق من اتصال الإنترنت والمحاولة مرة أخرى';
+                    }
+                    
+                    showNotification(errorMessage, 'error');
+                    return;
+                }
+
+                // OAuth will handle the redirect automatically
+                showNotification('جاري إعادة التوجيه...', 'info');
+
+            } catch (error) {
+                console.error('❌ Unexpected Google sign-in error:', error);
+                showNotification('حدث خطأ في الاتصال مع الخادم، يرجى المحاولة مرة أخرى', 'error');
+            } finally {
+                googleBtn.innerHTML = originalText;
+                googleBtn.disabled = false;
+            }
+        }
+
+        // Login function
+        async function loginUser(event) {
+            event.preventDefault();
+            
+            if (!isInitialized) {
+                showNotification('جاري تحميل النظام، يرجى المحاولة مرة أخرى', 'info');
+                return;
+            }
+
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (!email || !password) {
+                showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error');
+                return;
+            }
+
+            const originalText = loginBtn.innerHTML;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>جاري تسجيل الدخول...';
+            loginBtn.disabled = true;
+
+            try {
+                console.log('🔐 Attempting email login');
+                
+                if (!window.supabaseAuth || !window.supabaseAuth.signIn) {
+                    throw new Error('Supabase authentication not available');
+                }
+
+                const { data, error } = await window.supabaseAuth.signIn(email, password);
+                
+                if (error) {
+                    console.error('❌ Login error:', error);
+                    
+                    let errorMessage = 'خطأ في تسجيل الدخول';
+                    if (error.message.includes('Invalid login credentials')) {
+                        errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+                    } else if (error.message.includes('Email not confirmed')) {
+                        errorMessage = 'يرجى تأكيد البريد الإلكتروني أولاً';
+                    }
+                    
+                    showNotification(errorMessage, 'error');
+                    return;
+                }
+
+                if (data?.user) {
+                    console.log('✅ Login successful');
+                    showNotification('تم تسجيل الدخول بنجاح!', 'success');
+                    setTimeout(() => window.location.href = 'index.html', 1000);
+                } else {
+                    showNotification('حدث خطأ في تسجيل الدخول', 'error');
+                }
+
+            } catch (error) {
+                console.error('❌ Unexpected login error:', error);
+                showNotification('حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى', 'error');
+            } finally {
+                loginBtn.innerHTML = originalText;
+                loginBtn.disabled = false;
+            }
+        }
+
+        // Register new user
+        async function registerUser(event) {
+            event.preventDefault();
+            
+            console.log('📝 Attempting registration for:', document.getElementById('registerEmail').value);
+            
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const fullName = document.getElementById('registerName').value.trim();
+
+            // Validation
+            if (!email || !password || !confirmPassword || !fullName) {
+                showNotification('يرجى ملء جميع الحقول', 'error');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showNotification('كلمات المرور غير متطابقة', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showNotification('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error');
+                return;
+            }
+
+            try {
+                showNotification('جاري إنشاء الحساب...', 'info');
+
+                // Register user
+                const registerResult = await window.supabaseAuth.signUp(email, password, {
+                    full_name: fullName
+                });
+
+                if (registerResult.error) {
+                    throw registerResult.error;
+                }
+
+                console.log('✅ Registration successful');
+                showNotification('تم إنشاء الحساب بنجاح!', 'success');
+
+                // Auto-login after registration
+                setTimeout(async () => {
+                    try {
+                        const loginResult = await window.supabaseAuth.signIn(email, password);
+                        
+                        if (loginResult.error) {
+                            // If auto-login fails, just show success message
+                            console.warn('Auto-login failed:', loginResult.error);
+                            showNotification('تم إنشاء الحساب! يمكنك تسجيل الدخول الآن', 'success');
+                            showLogin();
+                            return;
+                        }
+
+                        // Create user profile
+                        const userId = loginResult.data.user.id;
+                        const userEmail = loginResult.data.user.email;
+                        
+                        const profileResult = await window.supabaseDB.users.create({
+                            id: userId,
+                            email: userEmail,
+                            full_name: fullName
+                        });
+
+                        if (profileResult.error) {
+                            console.warn('Profile creation warning:', profileResult.error);
+                        } else {
+                            console.log('✅ User profile created successfully');
+                        }
+
+                        // Create welcome activity (non-critical)
+                        try {
+                            await window.supabaseDB.activities.create({
+                                user_id: userId,
+                                description: 'مرحباً بك في منصة الطالب الذكي!',
+                                icon: 'fas fa-user-plus'
+                            });
+                        } catch (activityError) {
+                            console.warn('Activity creation failed (non-critical):', activityError);
+                        }
+
+                        showNotification('تم تسجيل الدخول بنجاح!', 'success');
+                        
+                        // Redirect to dashboard
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1000);
+
+                    } catch (loginError) {
+                        console.error('Auto-login error:', loginError);
+                        showNotification('تم إنشاء الحساب! يمكنك تسجيل الدخول الآن', 'success');
+                        showLogin();
+                    }
+                }, 1000);
+
+            } catch (error) {
+                console.error('❌ Registration error:', error);
+                
+                let errorMessage = 'حدث خطأ في التسجيل';
+                if (error.message.includes('already registered')) {
+                    errorMessage = 'هذا البريد الإلكتروني مسجل مسبقاً';
+                } else if (error.message.includes('invalid email')) {
+                    errorMessage = 'البريد الإلكتروني غير صحيح';
+                } else if (error.message.includes('weak password')) {
+                    errorMessage = 'كلمة المرور ضعيفة جداً';
+                }
+                
+                showNotification(errorMessage, 'error');
+            }
+        }
+
+        // Create user profile in database
+        async function createUserProfile(user) {
+            try {
+                if (window.supabaseDB && window.supabaseDB.users) {
+                    const userData = {
+                        id: user.id,
+                        email: user.email,
+                        full_name: user.user_metadata?.full_name || user.email.split('@')[0],
+                        xp: 0,
+                        level: 1,
+                        created_at: new Date().toISOString()
+                    };
+
+                    const result = await window.supabaseDB.users.create(userData);
+                    
+                    if (!result.error) {
+                        console.log('✅ User profile created successfully');
+                        
+                        // Create welcome activity
+                        await window.supabaseDB.activities.create({
+                            user_id: user.id,
+                            description: `مرحباً ${userData.full_name}! تم إنشاء حسابك بنجاح`,
+                            icon: 'user-plus',
+                            created_at: new Date().toISOString()
+                        });
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Could not create user profile:', error);
+            }
+        }
+
+        // Resend email confirmation
+        async function resendConfirmation(email) {
+            try {
+                if (window.supabaseAuth && window.supabaseAuth.resendConfirmation) {
+                    const { error } = await window.supabaseAuth.resendConfirmation(email);
+                    
+                    if (error) {
+                        showNotification('فشل في إعادة الإرسال، يرجى المحاولة لاحقاً', 'error');
+                    } else {
+                        showNotification('تم إعادة إرسال رسالة التأكيد، تحقق من بريدك الإلكتروني', 'success');
+                    }
+                }
+            } catch (error) {
+                console.error('Error resending confirmation:', error);
+                showNotification('حدث خطأ في إعادة الإرسال', 'error');
+            }
+        }
+
+        // Check if user is already logged in
+        async function checkExistingLogin() {
+            try {
+                // Wait for Supabase to initialize properly
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                if (window.supabaseAuth) {
+                    const { data } = await window.supabaseAuth.getSession();
+                    if (data?.session?.user) {
+                        console.log('✅ User already logged in, redirecting...');
+                        
+                        // Store user data
+                        localStorage.setItem('userEmail', data.session.user.email);
+                        localStorage.setItem('userId', data.session.user.id);
+                        localStorage.setItem('userName', data.session.user.user_metadata?.full_name || data.session.user.email.split('@')[0]);
+                        
+                        // Show success notification before redirect
+                        showNotification('مرحباً بك! جاري تحميل المنصة...', 'success');
+                        
+                        // Delay redirect to allow notification to show
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1500);
+                        return;
+                    }
+                }
+                
+            } catch (error) {
+                console.log('No existing session found:', error);
+            }
+        }
+
+        // Email validation helper
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        console.log('✅ Real Supabase authentication system ready');
+    </script>
+</body>
+</html>

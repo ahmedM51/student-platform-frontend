@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO Meta Tags -->
+    <title>المساعد الذكي - منصة الطالب الذكي | مساعد تعليمي بالذكاء الاصطناعي</title>
+    <meta name="description" content="استخدم المساعد الذكي المدعوم بالذكاء الاصطناعي للحصول على إجابات فورية عن أسئلتك التعليمية وإنشاء اختبارات تفاعلية من محاضراتك.">
+    <meta name="keywords" content="مساعد ذكي, ذكاء اصطناعي تعليمي, اختبارات تفاعلية, أسئلة وأجوبة, مساعد طلابي, تعلم تفاعلي">
+    <meta name="author" content="فريق منصة الطالب الذكي">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="المساعد الذكي - منصة الطالب الذكي">
+    <meta property="og:description" content="مساعد تعليمي ذكي يجيب على أسئلتك وينشئ اختبارات تفاعلية من محاضراتك">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yourwebsite.com/ai-assistant.html">
+    <meta property="og:site_name" content="منصة الطالب الذكي">
+    <meta property="og:locale" content="ar_SA">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://yourwebsite.com/ai-assistant.html">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        .chat-message { animation: fadeInUp 0.3s ease-out; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .quiz-card { transition: all 0.3s ease; }
+        .quiz-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .typing-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #3b82f6;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        .typing-indicator:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        .message { margin-bottom: 1rem; }
+        .user-message {
+            background: #3b82f6;
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem 1rem 0.25rem 1rem;
+            margin-left: 2rem;
+            text-align: right;
+        }
+        .ai-message {
+            background: #f3f4f6;
+            color: #374151;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem 1rem 1rem 0.25rem;
+            margin-right: 2rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <button onclick="window.location.href='index.html'" class="text-gray-600 hover:text-gray-900 ml-4">
+                        <i class="fas fa-arrow-right text-xl"></i>
+                    </button>
+                    <h1 class="text-xl font-bold text-gray-900 mr-4">المساعد الذكي</h1>
+                </div>
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <span id="userEmail" class="text-sm text-gray-600"></span>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
+                        <i class="fas fa-sign-out-alt ml-2"></i>تسجيل الخروج
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Q&A Section -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-comments text-blue-500 ml-3"></i>
+                    محادثة مع المساعد الذكي
+                </h3>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">اختر المحاضرة:</label>
+                    <select id="qaLectureSelect" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" onchange="enableQA()">
+                        <option value="">-- اختر محاضرة --</option>
+                    </select>
+                </div>
+
+                <div id="chatArea" class="bg-gray-50 rounded-lg p-4 h-64 overflow-y-auto mb-4 border">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-robot text-4xl mb-2"></i>
+                        <p>مرحباً! اختر محاضرة واسأل أي سؤال تريد</p>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2 space-x-reverse">
+                    <input type="text" id="questionInput" placeholder="اكتب سؤالك هنا..." 
+                           class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           disabled onkeypress="handleEnterKey(event)">
+                    <button id="askBtn" onclick="sendMessage()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quiz Section -->
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="bg-gradient-to-r from-green-500 to-green-600 p-6">
+                    <h2 class="text-xl font-bold text-white flex items-center">
+                        <i class="fas fa-clipboard-question ml-3"></i>
+                        إنشاء اختبار
+                    </h2>
+                    <p class="text-green-100 mt-2">أنشئ اختبار فوري من المحاضرات</p>
+                </div>
+                
+                <div class="p-6">
+                    <!-- Quiz Settings -->
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">اختر المحاضرات</label>
+                            <select id="quizLectureSelect" multiple class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent h-32">
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">يمكنك اختيار عدة محاضرات بالضغط مع Ctrl</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">نوع الأسئلة</label>
+                                <select id="questionType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                    <option value="multiple">اختيار متعدد</option>
+                                    <option value="truefalse">صح وخطأ</option>
+                                    <option value="mixed">مختلط</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">عدد الأسئلة</label>
+                                <select id="questionCount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                    <option value="5">5 أسئلة</option>
+                                    <option value="10" selected>10 أسئلة</option>
+                                    <option value="15">15 سؤال</option>
+                                    <option value="20">20 سؤال</option>
+                                    <option value="25">25 سؤال</option>
+                                    <option value="30">30 سؤال</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="generateQuizBtn" onclick="generateQuiz()" 
+                            class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                        <i class="fas fa-magic ml-2"></i>إنشاء اختبار فوري
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz Display Area -->
+        <div id="quizContainer" class="hidden mt-8">
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-6">
+                    <h2 class="text-xl font-bold text-white flex items-center justify-between">
+                        <span><i class="fas fa-clipboard-check ml-3"></i>الاختبار</span>
+                        <span id="quizTimer" class="text-purple-100"></span>
+                    </h2>
+                </div>
+                
+                <div class="p-6">
+                    <div id="quizContent"></div>
+                    
+                    <div class="flex justify-between items-center mt-6">
+                        <div class="text-sm text-gray-600">
+                            السؤال <span id="currentQuestion">1</span> من <span id="totalQuestions">10</span>
+                        </div>
+                        <div class="space-x-2 space-x-reverse">
+                            <button id="prevBtn" onclick="previousQuestion()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg disabled:opacity-50">
+                                السابق
+                            </button>
+                            <button id="nextBtn" onclick="nextQuestion()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                                التالي
+                            </button>
+                            <button id="submitQuizBtn" onclick="submitQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg hidden">
+                                إنهاء الاختبار
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz Results -->
+        <div id="quizResults" class="hidden mt-8">
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 p-6">
+                    <h2 class="text-xl font-bold text-white flex items-center">
+                        <i class="fas fa-trophy ml-3"></i>نتائج الاختبار
+                    </h2>
+                </div>
+                
+                <div class="p-6" id="resultsContent">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script>
+        // Gemini API Configuration
+        const GEMINI_API_KEY = "AIzaSyBQKDuazYnENme5oLyKoOH9uQiZejiyLpg";
+        
+        let currentUser = null;
+        let currentQuiz = null;
+        let currentQuestionIndex = 0;
+        let userAnswers = [];
+
+        /**
+         * Get AI response from Google Gemini API
+         * @param {string} textPrompt - User's question or prompt
+         * @param {object} lectureContext - Lecture context for educational responses
+         */
+        async function getGeminiResponse(textPrompt, lectureContext = null) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+
+            try {
+                const parts = [];
+
+                // Add context about the lecture if available
+                let contextualPrompt = textPrompt;
+                if (lectureContext) {
+                    contextualPrompt = `أنت مساعد تعليمي ذكي ومتخصص في التاريخ والمواد التعليمية. لديك معرفة واسعة ويمكنك مساعدة الطلاب في جميع أسئلتهم.
+
+معلومات المحاضرة المتاحة:
+${lectureContext.full_content || `عنوان المحاضرة: ${lectureContext.title}
+${lectureContext.description ? `وصف المحاضرة: ${lectureContext.description}` : ''}
+${lectureContext.content_type ? `نوع المحتوى: ${lectureContext.content_type}` : ''}
+${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_content}` : ''}`}
+
+سؤال الطالب: ${textPrompt}
+
+إرشادات الإجابة:
+- استخدم معرفتك الواسعة لتقديم إجابات شاملة ومفيدة
+- إذا كان السؤال متعلقاً بالمحاضرة، اربط إجابتك بمحتوى المحاضرة المتاح
+- إذا كان السؤال عن التاريخ المصري (خاصة فترة 1952-1973)، قدم معلومات تفصيلية ودقيقة
+- اذكر الأحداث والشخصيات المهمة والتواريخ الرئيسية
+- قدم السياق التاريخي والأسباب والنتائج
+- استخدم اللغة العربية الواضحة والمناسبة للطلاب
+- كن مفيداً وتعليمياً في جميع إجاباتك`;
+                }
+
+                parts.push({ text: contextualPrompt });
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: parts
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (aiResponse) {
+                    return aiResponse;
+                } else {
+                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء رد.');
+                }
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي: ${error.message}`;
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Initialize Supabase
+                if (window.initializeSupabase) {
+                    await window.initializeSupabase();
+                }
+                
+                // Wait for authentication
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Check authentication
+                const isAuthenticated = await checkAuthentication();
+                if (!isAuthenticated) {
+                    window.location.href = 'auth.html';
+                    return;
+                }
+                
+                // Load user data and lectures
+                await loadUserData();
+                await loadLectures();
+                
+                console.log('✅ AI Assistant initialized successfully');
+                
+            } catch (error) {
+                console.error('❌ Error initializing AI assistant:', error);
+                showNotification('حدث خطأ في تحميل المساعد الذكي', 'error');
+            }
+        });
+
+        // Check authentication
+        async function checkAuthentication() {
+            try {
+                if (!window.supabaseClient || !window.supabaseAuth) {
+                    return false;
+                }
+                
+                const { data } = await window.supabaseAuth.getSession();
+                if (data?.session?.user) {
+                    currentUser = data.session.user;
+                    localStorage.setItem('userEmail', currentUser.email);
+                    localStorage.setItem('userId', currentUser.id);
+                    localStorage.setItem('userName', currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Authentication check error:', error);
+                return false;
+            }
+        }
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                const userName = localStorage.getItem('userName') || currentUser?.email?.split('@')[0] || 'المستخدم';
+                const userEmail = localStorage.getItem('userEmail') || currentUser?.email || '';
+                document.getElementById('userEmail').textContent = `مرحباً، ${userName}`;
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        // Load lectures for dropdown
+        async function loadLectures() {
+            try {
+                if (!currentUser) {
+                    console.warn('No current user available');
+                    return;
+                }
+
+                // Load subjects from database
+                const subjectsResult = await window.supabaseDB.subjects.getByUser(currentUser.id);
+                if (subjectsResult.error) {
+                    console.error('Error loading subjects:', subjectsResult.error);
+                    return;
+                }
+
+                const subjects = subjectsResult.data || [];
+                const qaLectureSelect = document.getElementById('qaLectureSelect');
+                const quizLectureSelect = document.getElementById('quizLectureSelect');
+                
+                qaLectureSelect.innerHTML = '<option value="">-- اختر محاضرة --</option>';
+                quizLectureSelect.innerHTML = '<option value="">-- اختر محاضرة --</option>';
+
+                // Load lectures for each subject
+                for (const subject of subjects) {
+                    const lecturesResult = await window.supabaseDB.lectures.getBySubject(subject.id);
+                    if (lecturesResult.data && lecturesResult.data.length > 0) {
+                        const lectures = lecturesResult.data;
+                        
+                        lectures.forEach(lecture => {
+                            // Add to Q&A dropdown
+                            const qaOption = document.createElement('option');
+                            qaOption.value = lecture.id;
+                            qaOption.textContent = `${lecture.title} - ${subject.name}`;
+                            qaOption.dataset.subjectId = subject.id;
+                            qaLectureSelect.appendChild(qaOption);
+
+                            // Add to Quiz dropdown
+                            const quizOption = document.createElement('option');
+                            quizOption.value = lecture.id;
+                            quizOption.textContent = `${lecture.title} - ${subject.name}`;
+                            quizOption.dataset.subjectId = subject.id;
+                            quizLectureSelect.appendChild(quizOption);
+                        });
+                    }
+                }
+
+                if (qaLectureSelect.children.length === 1) {
+                    qaLectureSelect.innerHTML = '<option value="">لا توجد محاضرات متاحة - أضف محاضرات في إدارة المواد</option>';
+                    quizLectureSelect.innerHTML = '<option value="">لا توجد محاضرات متاحة - أضف محاضرات في إدارة المواد</option>';
+                }
+
+                console.log('✅ Lectures loaded from database');
+
+            } catch (error) {
+                console.error('❌ Error loading lectures:', error);
+                showNotification('حدث خطأ في تحميل المحاضرات', 'error');
+            }
+        }
+
+        // Enable Q&A when lecture is selected
+        function enableQA() {
+            const lectureId = document.getElementById('qaLectureSelect').value;
+            const questionInput = document.getElementById('questionInput');
+            const askBtn = document.getElementById('askBtn');
+            
+            if (lectureId) {
+                questionInput.disabled = false;
+                askBtn.disabled = false;
+                
+                const chatArea = document.getElementById('chatArea');
+                chatArea.innerHTML = `
+                    <div class="ai-message chat-message">
+                        <p>مرحباً! لقد اخترت محاضرة. يمكنك الآن طرح أي سؤال عن محتوى هذه المحاضرة.</p>
+                    </div>
+                `;
+            } else {
+                questionInput.disabled = true;
+                askBtn.disabled = true;
+            }
+        }
+
+        // Enable quiz generation when lectures are selected
+        document.getElementById('quizLectureSelect').addEventListener('change', function() {
+            const selectedLectures = Array.from(this.selectedOptions);
+            document.getElementById('generateQuizBtn').disabled = selectedLectures.length === 0;
+        });
+
+        // Handle Enter key for questions
+        function handleEnterKey(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Send message
+        async function sendMessage() {
+            const input = document.getElementById('questionInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            const lectureSelect = document.getElementById('qaLectureSelect');
+            if (!lectureSelect.value) {
+                showNotification('يرجى اختيار محاضرة أولاً', 'error');
+                return;
+            }
+
+            // Add user message
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Show typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message';
+            typingDiv.innerHTML = `
+                <div class="ai-message">
+                    <div class="flex items-center">
+                        <span class="typing-indicator"></span>
+                        <span class="typing-indicator"></span>
+                        <span class="typing-indicator"></span>
+                        <span class="mr-2">المساعد يكتب...</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('chatArea').appendChild(typingDiv);
+            scrollToBottom();
+
+            try {
+                const lectureId = lectureSelect.value;
+                
+                // Get lecture content from database including file content
+                const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
+                const lecture = lectureResult.data;
+                
+                if (!lecture) {
+                    throw new Error('لم يتم العثور على المحاضرة');
+                }
+
+                // Generate AI response using Gemini API with actual content
+                const response = await getGeminiResponse(message, lecture);
+                
+                // Remove typing indicator
+                typingDiv.remove();
+                
+                // Add AI response
+                addMessage(response, 'ai');
+                
+            } catch (error) {
+                console.error('Error generating response:', error);
+                typingDiv.remove();
+                addMessage('عذراً، حدث خطأ في معالجة سؤالك. يرجى المحاولة مرة أخرى.', 'ai');
+            }
+        }
+
+        // Generate quiz
+        async function generateQuiz() {
+            const lectureSelect = document.getElementById('quizLectureSelect');
+            if (!lectureSelect.value) {
+                showNotification('يرجى اختيار محاضرة أولاً', 'error');
+                return;
+            }
+
+            try {
+                // Get selected lecture details
+                const selectedOption = lectureSelect.selectedOptions[0];
+                const lectureId = lectureSelect.value;
+                const subjectId = selectedOption.dataset.subjectId;
+                
+                // Get lecture content from database
+                const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
+                const lecture = lectureResult.data;
+                
+                if (!lecture) {
+                    throw new Error('لم يتم العثور على المحاضرة');
+                }
+
+                // Show loading state
+                const quizContainer = document.getElementById('quizContainer');
+                quizContainer.classList.remove('hidden');
+                quizContainer.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="bg-gradient-to-r from-green-500 to-green-600 p-6">
+                            <h2 class="text-xl font-bold text-white flex items-center">
+                                <i class="fas fa-magic ml-3"></i>جاري إنشاء الاختبار
+                            </h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="text-center py-8">
+                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+                                <p class="text-gray-600">جاري إنشاء الاختبار بواسطة الذكاء الاصطناعي...</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                // Generate quiz using Gemini API
+                const questionCount = document.getElementById('questionCount').value || '10';
+                const questionType = document.getElementById('questionType').value || 'multiple';
+                
+                let questionTypeInstructions = '';
+                let questionFormat = '';
+                
+                if (questionType === 'multiple') {
+                    questionTypeInstructions = `- إنشاء ${questionCount} سؤال اختيار من متعدد
+- كل سؤال يجب أن يحتوي على 4 خيارات (أ، ب، ج، د)`;
+                    questionFormat = `{
+      "question": "نص السؤال؟",
+      "type": "multiple",
+      "options": ["أ) الخيار الأول", "ب) الخيار الثاني", "ج) الخيار الثالث", "د) الخيار الرابع"],
+      "correct": 0
+    }`;
+                } else if (questionType === 'truefalse') {
+                    questionTypeInstructions = `- إنشاء ${questionCount} سؤال صح وخطأ
+- كل سؤال يجب أن يحتوي على خيارين فقط: صح أو خطأ`;
+                    questionFormat = `{
+      "question": "نص السؤال؟",
+      "type": "truefalse",
+      "options": ["صح", "خطأ"],
+      "correct": 0
+    }`;
+                } else if (questionType === 'mixed') {
+                    const multipleCount = Math.ceil(questionCount * 0.6);
+                    const trueFalseCount = questionCount - multipleCount;
+                    questionTypeInstructions = `- إنشاء ${multipleCount} سؤال اختيار من متعدد و ${trueFalseCount} سؤال صح وخطأ
+- أسئلة الاختيار من متعدد: 4 خيارات (أ، ب، ج، د)
+- أسئلة صح وخطأ: خيارين فقط (صح، خطأ)`;
+                    questionFormat = `{
+      "question": "نص السؤال؟",
+      "type": "multiple", // أو "truefalse"
+      "options": ["أ) الخيار الأول", "ب) الخيار الثاني", "ج) الخيار الثالث", "د) الخيار الرابع"], // أو ["صح", "خطأ"]
+      "correct": 0
+    }`;
+                }
+                
+                const quizPrompt = `أنت مساعد تعليمي متخصص في إنشاء الاختبارات التعليمية. قم بإنشاء اختبار تعليمي باللغة العربية بناءً على المحاضرة التالية:
+
+معلومات المحاضرة:
+${lecture.full_content || `عنوان المحاضرة: ${lecture.title}
+${lecture.description ? `وصف المحاضرة: ${lecture.description}` : ''}
+${lecture.content_type ? `نوع المحتوى: ${lecture.content_type}` : ''}
+${lecture.file_content ? `محتوى الملف: ${lecture.file_content}` : ''}`}
+
+المطلوب:
+${questionTypeInstructions}
+- يجب أن تغطي الأسئلة جوانب مختلفة من موضوع المحاضرة
+- اجعل الأسئلة تعتمد على المحتوى الفعلي للمحاضرة إذا كان متاحاً
+- تأكد من أن الإجابات الصحيحة دقيقة ومبنية على محتوى المحاضرة
+- نوع الأسئلة بين المفاهيم الأساسية والتفاصيل والتطبيقات
+
+يرجى تنسيق الإجابة بالشكل التالي بالضبط:
+{
+  "title": "اختبار: ${lecture.title}",
+  "questions": [
+    ${questionFormat}
+  ]
+}
+
+تأكد من أن الإجابة تكون JSON صالح فقط بدون أي نص إضافي.`;
+
+                const aiResponse = await getGeminiResponse(quizPrompt);
+                
+                // Parse AI response to extract quiz data
+                let quizData;
+                try {
+                    // Try to extract JSON from the response
+                    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        quizData = JSON.parse(jsonMatch[0]);
+                    } else {
+                        throw new Error('لم يتم العثور على بيانات الاختبار في الاستجابة');
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing AI response:', parseError);
+                    // Fallback: create a simple quiz based on lecture info
+                    quizData = createFallbackQuiz(lecture);
+                }
+
+                // Validate quiz data
+                if (!quizData.questions || quizData.questions.length === 0) {
+                    quizData = createFallbackQuiz(lecture);
+                }
+
+                currentQuiz = quizData;
+                currentQuestionIndex = 0;
+                userAnswers = [];
+                
+                displayQuiz();
+                showNotification('تم إنشاء الاختبار بنجاح!', 'success');
+                
+            } catch (error) {
+                console.error('Error generating quiz:', error);
+                document.getElementById('quizArea').innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="text-red-500 mb-4">
+                            <i class="fas fa-exclamation-triangle text-4xl"></i>
+                        </div>
+                        <p class="text-red-600">حدث خطأ في إنشاء الاختبار</p>
+                        <button onclick="generateQuiz()" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                            المحاولة مرة أخرى
+                        </button>
+                    </div>
+                `;
+                showNotification('حدث خطأ في إنشاء الاختبار', 'error');
+            }
+        }
+
+        // Create fallback quiz when AI generation fails
+        function createFallbackQuiz(lecture) {
+            return {
+                title: `اختبار: ${lecture.title}`,
+                questions: [
+                    {
+                        question: `ما هو الموضوع الرئيسي لمحاضرة "${lecture.title}"؟`,
+                        options: [
+                            `أ) ${lecture.description || 'الموضوع الأساسي'}`,
+                            "ب) موضوع مختلف تماماً",
+                            "ج) لا يوجد موضوع محدد",
+                            "د) جميع ما سبق"
+                        ],
+                        correct: 0
+                    },
+                    {
+                        question: `متى تم إنشاء هذه المحاضرة؟`,
+                        options: [
+                            `أ) ${new Date(lecture.created_at).toLocaleDateString('ar-SA')}`,
+                            "ب) العام الماضي",
+                            "ج) الشهر الماضي",
+                            "د) لا أعرف"
+                        ],
+                        correct: 0
+                    },
+                    {
+                        question: `ما هو نوع محتوى هذه المحاضرة؟`,
+                        options: [
+                            `أ) ${lecture.content_type || 'محتوى تعليمي'}`,
+                            "ب) محتوى ترفيهي",
+                            "ج) محتوى إعلاني",
+                            "د) لا يوجد محتوى"
+                        ],
+                        correct: 0
+                    }
+                ]
+            };
+        }
+
+        // Display quiz
+        function displayQuiz() {
+            if (!currentQuiz || !currentQuiz.questions || currentQuiz.questions.length === 0) {
+                console.error('No quiz data available');
+                return;
+            }
+
+            // Initialize user answers array
+            userAnswers = new Array(currentQuiz.questions.length).fill(-1);
+            
+            const quizArea = document.getElementById('quizContainer');
+            quizArea.innerHTML = `
+                <div class="bg-white rounded-lg border-2 border-green-200 p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-green-800">${currentQuiz.title}</h3>
+                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                            السؤال ${currentQuestionIndex + 1} من ${currentQuiz.questions.length}
+                        </span>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                            <div class="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                                 style="width: ${((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100}%"></div>
+                        </div>
+                    </div>
+
+                    <div id="questionContainer" class="mb-6">
+                        ${renderQuestion(currentQuestionIndex)}
+                    </div>
+
+                    <div class="flex justify-between">
+                        <button id="prevBtn" onclick="previousQuestion()" 
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                ${currentQuestionIndex === 0 ? 'disabled' : ''}>
+                            <i class="fas fa-arrow-right ml-2"></i>
+                            السابق
+                        </button>
+                        
+                        <button id="nextBtn" onclick="nextQuestion()" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
+                            ${currentQuestionIndex === currentQuiz.questions.length - 1 ? 
+                                '<i class="fas fa-check ml-2"></i>إنهاء الاختبار' : 
+                                'التالي<i class="fas fa-arrow-left mr-2"></i>'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderQuestion(index) {
+            const question = currentQuiz.questions[index];
+            if (!question) return '';
+
+            let optionsHtml = '';
+            question.options.forEach((option, optionIndex) => {
+                const isSelected = userAnswers[index] === optionIndex;
+                optionsHtml += `
+                    <div class="mb-3">
+                        <label class="flex items-center p-3 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200'}">
+                            <input type="radio" name="question_${index}" value="${optionIndex}" 
+                                   onchange="selectAnswer(${index}, ${optionIndex})" 
+                                   ${isSelected ? 'checked' : ''} class="ml-3">
+                            <span class="text-gray-800">${option}</span>
+                        </label>
+                    </div>
+                `;
+            });
+
+            return `
+                <div class="question-content">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">${question.question}</h4>
+                    <div class="options-container">
+                        ${optionsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectAnswer(questionIndex, answerIndex) {
+            userAnswers[questionIndex] = answerIndex;
+            console.log('Answer selected:', questionIndex, answerIndex);
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < currentQuiz.questions.length - 1) {
+                currentQuestionIndex++;
+                document.getElementById('questionContainer').innerHTML = renderQuestion(currentQuestionIndex);
+                updateQuizProgress();
+            } else {
+                finishQuiz();
+            }
+        }
+
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                document.getElementById('questionContainer').innerHTML = renderQuestion(currentQuestionIndex);
+                updateQuizProgress();
+            }
+        }
+
+        function updateQuizProgress() {
+            const progressBar = document.querySelector('.bg-green-500');
+            const questionCounter = document.querySelector('.bg-green-100');
+            
+            if (progressBar) {
+                progressBar.style.width = `${((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100}%`;
+            }
+            
+            if (questionCounter) {
+                questionCounter.textContent = `السؤال ${currentQuestionIndex + 1} من ${currentQuiz.questions.length}`;
+            }
+
+            // Update navigation buttons
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            if (prevBtn) {
+                prevBtn.disabled = currentQuestionIndex === 0;
+            }
+            
+            if (nextBtn) {
+                nextBtn.innerHTML = currentQuestionIndex === currentQuiz.questions.length - 1 ? 
+                    '<i class="fas fa-check ml-2"></i>إنهاء الاختبار' : 
+                    'التالي<i class="fas fa-arrow-left mr-2"></i>';
+            }
+        }
+
+        function finishQuiz() {
+            const score = calculateScore();
+            const percentage = Math.round((score / currentQuiz.questions.length) * 100);
+            
+            const quizContainer = document.getElementById('quizContainer');
+            quizContainer.innerHTML = `
+                <div class="bg-white rounded-lg border-2 border-blue-200 p-6 text-center">
+                    <div class="mb-6">
+                        <i class="fas fa-trophy text-6xl text-yellow-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">انتهى الاختبار!</h3>
+                        <p class="text-gray-600">لقد أكملت الاختبار بنجاح</p>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 mb-6">
+                        <div class="text-4xl font-bold text-blue-600">${percentage}%</div>
+                        <div class="text-lg text-gray-700 mb-2">${results.correctAnswers} من ${results.totalQuestions} إجابة صحيحة</div>
+                        <div class="text-lg font-medium ${gradeColor}">${gradeMessage}</div>
+                    </div>
+                    
+                    <div class="flex gap-4 justify-center">
+                        <button onclick="reviewAnswers()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                            <i class="fas fa-eye ml-2"></i>
+                            مراجعة الإجابات
+                        </button>
+                        <button onclick="generateQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
+                            <i class="fas fa-redo ml-2"></i>
+                            اختبار جديد
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function calculateScore() {
+            let score = 0;
+            for (let i = 0; i < currentQuiz.questions.length; i++) {
+                if (userAnswers[i] === currentQuiz.questions[i].correct) {
+                    score++;
+                }
+            }
+            return score;
+        }
+
+        function reviewAnswers() {
+            let reviewHtml = `
+                <div class="bg-white rounded-lg border-2 border-gray-200 p-6">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-list-check ml-2"></i>
+                        مراجعة الإجابات
+                    </h4>
+            `;
+
+            currentQuiz.questions.forEach((question, index) => {
+                const userAnswer = userAnswers[index];
+                const correctAnswer = question.correct;
+                const isCorrect = userAnswer === correctAnswer;
+
+                reviewHtml += `
+                    <div class="mb-6 p-4 border rounded-lg ${isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+                        <div class="flex items-center mb-3">
+                            <i class="fas ${isCorrect ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'} ml-2"></i>
+                            <span class="font-semibold">السؤال ${index + 1}</span>
+                        </div>
+                        <p class="font-medium mb-3">${question.question}</p>
+                        <div class="text-sm space-y-1">
+                            <div class="flex items-center">
+                                <span class="text-gray-600 ml-2">إجابتك:</span>
+                                <span class="${isCorrect ? 'text-green-600' : 'text-red-600'}">${question.options[userAnswer]}</span>
+                            </div>
+                            ${!isCorrect ? `
+                                <div class="flex items-center">
+                                    <span class="text-gray-600 ml-2">الإجابة الصحيحة:</span>
+                                    <span class="text-green-600">${question.options[correctAnswer]}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            reviewHtml += `
+                    <div class="text-center">
+                        <button onclick="generateQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
+                            <i class="fas fa-redo ml-2"></i>
+                            اختبار جديد
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('quizContainer').innerHTML = reviewHtml;
+        }
+
+        // Display quiz results
+        function displayQuizResults(results) {
+            const quizContainer = document.getElementById('quizContainer');
+            const quizResults = document.getElementById('quizResults');
+            
+            // Hide quiz container and show results
+            quizContainer.classList.add('hidden');
+            quizResults.classList.remove('hidden');
+            
+            const resultsContent = document.getElementById('resultsContent');
+            
+            let gradeColor = 'text-red-600';
+            let gradeMessage = 'يحتاج تحسين 📚';
+            
+            if (results.percentage >= 80) {
+                gradeColor = 'text-green-600';
+                gradeMessage = 'ممتاز! 🎉';
+            } else if (results.percentage >= 60) {
+                gradeColor = 'text-blue-600';
+                gradeMessage = 'جيد جداً! 👍';
+            }
+            
+            // Generate detailed results
+            let detailedResults = '';
+            results.results.forEach((result, index) => {
+                const questionTypeIcon = result.type === 'truefalse' ? '✓/✗' : 'ABC';
+                const statusIcon = result.isCorrect ? '✅' : '❌';
+                
+                detailedResults += `
+                    <div class="border-b border-gray-200 pb-4 mb-4 last:border-b-0">
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-sm text-gray-500">${questionTypeIcon} السؤال ${index + 1}</span>
+                            <span class="text-lg">${statusIcon}</span>
+                        </div>
+                        <h4 class="font-medium text-gray-800 mb-2">${result.question}</h4>
+                        <div class="text-sm space-y-1">
+                            <div class="flex items-center">
+                                <span class="text-gray-600 ml-2">إجابتك:</span>
+                                <span class="${result.isCorrect ? 'text-green-600' : 'text-red-600'}">${result.userAnswer}</span>
+                            </div>
+                            ${!result.isCorrect ? `
+                                <div class="flex items-center">
+                                    <span class="text-gray-600 ml-2">الإجابة الصحيحة:</span>
+                                    <span class="text-green-600">${result.correctAnswer}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsContent.innerHTML = `
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-100 to-green-100 rounded-full mb-4">
+                        <i class="fas fa-trophy text-3xl text-yellow-500"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">نتائج الاختبار</h3>
+                    <div class="text-6xl font-bold ${gradeColor} mb-2">${results.percentage}%</div>
+                    <div class="text-lg text-gray-700 mb-2">${results.correctAnswers} من ${results.totalQuestions} إجابة صحيحة</div>
+                    <div class="text-lg font-medium ${gradeColor}">${gradeMessage}</div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-blue-50 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-blue-600">${results.totalQuestions}</div>
+                        <div class="text-sm text-blue-800">إجمالي الأسئلة</div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-green-600">${results.correctAnswers}</div>
+                        <div class="text-sm text-green-800">إجابات صحيحة</div>
+                    </div>
+                    <div class="bg-red-50 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-red-600">${results.totalQuestions - results.correctAnswers}</div>
+                        <div class="text-sm text-red-800">إجابات خاطئة</div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-list-check ml-2"></i>
+                        مراجعة الإجابات
+                    </h4>
+                    <div class="max-h-96 overflow-y-auto">
+                        ${detailedResults}
+                    </div>
+                </div>
+                
+                <div class="flex justify-center space-x-4 space-x-reverse mt-6">
+                    <button onclick="retakeQuiz()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg">
+                        <i class="fas fa-redo ml-2"></i>إعادة الاختبار
+                    </button>
+                    <button onclick="generateNewQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg">
+                        <i class="fas fa-plus ml-2"></i>اختبار جديد
+                    </button>
+                </div>
+            `;
+        }
+
+        // Retake quiz
+        function retakeQuiz() {
+            currentQuestionIndex = 0;
+            userAnswers = new Array(currentQuiz.questions.length).fill(-1);
+            
+            document.getElementById('quizResults').classList.add('hidden');
+            document.getElementById('quizContainer').classList.remove('hidden');
+            
+            displayQuiz();
+        }
+
+        // Generate new quiz
+        function generateNewQuiz() {
+            document.getElementById('quizResults').classList.add('hidden');
+            document.getElementById('quizContainer').classList.add('hidden');
+            
+            // Reset quiz state
+            currentQuiz = null;
+            currentQuestionIndex = 0;
+            userAnswers = [];
+            
+            // Scroll to quiz generation section
+            document.querySelector('.bg-gradient-to-r.from-green-500').scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+        }
+
+        // Add message to chat
+        function addMessage(message, sender) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message chat-message`;
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // Scroll to bottom of chat area
+        function scrollToBottom() {
+            const chatArea = document.getElementById('chatArea');
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg text-white font-medium z-50 ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+            }`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                if (window.supabaseAuth) {
+                    await window.supabaseAuth.signOut();
+                }
+                localStorage.clear();
+                window.location.href = 'auth.html';
+            } catch (error) {
+                console.error('❌ Logout error:', error);
+                window.location.href = 'auth.html';
+            }
+        }
+    </script>
+</body>
+</html>
