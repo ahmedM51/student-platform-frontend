@@ -1,74 +1,87 @@
-// إعدادات الاتصال بين Frontend و Backend
+// Frontend Configuration for Student Platform
+// This file handles API communication between frontend and backend
+
+// API Configuration
 const CONFIG = {
-    // رابط Backend API (سيتم تحديثه بعد النشر)
-    API_BASE_URL: 'https://your-backend-app.vercel.app',
+    // Backend URL - updated with actual deployment URL
+    API_BASE_URL: 'https://student-platform-backend.vercel.app', // Replace with your actual backend URL
     
-    // إعدادات الاتصال
-    API_ENDPOINTS: {
-        HEALTH: '/health',
+    // API Endpoints
+    ENDPOINTS: {
+        HEALTH: '/api/health',
         AI_CHAT: '/api/ai-chat',
         UPLOAD: '/api/upload',
-        AUTH: '/api/auth'
+        SUPABASE: '/api/supabase'
     },
     
-    // إعدادات CORS
+    // CORS Configuration
     CORS_OPTIONS: {
-        credentials: 'include',
+        credentials: true,
         headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
     },
     
-    // كشف البيئة تلقائياً
-    detectEnvironment() {
-        const hostname = window.location.hostname;
-        
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            // بيئة التطوير المحلي
-            this.API_BASE_URL = 'http://localhost:3000';
-        } else if (hostname.includes('vercel.app')) {
-            // بيئة الإنتاج على Vercel
-            // سيتم تحديث هذا الرابط بعد نشر Backend
-            this.API_BASE_URL = 'https://your-backend-app.vercel.app';
-        }
-        
-        return this.API_BASE_URL;
-    },
+    // Development mode detection
+    IS_DEVELOPMENT: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
     
-    // دالة لإرسال طلبات API
-    async apiRequest(endpoint, options = {}) {
-        const url = `${this.API_BASE_URL}${endpoint}`;
-        
-        const defaultOptions = {
-            ...this.CORS_OPTIONS,
-            ...options
-        };
-        
-        try {
-            const response = await fetch(url, defaultOptions);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error('API Request Error:', error);
-            throw error;
+    // Auto-detect API base URL
+    getApiBaseUrl() {
+        // If in development, use localhost
+        if (this.IS_DEVELOPMENT) {
+            return 'http://localhost:3000';
         }
+        
+        // Use configured backend URL
+        return this.API_BASE_URL;
     }
 };
 
-// تشغيل كشف البيئة عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => {
-    CONFIG.detectEnvironment();
-    console.log('🔗 API Base URL:', CONFIG.API_BASE_URL);
-});
-
-// تصدير الإعدادات للاستخدام في ملفات أخرى
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = CONFIG;
-} else {
-    window.CONFIG = CONFIG;
+// API Request Function
+async function apiRequest(endpoint, options = {}) {
+    const baseUrl = CONFIG.getApiBaseUrl();
+    const url = `${baseUrl}${endpoint}`;
+    
+    const defaultOptions = {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...CONFIG.CORS_OPTIONS.headers
+        },
+        credentials: 'include'
+    };
+    
+    const finalOptions = {
+        ...defaultOptions,
+        ...options,
+        headers: {
+            ...defaultOptions.headers,
+            ...options.headers
+        }
+    };
+    
+    try {
+        console.log(`🌐 API Request: ${url}`);
+        const response = await fetch(url, finalOptions);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`✅ API Response: ${endpoint}`, data);
+        return data;
+        
+    } catch (error) {
+        console.error(`❌ API Error: ${endpoint}`, error);
+        throw error;
+    }
 }
+
+// Export for use in other files
+window.CONFIG = CONFIG;
+window.apiRequest = apiRequest;
+
+console.log('✅ Frontend config loaded. Backend URL:', CONFIG.getApiBaseUrl());
