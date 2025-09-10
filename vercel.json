@@ -2,18 +2,134 @@
   "version": 2,
   "builds": [
     {
-      "src": "index.js",
-      "use": "@vercel/node"
+      "src": "server-supabase.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
   "routes": [
     {
+      "src": "/api/health",
+      "dest": "/server-supabase.js",
+      "methods": ["GET", "POST"]
+    },
+    {
+      "src": "/api/ai-chat",
+      "dest": "/server-supabase.js",
+      "methods": ["POST"]
+    },
+    {
+      "src": "/api/upload",
+      "dest": "/server-supabase.js",
+      "methods": ["POST"]
+    },
+    {
+      "src": "/api/supabase",
+      "dest": "/server-supabase.js",
+      "methods": ["GET", "POST", "PUT", "DELETE"]
+    },
+    {
       "src": "/api/(.*)",
-      "dest": "/index.js"
+      "dest": "/server-supabase.js"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "/server-supabase.js"
+    },
+    {
+      "src": "/health",
+      "dest": "/server-supabase.js",
+      "methods": ["GET"]
+    },
+    {
+      "src": "/robots.txt",
+      "dest": "/public/robots.txt",
+      "headers": {
+        "Content-Type": "text/plain"
+      }
+    },
+    {
+      "src": "/sitemap.xml",
+      "dest": "/public/sitemap.xml",
+      "headers": {
+        "Content-Type": "application/xml"
+      }
+    },
+    {
+      "src": "/google78a51b05e2db952b.html",
+      "dest": "/public/google78a51b05e2db952b.html",
+      "headers": {
+        "Content-Type": "text/html"
+      }
+    },
+    {
+      "src": "/(.*\\.html)$",
+      "dest": "/public/$1",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8"
+      }
+    },
+    {
+      "src": "/public/(.*)",
+      "dest": "/public/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css))$",
+      "dest": "/public/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp))$",
+      "dest": "/public/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/(.*\\.(txt|xml|json))$",
+      "dest": "/public/$1",
+      "headers": {
+        "Content-Type": "text/plain"
+      }
     },
     {
       "src": "/(.*)",
-      "dest": "/index.js"
+      "dest": "/index.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8"
+      }
+    }
+  ],
+  "functions": {
+    "server-supabase.js": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
     }
   ]
 }
