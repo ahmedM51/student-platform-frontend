@@ -1,29 +1,26 @@
-{
-  "version": 2,
-  "routes": [
-    {
-      "src": "/robots.txt",
-      "dest": "/robots.txt"
-    },
-    {
-      "src": "/sitemap.xml",
-      "dest": "/sitemap.xml"
-    },
-    {
-      "src": "/google78a51b05e2db952b.html",
-      "dest": "/google78a51b05e2db952b.html"
-    },
-    {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|txt|xml|json))$",
-      "dest": "/$1"
-    },
-    {
-      "src": "/(.*\\.html)$",
-      "dest": "/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
+{ 
+  "version": 2, 
+  "routes": [ 
+    { 
+      "src": "/api/(.*)", 
+      "dest": "/server-supabase.js" 
+    }, 
+    { 
+      "src": "/uploads/(.*)", 
+      "dest": "/server-supabase.js" 
+    }, 
+    { 
+      "src": "/health", 
+      "dest": "/server-supabase.js" 
+    }, 
+    { 
+      "src": "/(.*)", 
+      "dest": "/server-supabase.js" 
+    } 
+  ], 
+  "functions": { 
+    "server-supabase.js": { 
+      "maxDuration": 30 
+    } 
+  } 
 }
