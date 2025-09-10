@@ -47,24 +47,7 @@
       "@context": "https://schema.org",
       "@type": "EducationalOrganization",
       "name": "منصة الطالب الذكي",
-      "description": "منصة تعليمية ذكية تستخدم الذكاء الاصطناعي لمساعدة الطلاب في التعلم والمذاكرة",
-      "url": "",
-      "logo": "",
-      "sameAs": [
-        "https://facebook.com/yourpage",
-        "https://twitter.com/yourpage",
-        "https://instagram.com/yourpage"
-      ],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer service",
-        "availableLanguage": "Arabic"
-      },
-      "offers": {
-        "@type": "Offer",
-        "category": "Education",
-        "availability": "https://schema.org/InStock"
-      }
+      "description": "منصة تعليمية ذكية تستخدم الذكاء الاصطناعي لمساعدة الطلاب في التعلم والمذاكرة"
     }
     </script>
     
@@ -382,108 +365,6 @@
             }
         }
 
-        // Authentication check - Real Supabase only
-        async function checkAuthentication() {
-            try {
-                console.log('🔐 Checking authentication...');
-                
-                if (!window.supabaseAuth) {
-                    throw new Error('Supabase authentication not available. Please check your configuration.');
-                }
-
-                // Check for OAuth redirect first
-                const { data: sessionData } = await window.supabaseAuth.getSession();
-                
-                if (sessionData?.session?.user) {
-                    // User is authenticated via session (including OAuth)
-                    currentUser = sessionData.session.user;
-                    console.log('✅ Supabase user authenticated:', currentUser.email);
-                    
-                    // Store user data for other pages
-                    localStorage.setItem('userEmail', currentUser.email);
-                    localStorage.setItem('userId', currentUser.id);
-                    localStorage.setItem('userName', currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]);
-                    
-                    // Load user data and show dashboard
-                    await loadUserData();
-                    return true;
-                }
-
-                // No valid session found
-                console.log('❌ No authenticated user found');
-                return false;
-                
-            } catch (error) {
-                console.error('❌ Authentication check failed:', error);
-                return false;
-            }
-        }
-
-        // Logout function - Real Supabase only
-        async function logout() {
-            try {
-                console.log('🚪 Logging out user...');
-                
-                if (window.supabaseAuth) {
-                    const { error } = await window.supabaseAuth.signOut();
-                    if (error) throw error;
-                }
-                
-                // Clear all authentication data
-                localStorage.removeItem('userEmail');
-                localStorage.removeItem('userId');
-                localStorage.removeItem('userName');
-                localStorage.removeItem('currentUser');
-                localStorage.removeItem('isLoggedIn');
-                
-                console.log('✅ User logged out successfully');
-                
-                // Redirect to auth page
-                window.location.href = 'auth.html';
-                
-            } catch (error) {
-                console.error('❌ Error during logout:', error);
-                // Force redirect even if logout fails
-                localStorage.clear();
-                window.location.href = 'auth.html';
-            }
-        }
-
-        // Load user data and statistics - Real Supabase only
-        async function loadUserData() {
-            try {
-                if (!currentUser) return;
-
-                let userData = null;
-
-                if (window.supabaseDB) {
-                    const { data, error } = await window.supabaseDB.users.get(currentUser.id);
-                        
-                    if (error || !data) {
-                        console.warn('⚠️ Could not load user data from Supabase, using default data');
-                        userData = createDefaultUserData();
-                    } else {
-                        userData = data;
-                    }
-                } else {
-                    throw new Error('Supabase database not available. Please check your configuration.');
-                }
-
-                // Update statistics in UI
-                updateUserStats(userData);
-                
-                // Load recent activities
-                await loadRecentActivities();
-
-                console.log('✅ User data loaded successfully');
-                
-            } catch (error) {
-                console.error('❌ Error loading user data:', error);
-                // Use default data on error
-                updateUserStats(createDefaultUserData());
-            }
-        }
-
         // Create default user data
         function createDefaultUserData() {
             return {
@@ -590,6 +471,108 @@
             if (elements.qualityTest) elements.qualityTest.textContent = '0';
             
             console.log('📊 UI updated with user stats:', userData);
+        }
+
+        // Authentication check - Real Supabase only
+        async function checkAuthentication() {
+            try {
+                console.log('🔐 Checking authentication...');
+                
+                if (!window.supabaseAuth) {
+                    throw new Error('Supabase authentication not available. Please check your configuration.');
+                }
+
+                // Check for OAuth redirect first
+                const { data: sessionData } = await window.supabaseAuth.getSession();
+                
+                if (sessionData?.session?.user) {
+                    // User is authenticated via session (including OAuth)
+                    currentUser = sessionData.session.user;
+                    console.log('✅ Supabase user authenticated:', currentUser.email);
+                    
+                    // Store user data for other pages
+                    localStorage.setItem('userEmail', currentUser.email);
+                    localStorage.setItem('userId', currentUser.id);
+                    localStorage.setItem('userName', currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]);
+                    
+                    // Load user data and show dashboard
+                    await loadUserData();
+                    return true;
+                }
+
+                // No valid session found
+                console.log('❌ No authenticated user found');
+                return false;
+                
+            } catch (error) {
+                console.error('❌ Authentication check failed:', error);
+                return false;
+            }
+        }
+
+        // Logout function - Real Supabase only
+        async function logout() {
+            try {
+                console.log('🚪 Logging out user...');
+                
+                if (window.supabaseAuth) {
+                    const { error } = await window.supabaseAuth.signOut();
+                    if (error) throw error;
+                }
+                
+                // Clear all authentication data
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('isLoggedIn');
+                
+                console.log('✅ User logged out successfully');
+                
+                // Redirect to auth page
+                window.location.href = 'auth.html';
+                
+            } catch (error) {
+                console.error('❌ Error during logout:', error);
+                // Force redirect even if logout fails
+                localStorage.clear();
+                window.location.href = 'auth.html';
+            }
+        }
+
+        // Load user data and statistics - Real Supabase only
+        async function loadUserData() {
+            try {
+                if (!currentUser) return;
+
+                let userData = null;
+
+                if (window.supabaseDB) {
+                    const { data, error } = await window.supabaseDB.users.get(currentUser.id);
+                        
+                    if (error || !data) {
+                        console.warn('⚠️ Could not load user data from Supabase, using default data');
+                        userData = createDefaultUserData();
+                    } else {
+                        userData = data;
+                    }
+                } else {
+                    throw new Error('Supabase database not available. Please check your configuration.');
+                }
+
+                // Update statistics in UI
+                updateUserStats(userData);
+                
+                // Load recent activities
+                await loadRecentActivities();
+
+                console.log('✅ User data loaded successfully');
+                
+            } catch (error) {
+                console.error('❌ Error loading user data:', error);
+                // Use default data on error
+                updateUserStats(createDefaultUserData());
+            }
         }
 
         // Make logout function globally available
