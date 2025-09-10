@@ -1,27 +1,19 @@
-{ 
+{
   "version": 2,
   "builds": [
     {
-      "src": "server-supabase.js",
+      "src": "index.js",
       "use": "@vercel/node"
     }
   ],
-  "routes": [ 
-    { 
-      "src": "/api/(.*)", 
-      "dest": "/server-supabase.js" 
-    }, 
-    { 
-      "src": "/uploads/(.*)", 
-      "dest": "/server-supabase.js" 
-    }, 
-    { 
-      "src": "/health", 
-      "dest": "/server-supabase.js" 
-    }, 
-    { 
-      "src": "/(.*)", 
-      "dest": "/server-supabase.js" 
-    } 
-  ] 
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.js"
+    }
+  ]
 }
