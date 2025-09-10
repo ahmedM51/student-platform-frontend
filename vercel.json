@@ -1,5 +1,11 @@
 { 
-  "version": 2, 
+  "version": 2,
+  "builds": [
+    {
+      "src": "server-supabase.js",
+      "use": "@vercel/node"
+    }
+  ],
   "routes": [ 
     { 
       "src": "/api/(.*)", 
