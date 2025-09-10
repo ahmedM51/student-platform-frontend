@@ -248,27 +248,57 @@
             try {
                 const parts = [];
 
-                // Add context about the lecture if available
+                // Enhanced contextual prompt with better lecture integration
                 let contextualPrompt = textPrompt;
                 if (lectureContext) {
-                    contextualPrompt = `أنت مساعد تعليمي ذكي ومتخصص في التاريخ والمواد التعليمية. لديك معرفة واسعة ويمكنك مساعدة الطلاب في جميع أسئلتهم.
+                    // Build comprehensive lecture content
+                    let lectureContent = '';
+                    
+                    if (lectureContext.full_content) {
+                        lectureContent = lectureContext.full_content;
+                    } else {
+                        // Build content from available fields
+                        lectureContent = `عنوان المحاضرة: ${lectureContext.title || 'غير محدد'}`;
+                        
+                        if (lectureContext.description) {
+                            lectureContent += `\nوصف المحاضرة: ${lectureContext.description}`;
+                        }
+                        
+                        if (lectureContext.content_type) {
+                            lectureContent += `\nنوع المحتوى: ${lectureContext.content_type}`;
+                        }
+                        
+                        if (lectureContext.file_content) {
+                            lectureContent += `\nمحتوى الملف: ${lectureContext.file_content}`;
+                        }
+                        
+                        if (lectureContext.content) {
+                            lectureContent += `\nمحتوى المحاضرة: ${lectureContext.content}`;
+                        }
+                        
+                        if (lectureContext.notes) {
+                            lectureContent += `\nملاحظات: ${lectureContext.notes}`;
+                        }
+                    }
 
-معلومات المحاضرة المتاحة:
-${lectureContext.full_content || `عنوان المحاضرة: ${lectureContext.title}
-${lectureContext.description ? `وصف المحاضرة: ${lectureContext.description}` : ''}
-${lectureContext.content_type ? `نوع المحتوى: ${lectureContext.content_type}` : ''}
-${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_content}` : ''}`}
+                    contextualPrompt = `أنت مساعد تعليمي ذكي ومتخصص في جميع المواد التعليمية. مهمتك الأساسية هي الإجابة على أسئلة الطلاب بناءً على محتوى المحاضرات المتاحة.
+
+معلومات المحاضرة الحالية:
+${lectureContent}
 
 سؤال الطالب: ${textPrompt}
 
-إرشادات الإجابة:
-- استخدم معرفتك الواسعة لتقديم إجابات شاملة ومفيدة
-- إذا كان السؤال متعلقاً بالمحاضرة، اربط إجابتك بمحتوى المحاضرة المتاح
-- إذا كان السؤال عن التاريخ المصري (خاصة فترة 1952-1973)، قدم معلومات تفصيلية ودقيقة
-- اذكر الأحداث والشخصيات المهمة والتواريخ الرئيسية
-- قدم السياق التاريخي والأسباب والنتائج
-- استخدم اللغة العربية الواضحة والمناسبة للطلاب
-- كن مفيداً وتعليمياً في جميع إجاباتك`;
+إرشادات مهمة للإجابة:
+1. اقرأ محتوى المحاضرة بعناية واستخدمه كمرجع أساسي لإجابتك
+2. إذا كان السؤال متعلقاً مباشرة بمحتوى المحاضرة، اربط إجابتك بالمعلومات المتاحة
+3. إذا كان السؤال عاماً أو يحتاج معلومات إضافية، استخدم معرفتك العامة مع الإشارة لمحتوى المحاضرة
+4. قدم إجابات شاملة ومفصلة تساعد الطالب على الفهم
+5. استخدم أمثلة من المحاضرة إذا كانت متاحة
+6. إذا كان الموضوع عن التاريخ، اذكر التواريخ والأحداث والشخصيات المهمة
+7. اجعل إجابتك تعليمية وواضحة باللغة العربية
+8. إذا لم تجد إجابة في محتوى المحاضرة، قل ذلك بوضوح واستخدم معرفتك العامة
+
+تذكر: هدفك هو مساعدة الطالب على فهم المادة بأفضل شكل ممكن.`;
                 }
 
                 parts.push({ text: contextualPrompt });
@@ -301,6 +331,18 @@ ${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_co
 
             } catch (error) {
                 console.error("Gemini API Error:", error);
+                
+                // Fallback response based on lecture context
+                if (lectureContext) {
+                    return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي. 
+
+بناءً على محتوى المحاضرة "${lectureContext.title || 'المحاضرة المحددة'}"، يمكنني مساعدتك بالمعلومات المتاحة:
+
+${lectureContext.description || lectureContext.content || 'لا يوجد محتوى تفصيلي متاح حالياً'}
+
+يرجى إعادة صياغة سؤالك أو المحاولة مرة أخرى لاحقاً.`;
+                }
+                
                 return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي: ${error.message}`;
             }
         }
@@ -497,16 +539,36 @@ ${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_co
 
             try {
                 const lectureId = lectureSelect.value;
+                let lecture = null;
                 
-                // Get lecture content from database including file content
-                const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
-                const lecture = lectureResult.data;
+                // Try to get lecture content from database
+                try {
+                    if (window.supabaseDB && window.supabaseDB.lectures) {
+                        const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
+                        lecture = lectureResult.data;
+                        console.log('📚 Lecture loaded from database:', lecture);
+                    }
+                } catch (dbError) {
+                    console.warn('⚠️ Could not load from database, using fallback:', dbError);
+                }
                 
+                // Fallback: create lecture object from select option
                 if (!lecture) {
-                    throw new Error('لم يتم العثور على المحاضرة');
+                    const selectedOption = lectureSelect.selectedOptions[0];
+                    const lectureTitle = selectedOption.textContent;
+                    
+                    lecture = {
+                        id: lectureId,
+                        title: lectureTitle,
+                        description: `هذه محاضرة بعنوان: ${lectureTitle}`,
+                        content: `محتوى المحاضرة: ${lectureTitle}. يرجى إضافة المزيد من التفاصيل في إدارة المواد.`,
+                        content_type: 'text',
+                        full_content: `عنوان المحاضرة: ${lectureTitle}\nوصف: محاضرة تعليمية\nالمحتوى: يرجى إضافة محتوى مفصل للمحاضرة من خلال إدارة المواد لتحسين جودة الإجابات.`
+                    };
+                    console.log('📝 Using fallback lecture data:', lecture);
                 }
 
-                // Generate AI response using Gemini API with actual content
+                // Generate AI response using Gemini API with lecture context
                 const response = await getGeminiResponse(message, lecture);
                 
                 // Remove typing indicator
@@ -518,7 +580,19 @@ ${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_co
             } catch (error) {
                 console.error('Error generating response:', error);
                 typingDiv.remove();
-                addMessage('عذراً، حدث خطأ في معالجة سؤالك. يرجى المحاولة مرة أخرى.', 'ai');
+                
+                // Enhanced error handling with helpful message
+                let errorMessage = 'عذراً، حدث خطأ في معالجة سؤالك.';
+                
+                if (error.message.includes('API key')) {
+                    errorMessage = 'عذراً، هناك مشكلة في إعدادات الذكاء الاصطناعي. يرجى التواصل مع المطور.';
+                } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                    errorMessage = 'عذراً، هناك مشكلة في الاتصال بالإنترنت. يرجى التحقق من اتصالك والمحاولة مرة أخرى.';
+                } else {
+                    errorMessage += ` التفاصيل: ${error.message}`;
+                }
+                
+                addMessage(errorMessage, 'ai');
             }
         }
 
