@@ -60,6 +60,41 @@
       "methods": ["GET"]
     },
     {
+      "src": "/auth.html",
+      "dest": "/auth.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8"
+      }
+    },
+    {
+      "src": "/ai-assistant.html",
+      "dest": "/ai-assistant.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8"
+      }
+    },
+    {
+      "src": "/planner.html",
+      "dest": "/planner.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8"
+      }
+    },
+    {
+      "src": "/study-timer.html",
+      "dest": "/study-timer.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8"
+      }
+    },
+    {
+      "src": "/subjects.html",
+      "dest": "/subjects.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8"
+      }
+    },
+    {
       "src": "/robots.txt",
       "dest": "/robots.txt",
       "headers": {
@@ -81,13 +116,6 @@
       }
     },
     {
-      "src": "/(.*\\.html)$",
-      "dest": "/$1",
-      "headers": {
-        "Content-Type": "text/html; charset=utf-8"
-      }
-    },
-    {
       "src": "/(.*\\.(js|css))$",
       "dest": "/$1",
       "headers": {
@@ -106,6 +134,13 @@
       "dest": "/$1",
       "headers": {
         "Content-Type": "text/plain"
+      }
+    },
+    {
+      "src": "/",
+      "dest": "/index.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8"
       }
     },
     {
