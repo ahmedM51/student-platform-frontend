@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "outputDirectory": "public",
   "routes": [
     {
       "src": "/api/health",
@@ -62,53 +61,49 @@
     },
     {
       "src": "/robots.txt",
-      "dest": "/public/robots.txt",
+      "dest": "/robots.txt",
       "headers": {
         "Content-Type": "text/plain"
       }
     },
     {
       "src": "/sitemap.xml",
-      "dest": "/public/sitemap.xml",
+      "dest": "/sitemap.xml",
       "headers": {
         "Content-Type": "application/xml"
       }
     },
     {
       "src": "/google78a51b05e2db952b.html",
-      "dest": "/public/google78a51b05e2db952b.html",
+      "dest": "/google78a51b05e2db952b.html",
       "headers": {
         "Content-Type": "text/html"
       }
     },
     {
       "src": "/(.*\\.html)$",
-      "dest": "/public/$1",
+      "dest": "/$1",
       "headers": {
         "Content-Type": "text/html; charset=utf-8"
       }
     },
     {
-      "src": "/public/(.*)",
-      "dest": "/public/$1"
-    },
-    {
       "src": "/(.*\\.(js|css))$",
-      "dest": "/public/$1",
+      "dest": "/$1",
       "headers": {
         "Cache-Control": "public, max-age=31536000, immutable"
       }
     },
     {
       "src": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp))$",
-      "dest": "/public/$1",
+      "dest": "/$1",
       "headers": {
         "Cache-Control": "public, max-age=31536000, immutable"
       }
     },
     {
       "src": "/(.*\\.(txt|xml|json))$",
-      "dest": "/public/$1",
+      "dest": "/$1",
       "headers": {
         "Content-Type": "text/plain"
       }
