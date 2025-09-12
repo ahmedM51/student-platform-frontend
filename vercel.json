@@ -101,7 +101,7 @@
     },
     {
       "src": "/",
-      "dest": "/index.html",
+      "dest": "/public/index.html",
       "headers": {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "public, max-age=3600"
@@ -109,7 +109,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html",
+      "dest": "/public/index.html",
       "headers": {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "public, max-age=3600"
