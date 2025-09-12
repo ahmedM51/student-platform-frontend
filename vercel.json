@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "functions": {
+    "server-supabase.js": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
   "routes": [
     {
       "src": "/api/health",
@@ -61,47 +67,109 @@
     },
     {
       "src": "/auth.html",
-      "dest": "/auth.html"
+      "dest": "/public/auth.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=3600"
+      }
     },
     {
       "src": "/ai-assistant.html", 
-      "dest": "/ai-assistant.html"
+      "dest": "/public/ai-assistant.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=3600"
+      }
     },
     {
       "src": "/planner.html",
-      "dest": "/planner.html"
+      "dest": "/public/planner.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=3600"
+      }
     },
     {
       "src": "/study-timer.html",
-      "dest": "/study-timer.html"
+      "dest": "/public/study-timer.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=3600"
+      }
     },
     {
       "src": "/subjects.html",
-      "dest": "/subjects.html"
+      "dest": "/public/subjects.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=3600"
+      }
     },
     {
       "src": "/robots.txt",
-      "dest": "/robots.txt"
+      "dest": "/public/robots.txt",
+      "headers": {
+        "Content-Type": "text/plain",
+        "Cache-Control": "public, max-age=86400"
+      }
     },
     {
       "src": "/sitemap.xml",
-      "dest": "/sitemap.xml"
+      "dest": "/public/sitemap.xml",
+      "headers": {
+        "Content-Type": "application/xml",
+        "Cache-Control": "public, max-age=86400"
+      }
     },
     {
       "src": "/google78a51b05e2db952b.html",
-      "dest": "/google78a51b05e2db952b.html"
+      "dest": "/public/google78a51b05e2db952b.html",
+      "headers": {
+        "Content-Type": "text/html",
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    {
+      "src": "/sw.js",
+      "dest": "/public/sw.js",
+      "headers": {
+        "Content-Type": "application/javascript",
+        "Cache-Control": "public, max-age=3600"
+      }
+    },
+    {
+      "src": "/js/(.*)",
+      "dest": "/public/js/$1",
+      "headers": {
+        "Content-Type": "application/javascript",
+        "Cache-Control": "public, max-age=31536000"
+      }
     },
     {
       "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|txt|xml|json))$",
-      "dest": "/$1"
+      "dest": "/public/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000"
+      }
     },
     {
       "src": "/",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=3600"
+      }
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=3600"
+      }
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
