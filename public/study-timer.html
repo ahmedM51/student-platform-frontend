@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موقت المذاكرة - منصة الطالب الذكي</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f8fafc;
+        }
+        .gradient-header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        }
+        .timer-circle {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            position: relative;
+            background: conic-gradient(#3b82f6 0deg, #e5e7eb 0deg);
+            transition: background 0.1s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .timer-inner {
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            background: white;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .session-card {
+            transition: all 0.3s ease;
+        }
+        .session-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <button onclick="window.location.href='index.html'" class="text-gray-600 hover:text-gray-900 ml-4">
+                        <i class="fas fa-arrow-right text-xl"></i>
+                    </button>
+                    <h1 class="text-xl font-bold text-gray-900 mr-4">موقت المذاكرة</h1>
+                </div>
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <span id="userEmail" class="text-sm text-gray-600"></span>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
+                        <i class="fas fa-sign-out-alt ml-2"></i>تسجيل الخروج
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Timer Section -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <!-- Timer Header -->
+                    <div class="bg-gradient-to-r from-orange-500 to-orange-600 p-6">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-xl font-bold text-white flex items-center">
+                                <i class="fas fa-clock ml-3"></i>
+                                <span id="timerTitle">جلسة دراسة</span>
+                            </h2>
+                            <div class="flex items-center space-x-2 space-x-reverse">
+                                <span id="sessionCounter" class="bg-white bg-opacity-20 text-white px-3 py-1 rounded-full text-sm">
+                                    الجلسة 1
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timer Display -->
+                    <div class="p-8 text-center">
+                        <!-- Subject Selection -->
+                        <div class="mb-6">
+                            <select id="subjectSelect" class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                <option value="">اختر المادة للدراسة...</option>
+                            </select>
+                        </div>
+
+                        <!-- Timer Circle -->
+                        <div class="timer-circle mx-auto mb-6" id="timerCircle">
+                            <div class="timer-inner">
+                                <div id="timeDisplay" class="text-4xl font-bold text-gray-800 mb-2">25:00</div>
+                                <div id="sessionType" class="text-sm text-gray-600">وقت الدراسة</div>
+                            </div>
+                        </div>
+
+                        <!-- Control Buttons -->
+                        <div class="flex justify-center space-x-4 space-x-reverse mb-6">
+                            <button id="startBtn" onclick="startTimer()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-medium">
+                                <i class="fas fa-play ml-2"></i>ابدأ
+                            </button>
+                            <button id="pauseBtn" onclick="pauseTimer()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-lg font-medium hidden">
+                                <i class="fas fa-pause ml-2"></i>توقف
+                            </button>
+                            <button id="resetBtn" onclick="resetTimer()" class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-medium">
+                                <i class="fas fa-redo ml-2"></i>إعادة تعيين
+                            </button>
+                        </div>
+
+                        <!-- Progress Info -->
+                        <div class="text-center text-gray-600">
+                            <p id="progressText">اختر مادة وابدأ جلسة الدراسة</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session History -->
+                <div class="bg-white rounded-xl shadow-lg mt-6 p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">جلسات اليوم</h3>
+                    <div id="sessionHistory" class="space-y-3">
+                        <p class="text-gray-500 text-center">لم تبدأ أي جلسة بعد</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Quick Settings -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">إعدادات سريعة</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">وقت الدراسة (دقائق)</label>
+                            <input type="number" id="studyTime" value="25" min="5" max="60" class="w-full p-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">وقت الراحة (دقائق)</label>
+                            <input type="number" id="breakTime" value="5" min="1" max="30" class="w-full p-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">الراحة الطويلة (دقائق)</label>
+                            <input type="number" id="longBreakTime" value="15" min="5" max="60" class="w-full p-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="soundEnabled" checked class="ml-2">
+                            <label for="soundEnabled" class="text-sm text-gray-700">تفعيل الصوت</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="stats-card rounded-xl shadow-lg p-6 text-white">
+                    <h3 class="text-lg font-bold mb-4">إحصائيات اليوم</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>الجلسات المكتملة</span>
+                            <span id="completedSessions" class="font-bold">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>إجمالي وقت الدراسة</span>
+                            <span id="totalStudyTime" class="font-bold">0 دقيقة</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>المادة الأكثر دراسة</span>
+                            <span id="topSubject" class="font-bold">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>معدل التركيز</span>
+                            <span id="focusRate" class="font-bold">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preset Timers -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">أوقات محددة مسبقاً</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="setPreset(25, 5)" class="session-card bg-blue-100 text-blue-800 p-3 rounded-lg text-sm font-medium">
+                            بومودورو كلاسيكي<br>
+                            <span class="text-xs">25د دراسة / 5د راحة</span>
+                        </button>
+                        <button onclick="setPreset(50, 10)" class="session-card bg-green-100 text-green-800 p-3 rounded-lg text-sm font-medium">
+                            جلسة مكثفة<br>
+                            <span class="text-xs">50د دراسة / 10د راحة</span>
+                        </button>
+                        <button onclick="setPreset(15, 3)" class="session-card bg-yellow-100 text-yellow-800 p-3 rounded-lg text-sm font-medium">
+                            جلسة سريعة<br>
+                            <span class="text-xs">15د دراسة / 3د راحة</span>
+                        </button>
+                        <button onclick="setPreset(90, 20)" class="session-card bg-purple-100 text-purple-800 p-3 rounded-lg text-sm font-medium">
+                            جلسة عميقة<br>
+                            <span class="text-xs">90د دراسة / 20د راحة</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Elements -->
+    <audio id="timerSound" preload="auto">
+        <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" type="audio/wav">
+    </audio>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg text-center">
+            <i class="fas fa-spinner fa-spin text-3xl text-orange-500 mb-4"></i>
+            <p class="text-gray-700">جاري التحميل...</p>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="hidden fixed top-4 left-4 right-4 z-50">
+        <div class="max-w-md mx-auto bg-white border-l-4 border-orange-500 rounded-lg shadow-lg p-4">
+            <div class="flex items-center">
+                <i id="notificationIcon" class="fas fa-info-circle text-orange-500 ml-3"></i>
+                <p id="notificationMessage" class="text-gray-800"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Supabase Configuration -->
+    <script src="./js/supabase-config.js"></script>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let timerInterval = null;
+        let currentTime = 25 * 60; // 25 minutes in seconds
+        let isRunning = false;
+        let isBreakTime = false;
+        let sessionCount = 0;
+        let completedSessions = 0;
+        let currentSubject = null;
+        let sessionStartTime = null;
+
+        // Timer settings
+        let studyDuration = 25; // minutes
+        let breakDuration = 5; // minutes
+        let longBreakDuration = 15; // minutes
+        let soundEnabled = true;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Load Supabase configuration first
+                if (!window.supabaseClient) {
+                    await new Promise((resolve) => {
+                        const script = document.createElement('script');
+                        script.src = 'js/supabase-config.js';
+                        script.onload = resolve;
+                        document.head.appendChild(script);
+                    });
+                    
+                    // Wait for initialization
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                if (!window.supabaseAuth) {
+                    console.log('❌ No Supabase authentication available');
+                    window.location.href = 'auth.html';
+                    return;
+                }
+
+                await checkAuth();
+                await loadSubjects();
+                await loadTodayStats();
+                await loadSessionHistory();
+                
+            } catch (error) {
+                console.error('❌ Page initialization error:', error);
+                window.location.href = 'auth.html';
+            }
+        });
+
+        // Check authentication
+        async function checkAuth() {
+            try {
+                if (window.supabaseAuth) {
+                    const { data } = await window.supabaseAuth.getSession();
+                    if (data?.session?.user) {
+                        currentUser = data.session.user;
+                        document.getElementById('userEmail').textContent = data.session.user.email;
+                        console.log('✅ User authenticated:', data.session.user.email);
+                    } else {
+                        console.log('❌ No authenticated user');
+                        window.location.href = 'auth.html';
+                        return;
+                    }
+                } else {
+                    throw new Error('Supabase authentication not available. Please check your configuration.');
+                }
+            } catch (error) {
+                console.error('❌ Auth error:', error);
+                window.location.href = 'auth.html';
+            }
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                if (window.supabaseAuth) {
+                    await window.supabaseAuth.signOut();
+                }
+                window.location.href = 'auth.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = 'auth.html';
+            }
+        }
+
+        // Load subjects from database
+        async function loadSubjects() {
+            if (!currentUser) return;
+            
+            try {
+                let subjectsData = [];
+                
+                if (window.supabaseDB) {
+                    const result = await window.supabaseDB.subjects.getByUser(currentUser.id);
+                    if (result.error) {
+                        console.warn('⚠️ Could not load subjects from Supabase:', result.error);
+                    } else {
+                        subjectsData = result.data || [];
+                    }
+                }
+
+                const subjectSelect = document.getElementById('subjectSelect');
+                subjectSelect.innerHTML = '<option value="">اختر المادة للدراسة...</option>';
+
+                subjectsData.forEach(subject => {
+                    const option = document.createElement('option');
+                    option.value = subject.id;
+                    option.textContent = subject.name || subject.title;
+                    subjectSelect.appendChild(option);
+                });
+
+                console.log('✅ Subjects loaded:', subjectsData.length);
+                
+            } catch (error) {
+                console.error('❌ Error loading subjects:', error);
+            }
+        }
+
+        // Timer control functions
+        function startTimer() {
+            if (!isRunning) {
+                const subjectSelect = document.getElementById('subjectSelect');
+                if (!subjectSelect.value && !isBreakTime) {
+                    showNotification('يرجى اختيار مادة للدراسة أولاً', 'error');
+                    return;
+                }
+
+                isRunning = true;
+                sessionStartTime = new Date();
+                timerInterval = setInterval(updateTimer, 1000);
+                
+                document.getElementById('startBtn').classList.add('hidden');
+                document.getElementById('pauseBtn').classList.remove('hidden');
+                document.getElementById('timerCircle').classList.add('pulse');
+                
+                if (isBreakTime) {
+                    document.getElementById('progressText').textContent = 'وقت الراحة - استرخ قليلاً';
+                } else {
+                    currentSubject = subjectSelect.value;
+                    document.getElementById('progressText').textContent = 'جلسة دراسة نشطة - ركز!';
+                }
+
+                console.log('⏰ Timer started');
+            }
+        }
+
+        function pauseTimer() {
+            if (isRunning) {
+                isRunning = false;
+                clearInterval(timerInterval);
+                document.getElementById('startBtn').classList.remove('hidden');
+                document.getElementById('pauseBtn').classList.add('hidden');
+                document.getElementById('timerCircle').classList.remove('pulse');
+                document.getElementById('progressText').textContent = 'الجلسة متوقفة مؤقتاً';
+                console.log('⏸️ Timer paused');
+            }
+        }
+
+        function resetTimer() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            
+            if (isBreakTime) {
+                currentTime = breakDuration * 60;
+            } else {
+                currentTime = studyDuration * 60;
+            }
+            
+            updateDisplay();
+            updateCircleProgress();
+            
+            document.getElementById('startBtn').classList.remove('hidden');
+            document.getElementById('pauseBtn').classList.add('hidden');
+            document.getElementById('timerCircle').classList.remove('pulse');
+            document.getElementById('progressText').textContent = 'اختر مادة وابدأ جلسة الدراسة';
+            
+            console.log('🔄 Timer reset');
+        }
+
+        // Timer update function
+        function updateTimer() {
+            if (currentTime > 0) {
+                currentTime--;
+                updateDisplay();
+                updateCircleProgress();
+            } else {
+                completeSession();
+            }
+        }
+
+        // Update display
+        function updateDisplay() {
+            const minutes = Math.floor(currentTime / 60);
+            const seconds = currentTime % 60;
+            document.getElementById('timeDisplay').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (isBreakTime) {
+                document.getElementById('sessionType').textContent = 'وقت الراحة';
+                document.getElementById('timerTitle').textContent = 'وقت الراحة';
+            } else {
+                document.getElementById('sessionType').textContent = 'وقت الدراسة';
+                document.getElementById('timerTitle').textContent = 'جلسة دراسة';
+            }
+        }
+
+        // Update circle progress
+        function updateCircleProgress() {
+            const totalTime = isBreakTime ? breakDuration * 60 : studyDuration * 60;
+            const progress = ((totalTime - currentTime) / totalTime) * 360;
+            const circle = document.getElementById('timerCircle');
+            
+            const color = isBreakTime ? '#10b981' : '#3b82f6'; // Green for break, blue for study
+            circle.style.background = `conic-gradient(${color} ${progress}deg, #e5e7eb ${progress}deg)`;
+        }
+
+        // Complete session
+        async function completeSession() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            document.getElementById('timerCircle').classList.remove('pulse');
+            
+            try {
+                if (!isBreakTime) {
+                    // Study session completed
+                    completedSessions++;
+                    sessionCount++;
+                    
+                    const sessionData = {
+                        id: Date.now().toString(),
+                        user_id: currentUser.id,
+                        subject_id: currentSubject,
+                        duration: studyDuration,
+                        type: 'study',
+                        completed_at: new Date().toISOString(),
+                        session_date: new Date().toISOString().split('T')[0]
+                    };
+
+                    if (window.supabaseDB) {
+                        const result = await window.supabaseDB.studySessions.create(sessionData);
+                        if (result.error) console.warn('Could not save to Supabase:', result.error);
+                    }
+                    
+                    showNotification('🎉 تم إكمال جلسة المذاكرة!', 'success');
+                    
+                    // Start break
+                    if (sessionCount % 4 === 0) {
+                        // Long break after 4 sessions
+                        currentTime = longBreakDuration * 60;
+                        showNotification('وقت الراحة الطويلة! استرخ لمدة ' + longBreakDuration + ' دقيقة', 'info');
+                    } else {
+                        // Short break
+                        currentTime = breakDuration * 60;
+                        showNotification('وقت الراحة! استرخ لمدة ' + breakDuration + ' دقيقة', 'info');
+                    }
+                    
+                    isBreakTime = true;
+                    
+                } else {
+                    // Break completed
+                    showNotification('انتهت فترة الراحة! استعد للجلسة التالية', 'info');
+                    currentTime = studyDuration * 60;
+                    isBreakTime = false;
+                }
+
+                updateDisplay();
+                updateCircleProgress();
+                document.getElementById('startBtn').classList.remove('hidden');
+                document.getElementById('pauseBtn').classList.add('hidden');
+                
+                // Update session counter
+                document.getElementById('sessionCounter').textContent = `الجلسة ${sessionCount + 1}`;
+                
+                // Play sound if enabled
+                if (soundEnabled) {
+                    playNotificationSound();
+                }
+                
+                // Refresh stats and history
+                await loadTodayStats();
+                await loadSessionHistory();
+                
+            } catch (error) {
+                console.error('❌ Error completing session:', error);
+                showNotification('خطأ في حفظ الجلسة', 'error');
+            }
+        }
+
+        // Play notification sound
+        function playNotificationSound() {
+            try {
+                // Create audio context for better browser compatibility
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+            } catch (error) {
+                console.log('Could not play notification sound:', error);
+            }
+        }
+
+        // Load today's statistics
+        async function loadTodayStats() {
+            if (!currentUser) return;
+            
+            try {
+                let sessionsData = [];
+                
+                if (window.supabaseDB && window.supabaseDB.studySessions) {
+                    const today = new Date().toISOString().split('T')[0];
+                    const result = await window.supabaseDB.studySessions.getByUserAndDate(currentUser.id, today);
+                    if (result.error) {
+                        console.warn('⚠️ Could not load stats from Supabase:', result.error);
+                    } else {
+                        sessionsData = result.data || [];
+                    }
+                }
+
+                let totalSessions = sessionsData.length;
+                let totalStudyTime = sessionsData.reduce((sum, session) => sum + (session.duration || 0), 0);
+                
+                // Calculate subject statistics
+                const subjectTimes = {};
+                sessionsData.forEach(session => {
+                    if (session.subject_id && session.subjects) {
+                        const subjectName = session.subjects.name || 'غير محدد';
+                        subjectTimes[subjectName] = (subjectTimes[subjectName] || 0) + (session.duration || 0);
+                    }
+                });
+
+                // Find top subject
+                let topSubject = '-';
+                let maxTime = 0;
+                for (const [subjectName, time] of Object.entries(subjectTimes)) {
+                    if (time > maxTime) {
+                        maxTime = time;
+                        topSubject = subjectName;
+                    }
+                }
+
+                // Calculate focus rate (completed vs started sessions)
+                const focusRate = totalSessions > 0 ? Math.round((totalSessions / (totalSessions + 1)) * 100) : 0;
+
+                // Update UI
+                document.getElementById('completedSessions').textContent = totalSessions;
+                document.getElementById('totalStudyTime').textContent = `${totalStudyTime} دقيقة`;
+                document.getElementById('topSubject').textContent = topSubject;
+                document.getElementById('focusRate').textContent = `${focusRate}%`;
+
+                console.log('✅ Today stats loaded:', { totalSessions, totalStudyTime, topSubject });
+
+            } catch (error) {
+                console.error('❌ Error loading today stats:', error);
+            }
+        }
+
+        // Load session history
+        async function loadSessionHistory() {
+            if (!currentUser) return;
+
+            try {
+                let sessionsData = [];
+                
+                if (window.supabaseDB && window.supabaseDB.studySessions) {
+                    const today = new Date().toISOString().split('T')[0];
+                    const result = await window.supabaseDB.studySessions.getByUserAndDate(currentUser.id, today);
+                    if (result.error) {
+                        console.warn('⚠️ Could not load session history from Supabase:', result.error);
+                    } else {
+                        sessionsData = result.data || [];
+                    }
+                }
+
+                const historyContainer = document.getElementById('sessionHistory');
+                historyContainer.innerHTML = '';
+
+                if (sessionsData.length === 0) {
+                    historyContainer.innerHTML = '<p class="text-gray-500 text-center">لم تبدأ أي جلسة بعد</p>';
+                    return;
+                }
+
+                // Sort by completion time (newest first)
+                sessionsData.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+
+                sessionsData.forEach(session => {
+                    const sessionDiv = document.createElement('div');
+                    sessionDiv.className = 'bg-gray-50 p-3 rounded-lg flex justify-between items-center';
+                    
+                    const time = new Date(session.completed_at).toLocaleTimeString('ar-SA', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    // Get subject name
+                    const subject = window.supabaseDB.subjects.get(session.subject_id);
+                    if (subject) {
+                        const subjectName = subject.name || subject.title;
+                        sessionDiv.innerHTML = `
+                            <div>
+                                <span class="font-medium">${session.duration} دقيقة</span>
+                                <span class="text-sm text-gray-500 mr-2">${subjectName}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-sm text-gray-500">${time}</span>
+                                <div class="w-2 h-2 bg-green-500 rounded-full inline-block mr-2"></div>
+                            </div>
+                        `;
+                        historyContainer.appendChild(sessionDiv);
+                    }
+                });
+
+                console.log('✅ Session history loaded:', sessionsData.length);
+
+            } catch (error) {
+                console.error('❌ Error loading session history:', error);
+                const historyContainer = document.getElementById('sessionHistory');
+                historyContainer.innerHTML = '<p class="text-gray-500 text-center">خطأ في تحميل السجل</p>';
+            }
+        }
+
+        // Preset timer functions
+        function setPreset(studyMinutes, breakMinutes) {
+            if (isRunning) {
+                showNotification('لا يمكن تغيير الإعدادات أثناء تشغيل المؤقت', 'error');
+                return;
+            }
+
+            document.getElementById('studyTime').value = studyMinutes;
+            document.getElementById('breakTime').value = breakMinutes;
+            
+            studyDuration = studyMinutes;
+            breakDuration = breakMinutes;
+            
+            if (!isBreakTime) {
+                currentTime = studyMinutes * 60;
+            } else {
+                currentTime = breakMinutes * 60;
+            }
+            
+            updateDisplay();
+            updateCircleProgress();
+            saveSettings();
+            
+            showNotification(`تم تعيين المؤقت: ${studyMinutes}د دراسة / ${breakMinutes}د راحة`, 'success');
+        }
+
+        // Load and save settings
+        function loadSettings() {
+            const savedSettings = localStorage.getItem(`timer_settings_${currentUser?.id || 'demo'}`);
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                document.getElementById('studyTime').value = settings.studyTime || 25;
+                document.getElementById('breakTime').value = settings.breakTime || 5;
+                document.getElementById('longBreakTime').value = settings.longBreakTime || 15;
+                document.getElementById('soundEnabled').checked = settings.soundEnabled !== false;
+                
+                studyDuration = settings.studyTime || 25;
+                breakDuration = settings.breakTime || 5;
+                longBreakDuration = settings.longBreakTime || 15;
+                soundEnabled = settings.soundEnabled !== false;
+                
+                currentTime = studyDuration * 60;
+                updateDisplay();
+                updateCircleProgress();
+            }
+        }
+
+        function saveSettings() {
+            const settings = {
+                studyTime: parseInt(document.getElementById('studyTime').value),
+                breakTime: parseInt(document.getElementById('breakTime').value),
+                longBreakTime: parseInt(document.getElementById('longBreakTime').value),
+                soundEnabled: document.getElementById('soundEnabled').checked
+            };
+            
+            localStorage.setItem(`timer_settings_${currentUser?.id || 'demo'}`, JSON.stringify(settings));
+        }
+
+        // Event listeners for settings
+        document.getElementById('studyTime').addEventListener('change', function() {
+            if (!isRunning && !isBreakTime) {
+                studyDuration = parseInt(this.value);
+                currentTime = studyDuration * 60;
+                updateDisplay();
+                updateCircleProgress();
+                saveSettings();
+            }
+        });
+
+        document.getElementById('breakTime').addEventListener('change', function() {
+            breakDuration = parseInt(this.value);
+            if (!isRunning && isBreakTime) {
+                currentTime = breakDuration * 60;
+                updateDisplay();
+                updateCircleProgress();
+            }
+            saveSettings();
+        });
+
+        document.getElementById('longBreakTime').addEventListener('change', function() {
+            longBreakDuration = parseInt(this.value);
+            saveSettings();
+        });
+
+        document.getElementById('soundEnabled').addEventListener('change', function() {
+            soundEnabled = this.checked;
+            saveSettings();
+        });
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationMessage = document.getElementById('notificationMessage');
+            const notificationIcon = document.getElementById('notificationIcon');
+
+            notificationMessage.textContent = message;
+            
+            const colors = {
+                success: { icon: 'fas fa-check-circle text-green-500', border: 'border-green-500' },
+                error: { icon: 'fas fa-exclamation-circle text-red-500', border: 'border-red-500' },
+                info: { icon: 'fas fa-info-circle text-blue-500', border: 'border-blue-500' }
+            };
+
+            const color = colors[type] || colors.info;
+            notificationIcon.className = color.icon + ' ml-3';
+            notification.querySelector('div').className = `max-w-md mx-auto bg-white border-l-4 ${color.border} rounded-lg shadow-lg p-4`;
+
+            notification.classList.remove('hidden');
+            
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Make functions globally available
+        window.logout = logout;
+        window.startTimer = startTimer;
+        window.pauseTimer = pauseTimer;
+        window.resetTimer = resetTimer;
+        window.setPreset = setPreset;
+
+        console.log('✅ Study timer script loaded');
+    </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    
+    <!-- الصفحة الرئيسية -->
+    <url>
+        <loc>https://student-platform-eta.vercel.app/</loc>
+        <lastmod>2025-01-09</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+        <xhtml:link rel="alternate" hreflang="ar" href="https://student-platform-eta.vercel.app/" />
+    </url>
+    
+    <!-- صفحة تسجيل الدخول -->
+    <url>
+        <loc>https://student-platform-eta.vercel.app/auth.html</loc>
+        <lastmod>2025-01-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ar" href="https://student-platform-eta.vercel.app/auth.html" />
+    </url>
+    
+    <!-- صفحة المساعد الذكي -->
+    <url>
+        <loc>https://student-platform-eta.vercel.app/ai-assistant.html</loc>
+        <lastmod>2025-01-09</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+        <xhtml:link rel="alternate" hreflang="ar" href="https://student-platform-eta.vercel.app/ai-assistant.html" />
+    </url>
+    
+    <!-- صفحة إدارة المواد -->
+    <url>
+        <loc>https://student-platform-eta.vercel.app/subjects.html</loc>
+        <lastmod>2025-01-09</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ar" href="https://student-platform-eta.vercel.app/subjects.html" />
+    </url>
+    
+    <!-- صفحة المخطط الدراسي -->
+    <url>
+        <loc>https://student-platform-eta.vercel.app/planner.html</loc>
+        <lastmod>2025-01-09</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ar" href="https://student-platform-eta.vercel.app/planner.html" />
+    </url>
+    
+    <!-- صفحة مؤقت المذاكرة -->
+    <url>
+        <loc>https://student-platform-eta.vercel.app/study-timer.html</loc>
+        <lastmod>2025-01-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+        <xhtml:link rel="alternate" hreflang="ar" href="https://student-platform-eta.vercel.app/study-timer.html" />
+    </url>
+    
+</urlset>

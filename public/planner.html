@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المخطط الدراسي - منصة الطالب الذكي</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f8fafc;
+            direction: rtl;
+        }
+        
+        .dashboard-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .task-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #3b82f6;
+            transition: all 0.2s;
+        }
+        
+        .task-card:hover {
+            transform: translateX(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-card.completed {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+        
+        .task-card.urgent {
+            border-left-color: #ef4444;
+        }
+        
+        .calendar-day {
+            min-height: 120px;
+            border: 1px solid #e5e7eb;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .calendar-day:hover {
+            background: #f3f4f6;
+        }
+        
+        .calendar-day.today {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+        
+        .calendar-day.has-tasks {
+            background: #fef3c7;
+        }
+        
+        .priority-high { border-left-color: #ef4444; }
+        .priority-medium { border-left-color: #f59e0b; }
+        .priority-low { border-left-color: #10b981; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="index.html" class="text-blue-600 hover:text-blue-800 ml-4">
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                    <i class="fas fa-calendar-alt text-2xl text-blue-600 ml-3"></i>
+                    <h1 class="text-xl font-bold text-gray-900">المخطط الدراسي</h1>
+                </div>
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <button onclick="showAddTaskModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus ml-2"></i>إضافة مهمة
+                    </button>
+                    <span class="text-sm text-gray-600" id="currentUser">مرحباً، طالب</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="dashboard-card text-center">
+                <i class="fas fa-tasks text-3xl text-blue-600 mb-2"></i>
+                <div class="text-2xl font-bold text-gray-900" id="totalTasks">0</div>
+                <div class="text-sm text-gray-600">إجمالي المهام</div>
+            </div>
+            <div class="dashboard-card text-center">
+                <i class="fas fa-check-circle text-3xl text-green-600 mb-2"></i>
+                <div class="text-2xl font-bold text-gray-900" id="completedTasks">0</div>
+                <div class="text-sm text-gray-600">المهام المكتملة</div>
+            </div>
+            <div class="dashboard-card text-center">
+                <i class="fas fa-clock text-3xl text-orange-600 mb-2"></i>
+                <div class="text-2xl font-bold text-gray-900" id="pendingTasks">0</div>
+                <div class="text-sm text-gray-600">المهام المعلقة</div>
+            </div>
+            <div class="dashboard-card text-center">
+                <i class="fas fa-exclamation-triangle text-3xl text-red-600 mb-2"></i>
+                <div class="text-2xl font-bold text-gray-900" id="urgentTasks">0</div>
+                <div class="text-sm text-gray-600">المهام العاجلة</div>
+            </div>
+        </div>
+
+        <!-- View Toggle -->
+        <div class="dashboard-card mb-6">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-900">عرض المخطط</h3>
+                <div class="flex bg-gray-100 rounded-lg p-1">
+                    <button onclick="showView('list')" id="listViewBtn" class="px-4 py-2 rounded-md bg-white shadow-sm font-medium text-blue-600">
+                        <i class="fas fa-list ml-2"></i>قائمة
+                    </button>
+                    <button onclick="showView('calendar')" id="calendarViewBtn" class="px-4 py-2 rounded-md font-medium text-gray-600">
+                        <i class="fas fa-calendar ml-2"></i>تقويم
+                    </button>
+                    <button onclick="showView('ai-planner')" id="aiPlannerBtn" class="px-4 py-2 rounded-md font-medium text-gray-600">
+                        <i class="fas fa-brain ml-2"></i>مخطط ذكي
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- List View -->
+        <div id="listView" class="space-y-6">
+            <!-- Today's Tasks -->
+            <div class="dashboard-card">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">مهام اليوم</h3>
+                <div id="todayTasksList" class="space-y-3">
+                    <!-- Tasks will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Upcoming Tasks -->
+            <div class="dashboard-card">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">المهام القادمة</h3>
+                <div id="upcomingTasksList" class="space-y-3">
+                    <!-- Tasks will be loaded here -->
+                </div>
+            </div>
+
+            <!-- All Tasks List -->
+            <div class="dashboard-card">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">جميع المهام</h3>
+                <div id="tasksList" class="space-y-3">
+                    <!-- All tasks will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Completed Tasks -->
+            <div class="dashboard-card">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">المهام المكتملة</h3>
+                <div id="completedTasksList" class="space-y-3">
+                    <!-- Tasks will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar View -->
+        <div id="calendarView" class="dashboard-card" style="display: none;">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-semibold text-gray-900">تقويم المهام</h3>
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <button onclick="previousMonth()" class="p-2 text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <span id="currentMonth" class="font-semibold text-lg"></span>
+                    <button onclick="nextMonth()" class="p-2 text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-7 gap-1 mb-4">
+                <div class="text-center font-semibold text-gray-700 p-2">الأحد</div>
+                <div class="text-center font-semibold text-gray-700 p-2">الاثنين</div>
+                <div class="text-center font-semibold text-gray-700 p-2">الثلاثاء</div>
+                <div class="text-center font-semibold text-gray-700 p-2">الأربعاء</div>
+                <div class="text-center font-semibold text-gray-700 p-2">الخميس</div>
+                <div class="text-center font-semibold text-gray-700 p-2">الجمعة</div>
+                <div class="text-center font-semibold text-gray-700 p-2">السبت</div>
+            </div>
+            
+            <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+                <!-- Calendar days will be generated here -->
+            </div>
+        </div>
+
+        <!-- AI Study Planner -->
+        <div id="aiPlannerView" class="dashboard-card" style="display: none;">
+            <div class="mb-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">
+                    <i class="fas fa-brain text-blue-600 ml-2"></i>
+                    المخطط الدراسي الذكي
+                </h3>
+                <p class="text-gray-600 mb-4">استخدم الذكاء الاصطناعي لإنشاء خطة دراسية مخصصة بناءً على موادك ومحاضراتك</p>
+                
+                <!-- AI Plan Generation Form -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg mb-6">
+                    <h4 class="font-semibold text-lg mb-4">إعدادات الخطة الذكية</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">فترة الخطة</label>
+                            <select id="planDuration" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="week">أسبوع واحد</option>
+                                <option value="month" selected>شهر واحد</option>
+                                <option value="semester">فصل دراسي</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">ساعات الدراسة اليومية</label>
+                            <select id="dailyHours" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="2">2 ساعة</option>
+                                <option value="3" selected>3 ساعات</option>
+                                <option value="4">4 ساعات</option>
+                                <option value="5">5 ساعات</option>
+                                <option value="6">6 ساعات</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">أولوية المواد</label>
+                        <div id="subjectPriorities" class="space-y-2">
+                            <!-- Subject priorities will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center">
+                        <button onclick="generateAIStudyPlan()" 
+                                class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg">
+                            <i class="fas fa-magic ml-2"></i>
+                            إنشاء خطة ذكية
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Generated Plan Display -->
+                <div id="generatedPlan" class="hidden">
+                    <h4 class="font-semibold text-lg mb-4 text-green-700">
+                        <i class="fas fa-check-circle ml-2"></i>
+                        خطتك الدراسية الذكية جاهزة!
+                    </h4>
+                    <div id="planContent" class="space-y-4">
+                        <!-- Generated plan will be displayed here -->
+                    </div>
+                    <div class="mt-6 flex justify-center space-x-4 space-x-reverse">
+                        <button onclick="applyGeneratedPlan()" 
+                                class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                            <i class="fas fa-check ml-2"></i>
+                            تطبيق الخطة
+                        </button>
+                        <button onclick="regenerateAIPlan()" 
+                                class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-redo ml-2"></i>
+                            إعادة إنشاء
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="addTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">إضافة مهمة جديدة</h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form onsubmit="addTask(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">عنوان المهمة</label>
+                    <input type="text" id="taskTitle" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="أدخل عنوان المهمة">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">الوصف</label>
+                    <textarea id="taskDescription" rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="وصف المهمة (اختياري)"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">التاريخ</label>
+                        <input type="date" id="taskDate" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">الوقت</label>
+                        <input type="time" id="taskTime" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">الأولوية</label>
+                    <select id="taskPriority" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="low">منخفضة</option>
+                        <option value="medium" selected>متوسطة</option>
+                        <option value="high">عالية</option>
+                    </select>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">المادة</label>
+                    <select id="taskSubject" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">اختر المادة (اختياري)</option>
+                        <option value="math">الرياضيات</option>
+                        <option value="science">العلوم</option>
+                        <option value="arabic">اللغة العربية</option>
+                        <option value="english">اللغة الإنجليزية</option>
+                        <option value="history">التاريخ</option>
+                        <option value="geography">الجغرافيا</option>
+                    </select>
+                </div>
+                
+                <div class="flex justify-end space-x-3 space-x-reverse">
+                    <button type="button" onclick="closeModal()" 
+                            class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        إلغاء
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        إضافة المهمة
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script>
+        // Global variables
+        let currentUser = null;
+        let tasks = [];
+        let subjects = [];
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Initialize Supabase
+                if (window.initializeSupabase) {
+                    await window.initializeSupabase();
+                }
+                
+                // Wait for authentication
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Check authentication
+                const isAuthenticated = await checkAuthentication();
+                if (!isAuthenticated) {
+                    window.location.href = 'auth.html';
+                    return;
+                }
+                
+                // Load data
+                await loadUserData();
+                await loadTasks();
+                await loadSubjects();
+                
+                // Initialize calendar
+                initializeCalendar();
+                
+                console.log('✅ Planner page initialized successfully');
+                
+            } catch (error) {
+                console.error('❌ Error initializing planner:', error);
+                showNotification('حدث خطأ في تحميل المخطط الدراسي', 'error');
+            }
+        });
+
+        // Check authentication
+        async function checkAuthentication() {
+            try {
+                if (!window.supabaseClient || !window.supabaseAuth) {
+                    return false;
+                }
+                
+                const { data } = await window.supabaseAuth.getSession();
+                if (data?.session?.user) {
+                    currentUser = data.session.user;
+                    localStorage.setItem('userEmail', currentUser.email);
+                    localStorage.setItem('userId', currentUser.id);
+                    localStorage.setItem('userName', currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Authentication check error:', error);
+                return false;
+            }
+        }
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                const userName = localStorage.getItem('userName') || currentUser?.email?.split('@')[0] || 'المستخدم';
+                document.getElementById('currentUser').textContent = `مرحباً، ${userName}`;
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        // Show/hide views
+        function showView(view) {
+            if (view === 'list') {
+                document.getElementById('listView').style.display = 'block';
+                document.getElementById('calendarView').style.display = 'none';
+                document.getElementById('aiPlannerView').style.display = 'none';
+                document.getElementById('listViewBtn').className = 'px-4 py-2 rounded-md bg-white shadow-sm font-medium text-blue-600';
+                document.getElementById('calendarViewBtn').className = 'px-4 py-2 rounded-md font-medium text-gray-600';
+                document.getElementById('aiPlannerBtn').className = 'px-4 py-2 rounded-md font-medium text-gray-600';
+            } else if (view === 'calendar') {
+                document.getElementById('listView').style.display = 'none';
+                document.getElementById('calendarView').style.display = 'block';
+                document.getElementById('aiPlannerView').style.display = 'none';
+                document.getElementById('listViewBtn').className = 'px-4 py-2 rounded-md font-medium text-gray-600';
+                document.getElementById('calendarViewBtn').className = 'px-4 py-2 rounded-md bg-white shadow-sm font-medium text-blue-600';
+                document.getElementById('aiPlannerBtn').className = 'px-4 py-2 rounded-md font-medium text-gray-600';
+                updateCalendar();
+            } else {
+                document.getElementById('listView').style.display = 'none';
+                document.getElementById('calendarView').style.display = 'none';
+                document.getElementById('aiPlannerView').style.display = 'block';
+                document.getElementById('listViewBtn').className = 'px-4 py-2 rounded-md font-medium text-gray-600';
+                document.getElementById('calendarViewBtn').className = 'px-4 py-2 rounded-md font-medium text-gray-600';
+                document.getElementById('aiPlannerBtn').className = 'px-4 py-2 rounded-md bg-white shadow-sm font-medium text-blue-600';
+            }
+        }
+
+        // Modal functions
+        function showAddTaskModal() {
+            document.getElementById('addTaskModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('addTaskModal').style.display = 'none';
+        }
+
+        // Add new task
+        async function addTask(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('taskTitle').value;
+            const description = document.getElementById('taskDescription').value;
+            const date = document.getElementById('taskDate').value;
+            const time = document.getElementById('taskTime').value;
+            const priority = document.getElementById('taskPriority').value;
+            const subject = document.getElementById('taskSubject').value;
+            
+            const task = {
+                id: Date.now().toString(),
+                title,
+                description,
+                date,
+                time,
+                priority,
+                subject,
+                completed: false,
+                created_at: new Date().toISOString()
+            };
+            
+            tasks.push(task);
+            await saveTasks();
+            await loadTasks();
+            updateCalendar();
+            closeModal();
+            
+            // Reset form
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDescription').value = '';
+            document.getElementById('taskTime').value = '';
+            document.getElementById('taskPriority').value = 'medium';
+            document.getElementById('taskSubject').value = '';
+        }
+
+        // Toggle task completion
+        async function toggleTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                await saveTasks();
+                await loadTasks();
+                updateCalendar();
+            }
+        }
+
+        // Delete task
+        async function deleteTask(taskId) {
+            if (confirm('هل أنت متأكد من حذف هذه المهمة؟')) {
+                tasks = tasks.filter(t => t.id !== taskId);
+                await saveTasks();
+                await loadTasks();
+                updateCalendar();
+            }
+        }
+
+        // Load tasks from storage
+        async function loadTasks() {
+            try {
+                if (!window.supabaseDB || !currentUser) {
+                    console.warn('Supabase or user not available, using local storage');
+                    const stored = localStorage.getItem('plannerTasks');
+                    if (stored) {
+                        tasks = JSON.parse(stored);
+                    }
+                    renderTasks();
+                    updateStats();
+                    return;
+                }
+
+                const result = await window.supabaseDB.tasks.getAll(currentUser.id);
+                if (result.error) {
+                    throw result.error;
+                }
+
+                tasks = result.data || [];
+                renderTasks();
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                // Fallback to local storage
+                const stored = localStorage.getItem('plannerTasks');
+                if (stored) {
+                    tasks = JSON.parse(stored);
+                }
+                renderTasks();
+                updateStats();
+            }
+        }
+
+        // Save tasks to storage
+        async function saveTasks() {
+            try {
+                localStorage.setItem('plannerTasks', JSON.stringify(tasks));
+            } catch (error) {
+                console.error('Error saving tasks:', error);
+            }
+        }
+
+        // Render tasks in list view
+        function renderTasks() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            const todayTasks = tasks.filter(t => t.date === today && !t.completed);
+            const upcomingTasks = tasks.filter(t => t.date > today && !t.completed);
+            const completedTasks = tasks.filter(t => t.completed);
+            
+            renderTaskList('todayTasksList', todayTasks);
+            renderTaskList('upcomingTasksList', upcomingTasks);
+            renderTaskList('tasksList', tasks);
+            renderTaskList('completedTasksList', completedTasks);
+        }
+
+        // Render task list
+        function renderTaskList(containerId, taskList) {
+            const container = document.getElementById(containerId);
+            
+            if (taskList.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">لا توجد مهام</p>';
+                return;
+            }
+            
+            container.innerHTML = taskList.map(task => `
+                <div class="task-card priority-${task.priority} ${task.completed ? 'completed' : ''}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center flex-1">
+                            <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                                   onchange="toggleTask('${task.id}')" class="ml-3">
+                            <div class="flex-1">
+                                <h4 class="font-semibold ${task.completed ? 'line-through text-gray-500' : ''}">${task.title}</h4>
+                                ${task.description ? `<p class="text-sm text-gray-600 mt-1">${task.description}</p>` : ''}
+                                <div class="flex items-center mt-2 text-xs text-gray-500">
+                                    <i class="fas fa-calendar ml-1"></i>
+                                    <span class="ml-3">${task.date}</span>
+                                    ${task.time ? `<i class="fas fa-clock ml-1"></i><span class="ml-3">${task.time}</span>` : ''}
+                                    ${task.subject ? `<i class="fas fa-book ml-1"></i><span>${task.subject}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="deleteTask('${task.id}')" class="text-red-500 hover:text-red-700 p-2">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update statistics
+        function updateStats() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            const pending = tasks.filter(t => !t.completed).length;
+            const urgent = tasks.filter(t => t.priority === 'high' && !t.completed).length;
+            
+            document.getElementById('totalTasks').textContent = total;
+            document.getElementById('completedTasks').textContent = completed;
+            document.getElementById('pendingTasks').textContent = pending;
+            document.getElementById('urgentTasks').textContent = urgent;
+        }
+
+        // Initialize calendar
+        function initializeCalendar() {
+            const monthNames = [
+                'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+                'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+            ];
+            
+            const today = new Date();
+            document.getElementById('currentMonth').textContent = 
+                `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+            
+            generateCalendar();
+        }
+
+        function generateCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            grid.innerHTML = '';
+            
+            // Generate calendar days
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day p-2 border border-gray-200 min-h-20 cursor-pointer hover:bg-gray-50';
+                
+                if (date.getMonth() !== month) {
+                    dayElement.classList.add('text-gray-400');
+                }
+                
+                if (date.toDateString() === today.toDateString()) {
+                    dayElement.classList.add('bg-blue-100', 'border-blue-300');
+                }
+                
+                const dayTasks = tasks.filter(task => {
+                    if (!task.date) return false;
+                    const taskDate = new Date(task.date);
+                    return taskDate.toDateString() === date.toDateString();
+                });
+                
+                dayElement.innerHTML = `
+                    <div class="font-semibold">${date.getDate()}</div>
+                    ${dayTasks.map(task => `
+                        <div class="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded mt-1 truncate">
+                            ${task.title}
+                        </div>
+                    `).join('')}
+                `;
+                
+                grid.appendChild(dayElement);
+            }
+        }
+
+        function previousMonth() {
+            // This is a simplified version - in a full implementation you'd track current month
+            updateCalendar();
+        }
+
+        function nextMonth() {
+            // This is a simplified version - in a full implementation you'd track current month
+            updateCalendar();
+        }
+
+        function updateCalendar() {
+            initializeCalendar();
+        }
+
+        // Load subjects
+        async function loadSubjects() {
+            try {
+                if (!window.supabaseDB || !currentUser) {
+                    return;
+                }
+
+                const result = await window.supabaseDB.subjects.getAll(currentUser.id);
+                if (result.error) {
+                    throw result.error;
+                }
+
+                subjects = result.data || [];
+                populateSubjectDropdown();
+                populateSubjectPriorities();
+                
+            } catch (error) {
+                console.error('Error loading subjects:', error);
+                subjects = [];
+            }
+        }
+
+        // Populate subject dropdown
+        function populateSubjectDropdown() {
+            const select = document.getElementById('taskSubject');
+            select.innerHTML = '<option value="">اختر المادة (اختياري)</option>';
+            
+            subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject.id;
+                option.textContent = subject.name;
+                select.appendChild(option);
+            });
+        }
+
+        // Populate subject priorities for AI planner
+        function populateSubjectPriorities() {
+            const container = document.getElementById('subjectPriorities');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            subjects.forEach((subject, index) => {
+                const priorityDiv = document.createElement('div');
+                priorityDiv.className = 'flex items-center justify-between bg-white p-3 rounded-lg border';
+                priorityDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 rounded-full mr-3" style="background-color: ${subject.color || '#3b82f6'}"></div>
+                        <span class="font-medium">${subject.name}</span>
+                        <span class="text-sm text-gray-500 mr-2">(${subject.lectures || 0} محاضرة)</span>
+                    </div>
+                    <select class="subject-priority border rounded px-2 py-1" data-subject-id="${subject.id}">
+                        <option value="high" ${index < 2 ? 'selected' : ''}>عالية</option>
+                        <option value="medium" ${index >= 2 && index < 4 ? 'selected' : ''}>متوسطة</option>
+                        <option value="low" ${index >= 4 ? 'selected' : ''}>منخفضة</option>
+                    </select>
+                `;
+                container.appendChild(priorityDiv);
+            });
+        }
+
+        // Helper functions
+        function getPriorityClass(priority) {
+            switch(priority) {
+                case 'high': return 'bg-red-100 text-red-800';
+                case 'medium': return 'bg-yellow-100 text-yellow-800';
+                case 'low': return 'bg-green-100 text-green-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function getStatusClass(status) {
+            switch(status) {
+                case 'completed': return 'bg-green-100 text-green-800';
+                case 'pending': return 'bg-blue-100 text-blue-800';
+                case 'overdue': return 'bg-red-100 text-red-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            const totalTasks = tasks.length;
+            const completedTasks = tasks.filter(task => task.completed).length;
+            const pendingTasks = totalTasks - completedTasks;
+            const overdueTasks = tasks.filter(task => 
+                task.date && new Date(task.date) < new Date() && !task.completed
+            ).length;
+
+            document.getElementById('totalTasks').textContent = totalTasks;
+            document.getElementById('completedTasks').textContent = completedTasks;
+            document.getElementById('pendingTasks').textContent = pendingTasks;
+            document.getElementById('overdueTasks').textContent = overdueTasks;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Add task
+        async function addTask() {
+            const title = document.getElementById('taskTitle').value;
+            const description = document.getElementById('taskDescription').value;
+            const dueDate = document.getElementById('taskDate').value;
+            const priority = document.getElementById('taskPriority').value;
+            const subjectId = document.getElementById('taskSubject').value;
+
+            if (!title.trim()) {
+                showNotification('يرجى إدخال عنوان المهمة', 'error');
+                return;
+            }
+
+            try {
+                const taskData = {
+                    user_id: currentUser.id,
+                    title: title.trim(),
+                    description: description.trim(),
+                    due_date: dueDate || null,
+                    priority: priority,
+                    subject_id: subjectId || null,
+                    status: 'pending',
+                    completed: false
+                };
+
+                const result = await window.supabaseDB.tasks.create(taskData);
+                if (result.error) {
+                    throw result.error;
+                }
+
+                showNotification('تم إضافة المهمة بنجاح!', 'success');
+                
+                // Reset form
+                document.getElementById('addTaskForm').reset();
+                document.getElementById('taskDate').value = new Date().toISOString().split('T')[0];
+                
+                // Reload tasks
+                await loadTasks();
+                generateCalendar();
+                
+            } catch (error) {
+                console.error('Error adding task:', error);
+                showNotification('حدث خطأ في إضافة المهمة', 'error');
+            }
+        }
+
+        // Toggle task completion
+        async function toggleTask(taskId) {
+            try {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return;
+
+                const updatedTask = {
+                    ...task,
+                    completed: !task.completed,
+                    status: !task.completed ? 'completed' : 'pending'
+                };
+
+                const result = await window.supabaseDB.tasks.update(taskId, updatedTask);
+                if (result.error) {
+                    throw result.error;
+                }
+
+                showNotification(
+                    updatedTask.completed ? 'تم إكمال المهمة!' : 'تم إلغاء إكمال المهمة',
+                    'success'
+                );
+                
+                await loadTasks();
+                generateCalendar();
+                
+            } catch (error) {
+                console.error('Error toggling task:', error);
+                showNotification('حدث خطأ في تحديث المهمة', 'error');
+            }
+        }
+
+        // Delete task
+        async function deleteTask(taskId) {
+            if (!confirm('هل أنت متأكد من حذف هذه المهمة؟')) {
+                return;
+            }
+
+            try {
+                const result = await window.supabaseDB.tasks.delete(taskId);
+                if (result.error) {
+                    throw result.error;
+                }
+
+                showNotification('تم حذف المهمة بنجاح!', 'success');
+                await loadTasks();
+                generateCalendar();
+                
+            } catch (error) {
+                console.error('Error deleting task:', error);
+                showNotification('حدث خطأ في حذف المهمة', 'error');
+            }
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                if (window.supabaseAuth && window.supabaseAuth.signOut) {
+                    await window.supabaseAuth.signOut();
+                }
+                localStorage.clear();
+                window.location.href = 'auth.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = 'auth.html';
+            }
+        }
+
+        // Set default date to today
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('taskDate');
+            if (dateInput) {
+                dateInput.value = today;
+            }
+        });
+
+        // Generate AI Study Plan
+        async function generateAIStudyPlan() {
+            try {
+                showNotification('جاري إنشاء خطة الدراسة الذكية...', 'info');
+                
+                const planDuration = document.getElementById('planDuration').value;
+                const dailyHours = parseInt(document.getElementById('dailyHours').value);
+                
+                // Get subject priorities from form
+                const subjectPriorities = Array.from(document.querySelectorAll('.subject-priority')).map(select => {
+                    const subjectId = select.dataset.subjectId;
+                    const subject = subjects.find(s => s.id === subjectId);
+                    return {
+                        id: subjectId,
+                        name: subject.name,
+                        priority: select.value,
+                        lectures: subject.lectures || 0,
+                        progress: subject.progress || 0
+                    };
+                });
+
+                // Load lectures for each subject
+                const subjectsWithLectures = await Promise.all(
+                    subjectPriorities.map(async (subject) => {
+                        const lecturesResult = await window.supabaseDB.lectures.getBySubject(subject.id);
+                        const lectures = lecturesResult.data || [];
+                        return {
+                            ...subject,
+                            lecturesList: lectures,
+                            totalLectures: lectures.length,
+                            completedLectures: lectures.filter(l => l.completed).length
+                        };
+                    })
+                );
+
+                // Generate intelligent study plan
+                const studyPlan = generateIntelligentPlan(subjectsWithLectures, planDuration, dailyHours);
+                
+                displayGeneratedPlan(studyPlan, planDuration, dailyHours);
+                showNotification('تم إنشاء خطة الدراسة الذكية بنجاح!', 'success');
+
+            } catch (error) {
+                console.error('Error generating AI study plan:', error);
+                showNotification('حدث خطأ في إنشاء خطة الدراسة الذكية', 'error');
+            }
+        }
+
+        // Generate intelligent plan algorithm
+        function generateIntelligentPlan(subjects, duration, dailyHours) {
+            const days = duration === 'week' ? 7 : duration === 'month' ? 30 : 90;
+            const totalHours = days * dailyHours;
+            
+            // Sort subjects by priority and completion percentage
+            const sortedSubjects = subjects.sort((a, b) => {
+                const priorityWeight = { high: 3, medium: 2, low: 1 };
+                const aPriority = priorityWeight[a.priority] || 1;
+                const bPriority = priorityWeight[b.priority] || 1;
+                
+                // Consider completion percentage (less completed = higher priority)
+                const aCompletion = a.totalLectures > 0 ? a.completedLectures / a.totalLectures : 0;
+                const bCompletion = b.totalLectures > 0 ? b.completedLectures / b.totalLectures : 0;
+                
+                return (bPriority - aPriority) || (aCompletion - bCompletion);
+            });
+
+            // Define study time slots
+            const timeSlots = [
+                { start: '09:00', end: '11:00', label: 'الفترة الصباحية' },
+                { start: '14:00', end: '16:00', label: 'فترة بعد الظهر' },
+                { start: '19:00', end: '21:00', label: 'الفترة المسائية' },
+                { start: '21:00', end: '23:00', label: 'الفترة الليلية' }
+            ];
+
+            // Allocate hours based on priority and remaining work
+            const plan = [];
+            let currentDay = 0;
+            
+            for (let day = 0; day < days; day++) {
+                const dayPlan = {
+                    date: new Date(Date.now() + day * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    sessions: []
+                };
+
+                let remainingHours = dailyHours;
+                let subjectIndex = 0;
+                let timeSlotIndex = 0;
+
+                while (remainingHours > 0 && subjectIndex < sortedSubjects.length && timeSlotIndex < timeSlots.length) {
+                    const subject = sortedSubjects[subjectIndex];
+                    const uncompletedLectures = subject.lecturesList.filter(l => !l.completed);
+                    
+                    if (uncompletedLectures.length > 0) {
+                        const sessionHours = Math.min(remainingHours, 2); // Max 2 hours per session
+                        const lecture = uncompletedLectures[0];
+                        const timeSlot = timeSlots[timeSlotIndex];
+                        
+                        // Calculate end time based on session duration
+                        const startTime = timeSlot.start;
+                        const [startHour, startMin] = startTime.split(':').map(Number);
+                        const endHour = startHour + sessionHours;
+                        const endTime = `${endHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`;
+                        
+                        dayPlan.sessions.push({
+                            subject_id: subject.id,
+                            subject_name: subject.name,
+                            lecture_id: lecture.id,
+                            lecture_title: lecture.title,
+                            duration: sessionHours,
+                            start_time: startTime,
+                            end_time: endTime,
+                            time_slot_label: timeSlot.label,
+                            type: 'lecture_study',
+                            priority: subject.priority,
+                            reminder_time: calculateReminderTime(startTime) // 15 minutes before
+                        });
+                        
+                        remainingHours -= sessionHours;
+                        timeSlotIndex++;
+                    }
+                    
+                    subjectIndex++;
+                    if (subjectIndex >= sortedSubjects.length) subjectIndex = 0;
+                }
+
+                plan.push(dayPlan);
+            }
+
+            return plan;
+        }
+
+        // Calculate reminder time (15 minutes before start)
+        function calculateReminderTime(startTime) {
+            const [hour, minute] = startTime.split(':').map(Number);
+            const reminderMinute = minute - 15;
+            
+            if (reminderMinute >= 0) {
+                return `${hour.toString().padStart(2, '0')}:${reminderMinute.toString().padStart(2, '0')}`;
+            } else {
+                const reminderHour = hour - 1;
+                const adjustedMinute = 60 + reminderMinute;
+                return `${reminderHour.toString().padStart(2, '0')}:${adjustedMinute.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Display generated plan
+        function displayGeneratedPlan(plan, duration, dailyHours) {
+            const planContent = document.getElementById('planContent');
+            const durationText = duration === 'week' ? 'أسبوع' : duration === 'month' ? 'شهر' : 'فصل دراسي';
+            
+            planContent.innerHTML = `
+                <div class="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg mb-4">
+                    <h5 class="font-bold text-lg mb-2">خطة الدراسة الذكية - ${durationText}</h5>
+                    <p class="text-gray-600 mb-2">📚 ${dailyHours} ساعات يومياً | 📅 ${plan.length} يوم</p>
+                    <p class="text-sm text-gray-500">تم إنشاء هذه الخطة بناءً على أولوياتك ومحاضراتك المتاحة</p>
+                </div>
+                
+                <div class="space-y-3 max-h-96 overflow-y-auto">
+                    ${plan.map((day, index) => `
+                        <div class="border rounded-lg p-4 ${day.sessions.length === 0 ? 'bg-gray-50' : 'bg-white'}">
+                            <div class="flex justify-between items-center mb-3">
+                                <h6 class="font-semibold text-lg">
+                                    📅 اليوم ${index + 1} - ${formatGregorianDate(day.date)}
+                                </h6>
+                                <span class="text-sm text-gray-500">
+                                    ${day.sessions.reduce((total, session) => total + session.duration, 0)} ساعة
+                                </span>
+                            </div>
+                            
+                            ${day.sessions.length === 0 ? 
+                                '<p class="text-gray-500 text-center py-2">يوم راحة 😊</p>' :
+                                `<div class="space-y-2">
+                                    ${day.sessions.map(session => `
+                                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                            <div class="flex items-center">
+                                                <div class="w-3 h-3 rounded-full mr-3 ${
+                                                    session.priority === 'high' ? 'bg-red-500' :
+                                                    session.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+                                                }"></div>
+                                                <div>
+                                                    <span class="font-medium">${session.subject_name}</span>
+                                                    <p class="text-sm text-gray-600">${session.lecture_title}</p>
+                                                </div>
+                                            </div>
+                                            <span class="text-sm font-medium">${session.start_time} - ${session.end_time}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>`
+                            }
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            // Store plan data for applying
+            window.currentGeneratedPlan = plan;
+            document.getElementById('generatedPlan').classList.remove('hidden');
+        }
+
+        // Apply generated plan
+        async function applyGeneratedPlan() {
+            try {
+                if (!window.currentGeneratedPlan) {
+                    showNotification('لا توجد خطة لتطبيقها', 'error');
+                    return;
+                }
+
+                showNotification('جاري تطبيق الخطة...', 'info');
+                
+                const plan = window.currentGeneratedPlan;
+                let createdTasks = 0;
+
+                for (const day of plan) {
+                    for (const session of day.sessions) {
+                        const taskData = {
+                            user_id: currentUser.id,
+                            title: `دراسة ${session.subject_name} - ${session.lecture_title}`,
+                            description: `جلسة دراسية لمدة ${session.duration} ساعة`,
+                            due_date: day.date,
+                            time: session.start_time,
+                            priority: session.priority,
+                            subject_id: session.subject_id,
+                            status: 'pending',
+                            completed: false,
+                            type: 'ai_generated',
+                            session_duration: session.duration,
+                            start_time: session.start_time,
+                            end_time: session.end_time,
+                            reminder_time: session.reminder_time,
+                            time_slot_label: session.time_slot_label
+                        };
+
+                        const result = await window.supabaseDB.tasks.create(taskData);
+                        if (!result.error) {
+                            createdTasks++;
+                            
+                            // Schedule notification for this task
+                            scheduleTaskNotification(taskData);
+                        }
+                    }
+                }
+
+                showNotification(`تم تطبيق الخطة بنجاح! تم إنشاء ${createdTasks} مهمة مجدولة`, 'success');
+                
+                // Reload tasks and hide generated plan
+                await loadTasks();
+                generateCalendar();
+                document.getElementById('generatedPlan').classList.add('hidden');
+                
+                // Switch to list view to show new tasks
+                showView('list');
+
+                // Show notification about reminders
+                setTimeout(() => {
+                    showNotification('تم تفعيل التنبيهات للمهام المجدولة', 'info');
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error applying generated plan:', error);
+                showNotification('حدث خطأ في تطبيق الخطة', 'error');
+            }
+        }
+
+        // Schedule task notification
+        function scheduleTaskNotification(task) {
+            if (!('Notification' in window)) {
+                console.warn('Browser does not support notifications');
+                return;
+            }
+
+            // Request permission for notifications
+            if (Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        setTaskReminder(task);
+                    }
+                });
+            } else if (Notification.permission === 'granted') {
+                setTaskReminder(task);
+            }
+        }
+
+        // Set task reminder
+        function setTaskReminder(task) {
+            const taskDate = new Date(task.due_date);
+            const [reminderHour, reminderMinute] = task.reminder_time.split(':').map(Number);
+            
+            const reminderDateTime = new Date(taskDate);
+            reminderDateTime.setHours(reminderHour, reminderMinute, 0, 0);
+            
+            const now = new Date();
+            const timeUntilReminder = reminderDateTime.getTime() - now.getTime();
+            
+            if (timeUntilReminder > 0) {
+                setTimeout(() => {
+                    showTaskNotification(task);
+                }, timeUntilReminder);
+                
+                console.log(`⏰ تم جدولة تنبيه للمهمة: ${task.title} في ${task.reminder_time}`);
+            }
+        }
+
+        // Show task notification
+        function showTaskNotification(task) {
+            const notification = new Notification('تذكير: وقت الدراسة!', {
+                body: `${task.title}\nالوقت: ${task.start_time} - ${task.end_time}`,
+                icon: '/favicon.ico',
+                badge: '/favicon.ico',
+                tag: `task-${task.id}`,
+                requireInteraction: true
+            });
+
+            notification.onclick = function() {
+                window.focus();
+                // Navigate to planner page if not already there
+                if (!window.location.pathname.includes('planner.html')) {
+                    window.location.href = 'planner.html';
+                }
+                notification.close();
+            };
+
+            // Auto close after 10 seconds
+            setTimeout(() => {
+                notification.close();
+            }, 10000);
+        }
+
+        // Regenerate AI plan
+        async function regenerateAIPlan() {
+            document.getElementById('generatedPlan').classList.add('hidden');
+            await generateAIStudyPlan();
+        }
+
+        // Format date in Gregorian calendar
+        function formatGregorianDate(dateString) {
+            const date = new Date(dateString);
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                weekday: 'long'
+            };
+            return date.toLocaleDateString('ar', options);
+        }
+
+        // Request notification permission on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                // Show info about notifications
+                setTimeout(() => {
+                    if (confirm('هل تريد تفعيل التنبيهات للمهام المجدولة؟')) {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                showNotification('تم تفعيل التنبيهات بنجاح!', 'success');
+                            }
+                        });
+                    }
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
