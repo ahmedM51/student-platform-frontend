@@ -1,175 +1,633 @@
-{
-  "version": 2,
-  "functions": {
-    "server-supabase.js": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  },
-  "routes": [
-    {
-      "src": "/api/health",
-      "dest": "/server-supabase.js",
-      "methods": ["GET", "POST"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
+const pdf = require('pdf-parse');
+const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
+
+// Supabase Client
+const { createClient } = require('@supabase/supabase-js');
+
+// Initialize Supabase
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase = null;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase configuration. Some features will be disabled.');
+  console.log('📝 Please add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to Vercel environment variables');
+} else {
+  try {
+    supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
       }
-    },
-    {
-      "src": "/api/ai-chat",
-      "dest": "/server-supabase.js",
-      "methods": ["POST"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      }
-    },
-    {
-      "src": "/api/upload",
-      "dest": "/server-supabase.js",
-      "methods": ["POST"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      }
-    },
-    {
-      "src": "/api/supabase",
-      "dest": "/server-supabase.js",
-      "methods": ["GET", "POST", "PUT", "DELETE"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      }
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/server-supabase.js",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      }
-    },
-    {
-      "src": "/uploads/(.*)",
-      "dest": "/server-supabase.js"
-    },
-    {
-      "src": "/health",
-      "dest": "/server-supabase.js",
-      "methods": ["GET"]
-    },
-    {
-      "src": "/auth.html",
-      "dest": "/public/auth.html",
-      "headers": {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=3600"
-      }
-    },
-    {
-      "src": "/ai-assistant.html", 
-      "dest": "/public/ai-assistant.html",
-      "headers": {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=3600"
-      }
-    },
-    {
-      "src": "/planner.html",
-      "dest": "/public/planner.html",
-      "headers": {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=3600"
-      }
-    },
-    {
-      "src": "/study-timer.html",
-      "dest": "/public/study-timer.html",
-      "headers": {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=3600"
-      }
-    },
-    {
-      "src": "/subjects.html",
-      "dest": "/public/subjects.html",
-      "headers": {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=3600"
-      }
-    },
-    {
-      "src": "/robots.txt",
-      "dest": "/public/robots.txt",
-      "headers": {
-        "Content-Type": "text/plain",
-        "Cache-Control": "public, max-age=86400"
-      }
-    },
-    {
-      "src": "/sitemap.xml",
-      "dest": "/public/sitemap.xml",
-      "headers": {
-        "Content-Type": "application/xml",
-        "Cache-Control": "public, max-age=86400"
-      }
-    },
-    {
-      "src": "/google78a51b05e2db952b.html",
-      "dest": "/public/google78a51b05e2db952b.html",
-      "headers": {
-        "Content-Type": "text/html",
-        "Cache-Control": "public, max-age=86400"
-      }
-    },
-    {
-      "src": "/sw.js",
-      "dest": "/public/sw.js",
-      "headers": {
-        "Content-Type": "application/javascript",
-        "Cache-Control": "public, max-age=3600"
-      }
-    },
-    {
-      "src": "/js/(.*)",
-      "dest": "/public/js/$1",
-      "headers": {
-        "Content-Type": "application/javascript",
-        "Cache-Control": "public, max-age=31536000"
-      }
-    },
-    {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|txt|xml|json))$",
-      "dest": "/public/$1",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000"
-      }
-    },
-    {
-      "src": "/",
-      "dest": "/index.html",
-      "headers": {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=3600"
-      }
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html",
-      "headers": {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=3600"
-      }
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
+    });
+    console.log('✅ Supabase client initialized with URL:', supabaseUrl.substring(0, 30) + '...');
+  } catch (error) {
+    console.error('❌ Failed to initialize Supabase:', error.message);
+    supabase = null;
   }
 }
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Initialize AI services
+let genAI = null;
+let openai = null;
+
+console.log('🔍 Checking AI API keys...');
+
+if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your-gemini-api-key-here') {
+  try {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    console.log('✅ Gemini AI initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize Gemini AI:', error.message);
+    genAI = null;
+  }
+} else {
+  console.log('⚠️ Gemini API key not configured');
+}
+
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key-here') {
+  try {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    console.log('✅ OpenAI initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize OpenAI:', error.message);
+    openai = null;
+  }
+} else {
+  console.log('⚠️ OpenAI API key not configured');
+}
+
+// Create uploads directory
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'file-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['.pdf', '.doc', '.docx', '.txt'];
+  const fileExt = path.extname(file.originalname).toLowerCase();
+  
+  if (allowedTypes.includes(fileExt)) {
+    cb(null, true);
+  } else {
+    cb(new Error('نوع الملف غير مدعوم. يُسمح فقط بـ PDF, DOC, DOCX, TXT'), false);
+  }
+};
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
+
+// Serve static files from both root and public directories
+app.use(express.static(__dirname)); // Serve from root directory (for index.html)
+app.use(express.static(path.join(__dirname, 'public'))); // Serve from public directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Route for root path to serve index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Middleware to verify Supabase JWT token
+async function verifySupabaseToken(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No authorization token provided' });
+    }
+
+    const token = authHeader.substring(7);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(401).json({ error: 'Token verification failed' });
+  }
+}
+
+// Helper function to update user XP and statistics
+async function updateUserXP(userId, xpToAdd, activityType, description) {
+  try {
+    // Get current user data
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('xp, level')
+      .eq('id', userId)
+      .single();
+
+    if (userError && userError.code !== 'PGRST116') {
+      console.error('Error getting user data:', userError);
+      return;
+    }
+
+    const currentXP = userData?.xp || 0;
+    const currentLevel = userData?.level || 1;
+    const newXP = currentXP + xpToAdd;
+    
+    // Calculate new level (every 100 XP = 1 level)
+    const newLevel = Math.floor(newXP / 100) + 1;
+
+    // Update user XP and level
+    await supabase
+      .from('users')
+      .upsert({
+        id: userId,
+        xp: newXP,
+        level: newLevel,
+        updated_at: new Date().toISOString()
+      });
+
+    // Record activity
+    await supabase
+      .from('activities')
+      .insert({
+        user_id: userId,
+        activity_type: activityType,
+        description: description,
+        xp_earned: xpToAdd,
+        created_at: new Date().toISOString()
+      });
+
+    console.log(`✅ Updated user ${userId}: +${xpToAdd} XP, Level ${newLevel}`);
+  } catch (error) {
+    console.error('Error updating user XP:', error);
+  }
+}
+
+// Routes
+// Authentication endpoints
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'البريد الإلكتروني وكلمة المرور مطلوبان' });
+    }
+
+    // Create user in Supabase Auth
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name }
+    });
+
+    if (error) {
+      console.error('Registration error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Create user profile in database
+    const { error: profileError } = await supabase
+      .from('users')
+      .insert([{
+        id: data.user.id,
+        email: data.user.email,
+        name: name || email.split('@')[0],
+        xp: 0,
+        level: 1,
+        created_at: new Date().toISOString()
+      }]);
+
+    if (profileError) {
+      console.error('Profile creation error:', profileError);
+    }
+
+    res.json({ 
+      success: true, 
+      user: data.user,
+      message: 'تم إنشاء الحساب بنجاح'
+    });
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'خطأ في الخادم' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'البريد الإلكتروني وكلمة المرور مطلوبان' });
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      console.error('Login error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ 
+      success: true, 
+      user: data.user,
+      session: data.session,
+      message: 'تم تسجيل الدخول بنجاح'
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'خطأ في الخادم' });
+  }
+});
+
+// Dashboard statistics endpoint
+app.get('/api/dashboard/stats', verifySupabaseToken, async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.json({
+        totalFiles: 0,
+        totalQuizzes: 0,
+        studyHours: 0,
+        completedTasks: 0
+      });
+    }
+
+    const userId = req.user.id;
+
+    // Get total files count
+    const { count: filesCount } = await supabase
+      .from('files')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    // Get total quizzes count
+    const { count: quizzesCount } = await supabase
+      .from('quiz_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    // Get study hours (mock calculation)
+    const studyHours = Math.floor(Math.random() * 100) + 50;
+
+    // Get completed tasks count
+    const { count: tasksCount } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('completed', true);
+
+    res.json({
+      totalFiles: filesCount || 0,
+      totalQuizzes: quizzesCount || 0,
+      studyHours,
+      completedTasks: tasksCount || 0
+    });
+
+  } catch (error) {
+    console.error('Dashboard stats error:', error);
+    res.status(500).json({ error: 'فشل في جلب الإحصائيات' });
+  }
+});
+
+// Recent activities endpoint
+app.get('/api/activities/recent', verifySupabaseToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    res.json(data || []);
+
+  } catch (error) {
+    console.error('Recent activities error:', error);
+    res.status(500).json({ error: 'فشل في تحميل الأنشطة' });
+  }
+});
+
+// File upload endpoint
+app.post('/api/upload', verifySupabaseToken, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'لم يتم رفع أي ملف' });
+    }
+
+    const userId = req.user.id;
+    const file = req.file;
+    const fileUrl = `/uploads/${file.filename}`;
+
+    // Save file info to database
+    const { data, error } = await supabase
+      .from('files')
+      .insert([{
+        user_id: userId,
+        name: file.filename,
+        original_name: file.originalname,
+        file_path: fileUrl,
+        file_size: file.size,
+        mime_type: file.mimetype,
+        upload_status: 'completed'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Extract text content if PDF
+    let extractedText = '';
+    if (file.mimetype === 'application/pdf') {
+      try {
+        const dataBuffer = fs.readFileSync(file.path);
+        const pdfData = await pdf(dataBuffer);
+        extractedText = pdfData.text;
+      } catch (pdfError) {
+        console.error('PDF extraction error:', pdfError);
+      }
+    }
+
+    res.json({
+      success: true,
+      url: fileUrl,
+      path: fileUrl,
+      name: file.originalname,
+      size: file.size,
+      type: file.mimetype,
+      extractedText,
+      fileId: data.id
+    });
+
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({ error: 'فشل في رفع الملف' });
+  }
+});
+
+// Delete file endpoint
+app.post('/api/delete-file', verifySupabaseToken, async (req, res) => {
+  try {
+    const { path: filePath } = req.body;
+    
+    if (!filePath) {
+      return res.status(400).json({ error: 'مسار الملف مطلوب' });
+    }
+
+    // Delete from filesystem
+    const fullPath = path.join(__dirname, 'public', filePath);
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+
+    // Delete from database
+    const { error } = await supabase
+      .from('files')
+      .delete()
+      .eq('file_path', filePath)
+      .eq('user_id', req.user.id);
+
+    if (error) throw error;
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('File deletion error:', error);
+    res.status(500).json({ error: 'فشل في حذف الملف' });
+  }
+});
+
+// AI Chat endpoint
+app.post('/api/ai/ask', verifySupabaseToken, async (req, res) => {
+  try {
+    const { question, lectureId, context } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ error: 'السؤال مطلوب' });
+    }
+
+    let response = 'عذراً، لا يمكنني الإجابة على هذا السؤال في الوقت الحالي.';
+
+    // Try Gemini first
+    if (genAI) {
+      try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const prompt = context 
+          ? `بناءً على المحتوى التالي: ${context}\n\nأجب على السؤال: ${question}`
+          : `أجب على السؤال التالي باللغة العربية: ${question}`;
+        
+        const result = await model.generateContent(prompt);
+        response = result.response.text();
+      } catch (geminiError) {
+        console.error('Gemini error:', geminiError);
+        
+        // Fallback to OpenAI
+        if (openai) {
+          try {
+            const completion = await openai.chat.completions.create({
+              model: 'gpt-3.5-turbo',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'أنت مساعد تعليمي ذكي. أجب باللغة العربية.'
+                },
+                {
+                  role: 'user',
+                  content: context 
+                    ? `بناءً على المحتوى: ${context}\n\nأجب على: ${question}`
+                    : question
+                }
+              ],
+              max_tokens: 500
+            });
+            
+            response = completion.choices[0]?.message?.content || response;
+          } catch (openaiError) {
+            console.error('OpenAI error:', openaiError);
+          }
+        }
+      }
+    }
+
+    // Log activity
+    await supabase
+      .from('activities')
+      .insert([{
+        user_id: req.user.id,
+        activity_type: 'ai_question',
+        title: 'سؤال للمساعد الذكي',
+        description: question.substring(0, 100) + '...',
+        metadata: { question, response: response.substring(0, 100) }
+      }]);
+
+    res.json({ response });
+
+  } catch (error) {
+    console.error('AI ask error:', error);
+    res.status(500).json({ error: 'فشل في الحصول على إجابة' });
+  }
+});
+
+// Quiz generation endpoint
+app.post('/api/ai/generate-quiz', verifySupabaseToken, async (req, res) => {
+  try {
+    const { lectureIds, questionCount = 5, difficulty = 'medium' } = req.body;
+    
+    if (!lectureIds || lectureIds.length === 0) {
+      return res.status(400).json({ error: 'يجب اختيار محاضرة واحدة على الأقل' });
+    }
+
+    // Get lecture content
+    const { data: lectures, error } = await supabase
+      .from('lectures')
+      .select('title, content, description')
+      .in('id', lectureIds)
+      .eq('user_id', req.user.id);
+
+    if (error) throw error;
+
+    const content = lectures.map(l => `${l.title}: ${l.content || l.description}`).join('\n\n');
+    
+    let quiz = {
+      questions: [],
+      totalQuestions: questionCount,
+      difficulty
+    };
+
+    // Try to generate quiz with AI
+    if (genAI) {
+      try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const prompt = `
+بناءً على المحتوى التالي، أنشئ ${questionCount} أسئلة اختيار من متعدد باللغة العربية:
+
+${content}
+
+قم بإرجاع النتيجة بصيغة JSON فقط مع هذا التنسيق:
+{
+  "questions": [
+    {
+      "question": "نص السؤال",
+      "options": ["الخيار 1", "الخيار 2", "الخيار 3", "الخيار 4"],
+      "correct": 0,
+      "explanation": "شرح الإجابة"
+    }
+  ]
+}
+        `;
+        
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text();
+        
+        try {
+          const parsed = JSON.parse(responseText);
+          quiz = { ...quiz, ...parsed };
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          // Fallback to default questions
+          quiz.questions = generateFallbackQuiz(content, questionCount);
+        }
+      } catch (aiError) {
+        console.error('AI quiz generation error:', aiError);
+        quiz.questions = generateFallbackQuiz(content, questionCount);
+      }
+    } else {
+      quiz.questions = generateFallbackQuiz(content, questionCount);
+    }
+
+    // Save quiz to database
+    const { data: savedQuiz, error: saveError } = await supabase
+      .from('quizzes')
+      .insert([{
+        user_id: req.user.id,
+        title: `اختبار تلقائي - ${new Date().toLocaleDateString('ar-SA')}`,
+        questions: quiz.questions,
+        total_questions: quiz.questions.length,
+        difficulty
+      }])
+      .select()
+      .single();
+
+    if (saveError) throw saveError;
+
+    res.json({ ...quiz, id: savedQuiz.id });
+
+  } catch (error) {
+    console.error('Quiz generation error:', error);
+    res.status(500).json({ error: 'فشل في إنشاء الاختبار' });
+  }
+});
+
+// Fallback quiz generation
+function generateFallbackQuiz(content, questionCount) {
+  const questions = [];
+  const keywords = content.split(' ').filter(word => word.length > 4).slice(0, questionCount);
+  
+  for (let i = 0; i < Math.min(questionCount, keywords.length); i++) {
+    questions.push({
+      question: `ما هو المفهوم المرتبط بـ "${keywords[i]}"؟`,
+      options: [
+        `تعريف صحيح لـ ${keywords[i]}`,
+        `تعريف خاطئ لـ ${keywords[i]}`,
+        `مفهوم آخر`,
+        `لا أعرف`
+      ],
+      correct: 0,
+      explanation: `هذا سؤال تم إنشاؤه تلقائياً حول "${keywords[i]}"`
+    });
+  }
+  
+  return questions;
+}
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Server error:', error);
+  res.status(500).json({ error: 'خطأ في الخادم' });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`📊 Dashboard: http://localhost:${PORT}`);
+  console.log(`🔐 Auth: http://localhost:${PORT}/auth.html`);
+});
