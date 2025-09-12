@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "outputDirectory": "public",
   "routes": [
     {
       "src": "/api/(.*)",
@@ -17,18 +18,6 @@
     {
       "src": "/health",
       "dest": "/server-supabase.js"
-    },
-    {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|txt|xml|json))",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "/public/(.*)",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "/(.*\\.html)",
-      "dest": "/public/$1"
     },
     {
       "src": "/",
