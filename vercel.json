@@ -1,11 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "server-supabase.js": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
@@ -25,11 +19,11 @@
       "dest": "/server-supabase.js"
     },
     {
-      "src": "/public/(.*)",
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|txt|xml|json))",
       "dest": "/public/$1"
     },
     {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|txt|xml|json))",
+      "src": "/public/(.*)",
       "dest": "/public/$1"
     },
     {
@@ -38,11 +32,11 @@
     },
     {
       "src": "/",
-      "dest": "/public/index.html"
+      "dest": "/index.html"
     },
     {
       "src": "/(.*)",
-      "dest": "/public/index.html"
+      "dest": "/index.html"
     }
   ],
   "env": {
