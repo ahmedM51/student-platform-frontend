@@ -1,11 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "server-supabase.js": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
