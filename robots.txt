@@ -8,9 +8,10 @@ Allow: /study-timer.html
 Allow: /js/
 Allow: /css/
 Allow: /images/
-allow: /auth.html
 
-# منع فهرسة الملفات الحساسة فقط
+# السماح بالزحف إلى auth.html لقراءة وسم noindex الموجود داخل الصفحة
+Allow: /auth.html
+
 Disallow: /uploads/
 Disallow: /logs/
 Disallow: /.env
@@ -29,9 +30,7 @@ User-agent: Slurp
 Allow: /
 
 # موقع خريطة الموقع
-Sitemap: https://student-platform-frontend.vercel.app/sitemap.xml
+Sitemap: https://student-platform-eta.vercel.app/sitemap.xml
 
 # معدل الزحف (اختياري)
 Crawl-delay: 1
-
-
