@@ -8,9 +8,9 @@ Allow: /study-timer.html
 Allow: /js/
 Allow: /css/
 Allow: /images/
-Allow: /auth.html
 
 # منع فهرسة الملفات الحساسة فقط
+Disallow: /auth.html
 Disallow: /uploads/
 Disallow: /logs/
 Disallow: /.env
