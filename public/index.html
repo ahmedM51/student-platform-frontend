@@ -17,8 +17,8 @@
     <meta property="og:title" content="منصة الطالب الذكي - منصة التعلم الذكية بالذكاء الاصطناعي">
     <meta property="og:description" content="منصة تعليمية ذكية تستخدم الذكاء الاصطناعي لمساعدة الطلاب في التعلم والمذاكرة. تشمل مساعد ذكي، مخطط دراسي، مؤقت مذاكرة، وإدارة المواد الدراسية.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="">
-    <meta property="og:image" content="">
+    <meta property="og:url" content="https://student-platform-frontend.vercel.app/">
+    <meta property="og:image" content="https://student-platform-frontend.vercel.app//images/platform-preview.jpg">
     <meta property="og:image:alt" content="منصة الطالب الذكي - واجهة المنصة التعليمية">
     <meta property="og:site_name" content="منصة الطالب الذكي">
     <meta property="og:locale" content="ar_SA">
@@ -27,10 +27,10 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="منصة الطالب الذكي - منصة التعلم الذكية بالذكاء الاصطناعي">
     <meta name="twitter:description" content="منصة تعليمية ذكية تستخدم الذكاء الاصطناعي لمساعدة الطلاب في التعلم والمذاكرة.">
-    <meta name="twitter:image" content="">
+    <meta name="twitter:image" content="https://student-platform-frontend.vercel.app//images/platform-preview.jpg">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href=""/>
+    <link rel="canonical" href="https://student-platform-frontend.vercel.app//">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -39,7 +39,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     
     <!-- Google Site Verification (أضف كودك هنا) -->
-    <meta name="google-site-verification" content="https://student-platform-frontend.vercel.app" />
+    <meta name="google-site-verification" content="YOUR_VERIFICATION_CODE" />
     
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">
@@ -47,7 +47,24 @@
       "@context": "https://schema.org",
       "@type": "EducationalOrganization",
       "name": "منصة الطالب الذكي",
-      "description": "منصة تعليمية ذكية تستخدم الذكاء الاصطناعي لمساعدة الطلاب في التعلم والمذاكرة"
+      "description": "منصة تعليمية ذكية تستخدم الذكاء الاصطناعي لمساعدة الطلاب في التعلم والمذاكرة",
+      "url": "https://student-platform-frontend.vercel.app/",
+      "logo": "https://student-platform-frontend.vercel.app//images/logo.png",
+      "sameAs": [
+        "https://facebook.com/https://www.facebook.com/share/1AtY6UZJQF/",
+        "https://twitter.com/yourpage",
+        "https://instagram.com/yourpage"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "availableLanguage": "Arabic"
+      },
+      "offers": {
+        "@type": "Offer",
+        "category": "Education",
+        "availability": "https://schema.org/InStock"
+      }
     }
     </script>
     
@@ -164,7 +181,21 @@
                             <p class="text-purple-100 text-sm">منصة التعلم الذكية</p>
                         </div>
                     </div>
-                    <div>
+                    <div class="flex items-center space-x-4 space-x-reverse">
+                        <div class="flex items-center bg-white bg-opacity-20 px-4 py-2 rounded-lg space-x-4 space-x-reverse">
+                            <button onclick="window.location.href='subjects.html'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-book ml-1"></i>المواد الدراسية
+                            </button>
+                            <button onclick="window.location.href='planner.html'" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-calendar-alt ml-1"></i>المخطط الدراسي
+                            </button>
+                            <button onclick="window.location.href='study-timer.html'" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-clock ml-1"></i>مؤقت المذاكرة
+                            </button>
+                            <button onclick="window.location.href='ai-assistant.html'" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-robot ml-1"></i>المساعد الذكي
+                            </button>
+                        </div>
                         <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                             <i class="fas fa-sign-out-alt ml-2"></i>تسجيل الخروج
                         </button>
@@ -238,7 +269,6 @@
                 </div>
             </div>
         </div>
-    </main>
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -276,7 +306,7 @@
                     console.log('⚠️ User not authenticated, redirecting...');
                     hideLoadingScreen();
                     setTimeout(() => {
-                        window.location.href = 'auth.html';
+                        window.location.href = '/auth.html';
                     }, 1000);
                 }
                 
@@ -300,7 +330,7 @@
                             إعادة تحميل
                         </button>
                         <br><br>
-                        <a href="auth.html" class="text-white underline">الذهاب لصفحة تسجيل الدخول</a>
+                        <a href="/auth.html" class="text-white underline">الذهاب لصفحة تسجيل الدخول</a>
                     </div>
                 `;
             }
@@ -348,6 +378,108 @@
                     mainElement.style.display = 'block';
                 }
                 hideLoadingScreen();
+            }
+        }
+
+        // Authentication check - Real Supabase only
+        async function checkAuthentication() {
+            try {
+                console.log('🔐 Checking authentication...');
+                
+                if (!window.supabaseAuth) {
+                    throw new Error('Supabase authentication not available. Please check your configuration.');
+                }
+
+                // Check for OAuth redirect first
+                const { data: sessionData } = await window.supabaseAuth.getSession();
+                
+                if (sessionData?.session?.user) {
+                    // User is authenticated via session (including OAuth)
+                    currentUser = sessionData.session.user;
+                    console.log('✅ Supabase user authenticated:', currentUser.email);
+                    
+                    // Store user data for other pages
+                    localStorage.setItem('userEmail', currentUser.email);
+                    localStorage.setItem('userId', currentUser.id);
+                    localStorage.setItem('userName', currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]);
+                    
+                    // Load user data and show dashboard
+                    await loadUserData();
+                    return true;
+                }
+
+                // No valid session found
+                console.log('❌ No authenticated user found');
+                return false;
+                
+            } catch (error) {
+                console.error('❌ Authentication check failed:', error);
+                return false;
+            }
+        }
+
+        // Logout function - Real Supabase only
+        async function logout() {
+            try {
+                console.log('🚪 Logging out user...');
+                
+                if (window.supabaseAuth) {
+                    const { error } = await window.supabaseAuth.signOut();
+                    if (error) throw error;
+                }
+                
+                // Clear all authentication data
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('isLoggedIn');
+                
+                console.log('✅ User logged out successfully');
+                
+                // Redirect to auth page
+                window.location.href = '/auth.html';
+                
+            } catch (error) {
+                console.error('❌ Error during logout:', error);
+                // Force redirect even if logout fails
+                localStorage.clear();
+                window.location.href = '/auth.html';
+            }
+        }
+
+        // Load user data and statistics - Real Supabase only
+        async function loadUserData() {
+            try {
+                if (!currentUser) return;
+
+                let userData = null;
+
+                if (window.supabaseDB) {
+                    const { data, error } = await window.supabaseDB.users.get(currentUser.id);
+                        
+                    if (error || !data) {
+                        console.warn('⚠️ Could not load user data from Supabase, using default data');
+                        userData = createDefaultUserData();
+                    } else {
+                        userData = data;
+                    }
+                } else {
+                    throw new Error('Supabase database not available. Please check your configuration.');
+                }
+
+                // Update statistics in UI
+                updateUserStats(userData);
+                
+                // Load recent activities
+                await loadRecentActivities();
+
+                console.log('✅ User data loaded successfully');
+                
+            } catch (error) {
+                console.error('❌ Error loading user data:', error);
+                // Use default data on error
+                updateUserStats(createDefaultUserData());
             }
         }
 
@@ -457,108 +589,6 @@
             if (elements.qualityTest) elements.qualityTest.textContent = '0';
             
             console.log('📊 UI updated with user stats:', userData);
-        }
-
-        // Authentication check - Real Supabase only
-        async function checkAuthentication() {
-            try {
-                console.log('🔐 Checking authentication...');
-                
-                if (!window.supabaseAuth) {
-                    throw new Error('Supabase authentication not available. Please check your configuration.');
-                }
-
-                // Check for OAuth redirect first
-                const { data: sessionData } = await window.supabaseAuth.getSession();
-                
-                if (sessionData?.session?.user) {
-                    // User is authenticated via session (including OAuth)
-                    currentUser = sessionData.session.user;
-                    console.log('✅ Supabase user authenticated:', currentUser.email);
-                    
-                    // Store user data for other pages
-                    localStorage.setItem('userEmail', currentUser.email);
-                    localStorage.setItem('userId', currentUser.id);
-                    localStorage.setItem('userName', currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]);
-                    
-                    // Load user data and show dashboard
-                    await loadUserData();
-                    return true;
-                }
-
-                // No valid session found
-                console.log('❌ No authenticated user found');
-                return false;
-                
-            } catch (error) {
-                console.error('❌ Authentication check failed:', error);
-                return false;
-            }
-        }
-
-        // Logout function - Real Supabase only
-        async function logout() {
-            try {
-                console.log('🚪 Logging out user...');
-                
-                if (window.supabaseAuth) {
-                    const { error } = await window.supabaseAuth.signOut();
-                    if (error) throw error;
-                }
-                
-                // Clear all authentication data
-                localStorage.removeItem('userEmail');
-                localStorage.removeItem('userId');
-                localStorage.removeItem('userName');
-                localStorage.removeItem('currentUser');
-                localStorage.removeItem('isLoggedIn');
-                
-                console.log('✅ User logged out successfully');
-                
-                // Redirect to auth page
-                window.location.href = 'auth.html';
-                
-            } catch (error) {
-                console.error('❌ Error during logout:', error);
-                // Force redirect even if logout fails
-                localStorage.clear();
-                window.location.href = 'auth.html';
-            }
-        }
-
-        // Load user data and statistics - Real Supabase only
-        async function loadUserData() {
-            try {
-                if (!currentUser) return;
-
-                let userData = null;
-
-                if (window.supabaseDB) {
-                    const { data, error } = await window.supabaseDB.users.get(currentUser.id);
-                        
-                    if (error || !data) {
-                        console.warn('⚠️ Could not load user data from Supabase, using default data');
-                        userData = createDefaultUserData();
-                    } else {
-                        userData = data;
-                    }
-                } else {
-                    throw new Error('Supabase database not available. Please check your configuration.');
-                }
-
-                // Update statistics in UI
-                updateUserStats(userData);
-                
-                // Load recent activities
-                await loadRecentActivities();
-
-                console.log('✅ User data loaded successfully');
-                
-            } catch (error) {
-                console.error('❌ Error loading user data:', error);
-                // Use default data on error
-                updateUserStats(createDefaultUserData());
-            }
         }
 
         // Make logout function globally available
