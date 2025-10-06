@@ -230,6 +230,7 @@
     <script src="js/supabase-config.js"></script>
     <script>
         // Gemini API Configuration
+        // NOTE: The key is included as an example.
         const GEMINI_API_KEY ="AIzaSyDwd6V4id_xofyD-SLRneq6IfTBpjdDMZI";
         
         let currentUser = null;
@@ -243,7 +244,8 @@
          * @param {object} lectureContext - Lecture context for educational responses
          */
         async function getGeminiResponse(textPrompt, lectureContext = null) {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+            // ✅ FIX: Changed model name from gemini-1.5-flash-latest to gemini-2.5-flash
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
             try {
                 const parts = [];
@@ -320,6 +322,7 @@ ${lectureContent}
 
             } catch (error) {
                 console.error("Gemini API Error:", error);
+                // Return a user-friendly error message
                 return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي: ${error.message}`;
             }
         }
@@ -783,7 +786,10 @@ ${lectureContent}
             }
 
             // Initialize user answers array
-            userAnswers = new Array(currentQuiz.questions.length).fill(-1);
+            // NOTE: It is better to rely on existing answers if they exist (e.g., if navigating back and forth)
+            if (userAnswers.length !== currentQuiz.questions.length) {
+                userAnswers = new Array(currentQuiz.questions.length).fill(-1);
+            }
             
             const quizArea = document.getElementById('quizContainer');
             quizArea.innerHTML = `
@@ -856,7 +862,7 @@ ${lectureContent}
 
             return `
                 <div class="question-content">
-                    <h4 class="text-lg font-semibold text-gray-800 mb-4">${question.question}</h4>
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">السؤال ${index + 1}: ${question.question}</h4>
                     <div class="options-container">
                         ${optionsHtml}
                     </div>
@@ -914,6 +920,8 @@ ${lectureContent}
             const questionCounter = document.getElementById('questionCounter');
             const progressPercentage = document.getElementById('progressPercentage');
             const answeredCount = document.getElementById('answeredCount');
+            
+            if (!currentQuiz) return; // Guard against null quiz
             
             if (progressBar) {
                 const progressPercent = ((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100;
@@ -1148,3 +1156,4 @@ ${lectureContent}
     </script>
 </body>
 </html>
+
