@@ -83,6 +83,21 @@
     </style>
 </head>
 <body class="min-h-screen bg-gray-50">
+    <!-- 
+        هذا القسم مخفي وظيفته مساعدة مكتبة Tailwind CSS على التعرف على جميع فئات الألوان
+        المستخدمة بشكل ديناميكي (مثل bg-${color}-500) لضمان عرض الألوان بشكل صحيح في الواجهة.
+        إذا لم يتم استخدامه، قد لا يتم تحميل بعض فئات الألوان.
+    -->
+    <div class="hidden">
+        <span class="bg-blue-100 text-blue-500 bg-blue-500"></span>
+        <span class="bg-green-100 text-green-500 bg-green-500"></span>
+        <span class="bg-red-100 text-red-500 bg-red-500"></span>
+        <span class="bg-yellow-100 text-yellow-500 bg-yellow-500"></span>
+        <span class="bg-purple-100 text-purple-500 bg-purple-500"></span>
+        <span class="bg-pink-100 text-pink-500 bg-pink-500"></span>
+        <span class="ring-blue-500 ring-green-500 ring-red-500 ring-yellow-500 ring-purple-500 ring-pink-500"></span>
+    </div>
+
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="text-center">
@@ -513,8 +528,8 @@
                 <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 card-hover">
                     <div class="p-6">
                         <div class="flex items-center justify-between mb-4">
-                            <div class="w-12 h-12 bg-${subject.color}-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-book text-${subject.color}-500 text-xl"></i>
+                            <div class="w-12 h-12 bg-${subject.color || 'gray'}-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-book text-${subject.color || 'gray'}-500 text-xl"></i>
                             </div>
                             <div class="flex space-x-2 space-x-reverse">
                                 <button onclick="editSubject('${subject.id}')" class="text-gray-400 hover:text-blue-500 transition-colors p-1">
@@ -566,7 +581,9 @@
         window.viewSubject = async function(subjectId) {
             showLoading();
             try {
-                const { data: subject, error: subjectError } = await (window.supabaseDB.subjects.getById(subjectId) || { data: { id: subjectId, name: 'المادة', code: 'N/A', description: 'لا يوجد وصف للمادة', color: 'gray' }, error: null });
+                // استخدام قيمة افتراضية للون لتجنب أي خطأ في العرض في حالة نقص البيانات
+                const defaultSubjectData = { id: subjectId, name: 'المادة', code: 'N/A', description: 'لا يوجد وصف للمادة', color: 'blue', progress: 0, total_lectures: 0 };
+                const { data: subject, error: subjectError } = await (window.supabaseDB.subjects.getById(subjectId) || { data: defaultSubjectData, error: null });
                 if (subjectError) throw subjectError;
 
                 // Fetch lectures for the subject (using mock data if DB isn't fully setup)
@@ -596,6 +613,9 @@
                         <p>لم يتم إضافة محاضرات لهذه المادة بعد.</p>
                     </div>
                 `;
+                
+                // استخدام `subject.color || 'blue'` لضمان وجود قيمة لون صالحة
+                const safeColor = subject.color || 'blue';
 
                 const content = `
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -608,7 +628,7 @@
                                 <p><strong>الوصف:</strong> ${subject.description || 'لا يوجد'}</p>
                                 <p><strong>التقدم:</strong> <span class="font-bold text-blue-600">${subject.progress || 0}%</span></p>
                                 <p><strong>إجمالي المحاضرات:</strong> ${subject.total_lectures || 0}</p>
-                                <p><strong>لون المادة:</strong> <span class="inline-block w-4 h-4 rounded-full bg-${subject.color}-500 align-middle mr-2"></span></p>
+                                <p><strong>لون المادة:</strong> <span class="inline-block w-4 h-4 rounded-full bg-${safeColor}-500 align-middle mr-2"></span></p>
                             </div>
                             <button onclick="addLecture('${subjectId}')" class="w-full mt-6 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors">
                                 <i class="fas fa-plus ml-2"></i>إضافة محاضرة جديدة
