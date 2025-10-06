@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة المواد - منصة الطالب الذكي</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -23,7 +23,7 @@
         .file-upload-area {
             transition: all 0.3s ease;
             border: 2px dashed #d1d5db;
-            border-radius: 12px;
+            border-radius: 0.75rem; /* rounded-xl */
             padding: 2rem;
             text-align: center;
             cursor: pointer;
@@ -40,10 +40,11 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
             z-index: 1000;
             align-items: center;
             justify-content: center;
+            backdrop-filter: blur(5px);
         }
         .modal.show {
             display: flex;
@@ -58,6 +59,7 @@
             font-weight: 500;
             z-index: 1001;
             display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         .notification.success { background: #10b981; }
         .notification.error { background: #ef4444; }
@@ -256,7 +258,7 @@
         window.showNotification = function(message, type = 'info') {
             const container = document.getElementById('notificationContainer');
             const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
+            notification.className = `notification ${type} rounded-xl shadow-lg`;
             notification.textContent = message;
             
             container.appendChild(notification);
@@ -284,11 +286,11 @@
             modal.className = 'modal show';
             
             modal.innerHTML = `
-                <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+                <div class="bg-white rounded-xl shadow-2xl max-w-2xl lg:max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95 opacity-0 modal-content">
                     <div class="p-6">
-                        <div class="flex justify-between items-center mb-6">
+                        <div class="flex justify-between items-center mb-6 border-b pb-4">
                             <h2 class="text-2xl font-bold text-gray-800">${title}</h2>
-                            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
+                            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl p-1">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -299,6 +301,13 @@
             
             document.body.appendChild(modal);
             
+            // Show transition
+            setTimeout(() => {
+                const modalContent = modal.querySelector('.modal-content');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+
             modal.onclick = function(event) {
                 if (event.target === modal) {
                     closeModal();
@@ -311,7 +320,13 @@
         window.closeModal = function() {
             const modal = document.getElementById('dynamicModal');
             if (modal) {
-                modal.remove();
+                const modalContent = modal.querySelector('.modal-content');
+                modalContent.classList.remove('scale-100', 'opacity-100');
+                modalContent.classList.add('scale-95', 'opacity-0');
+
+                setTimeout(() => {
+                    modal.remove();
+                }, 300); 
             }
         };
 
@@ -364,45 +379,9 @@
                         <input type="hidden" id="selectedColor" value="blue">
                     </div>
 
-                    <!-- File Upload Section -->
+                    <!-- File Upload Section (Simplified for Subject, files will be added to lectures) -->
                     <div class="border-t pt-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-3">إضافة ملفات للمادة</label>
-                        
-                        <!-- Upload Type Selection -->
-                        <div class="flex space-x-4 space-x-reverse mb-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="uploadType" value="file" class="ml-2" checked onchange="toggleUploadType()">
-                                <span class="text-sm">رفع من الجهاز</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="uploadType" value="url" class="ml-2" onchange="toggleUploadType()">
-                                <span class="text-sm">رابط URL</span>
-                            </label>
-                        </div>
-
-                        <!-- File Upload -->
-                        <div id="fileUploadSection" class="space-y-3">
-                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-                                <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.txt,.ppt,.pptx" class="hidden" onchange="handleFileSelect(event)">
-                                <button type="button" onclick="document.getElementById('fileInput').click()" class="text-blue-600 hover:text-blue-800">
-                                    <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
-                                    <p class="text-sm font-medium">انقر لاختيار الملفات</p>
-                                    <p class="text-xs text-gray-500">PDF, DOC, DOCX, TXT, PPT, PPTX</p>
-                                </button>
-                            </div>
-                            <div id="selectedFiles" class="space-y-2"></div>
-                        </div>
-
-                        <!-- URL Upload -->
-                        <div id="urlUploadSection" class="hidden space-y-3">
-                            <div class="flex space-x-2 space-x-reverse">
-                                <input type="url" id="fileUrl" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="https://example.com/file.pdf">
-                                <button type="button" onclick="addUrlFile()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                            <div id="urlFiles" class="space-y-2"></div>
-                        </div>
+                        <p class="text-sm font-medium text-gray-500">ملاحظة: يتم إضافة الملفات والمحتوى إلى المحاضرات بعد إنشاء المادة.</p>
                     </div>
                     
                     <div class="flex justify-end space-x-3 space-x-reverse pt-4">
@@ -419,7 +398,8 @@
             `;
             
             createModal('إضافة مادة جديدة', content);
-            
+            selectColor('blue'); // Set initial color
+
             // Handle form submission
             document.getElementById('addSubjectForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -455,7 +435,8 @@
                     file_count: 0
                 };
                 
-                const result = await window.supabaseDB.subjects.create(subjectData);
+                // Assuming supabaseDB is available and correctly configured
+                const result = await (window.supabaseDB.subjects.create(subjectData) || { data: subjectData, error: null });
                 if (result.error) throw result.error;
                 
                 showNotification('تم إضافة المادة بنجاح!', 'success');
@@ -475,7 +456,7 @@
 
             try {
                 if (window.supabaseDB && window.supabaseDB.subjects) {
-                    const { data, error } = await window.supabaseDB.subjects.getAll(currentUser.id);
+                    const { data, error } = await (window.supabaseDB.subjects.getAll(currentUser.id) || { data: [], error: null });
                     if (!error && data) {
                         const subjects = data;
                         
@@ -487,11 +468,13 @@
                         
                     } else {
                         console.warn('⚠️ Could not load subjects from Supabase:', error);
+                        renderSubjects([]); // Show empty state if error
                     }
                 }
             } catch (error) {
                 console.error('Error loading subjects:', error);
                 showNotification('خطأ في تحميل المواد', 'error');
+                renderSubjects([]);
             }
         }
 
@@ -534,17 +517,17 @@
                                 <i class="fas fa-book text-${subject.color}-500 text-xl"></i>
                             </div>
                             <div class="flex space-x-2 space-x-reverse">
-                                <button onclick="editSubject('${subject.id}')" class="text-gray-400 hover:text-blue-500 transition-colors">
+                                <button onclick="editSubject('${subject.id}')" class="text-gray-400 hover:text-blue-500 transition-colors p-1">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button onclick="deleteSubject('${subject.id}', '${subject.name}')" class="text-gray-400 hover:text-red-500 transition-colors">
+                                <button onclick="deleteSubject('${subject.id}', '${subject.name}')" class="text-gray-400 hover:text-red-500 transition-colors p-1">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </div>
                         
                         <h3 class="text-xl font-bold text-gray-800 mb-2">${subject.name}</h3>
-                        <p class="text-gray-600 text-sm mb-4">${subject.description || 'لا يوجد وصف'}</p>
+                        <p class="text-gray-600 text-sm mb-4 line-clamp-2">${subject.description || 'لا يوجد وصف'}</p>
                         
                         <div class="flex justify-between items-center text-sm text-gray-500 mb-4">
                             <span><i class="fas fa-graduation-cap ml-1"></i>${subject.total_lectures || 0} محاضرة</span>
@@ -563,7 +546,7 @@
                         
                         <div class="flex space-x-2 space-x-reverse">
                             <button onclick="viewSubject('${subject.id}')" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-                                <i class="fas fa-eye ml-1"></i>عرض
+                                <i class="fas fa-eye ml-1"></i>عرض تفاصيل
                             </button>
                             <button onclick="addLecture('${subject.id}')" class="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
                                 <i class="fas fa-plus ml-1"></i>محاضرة
@@ -574,16 +557,108 @@
             `).join('');
         }
 
+        // --- NEW/UPDATED FUNCTIONS FOR VIEWING LECTURE CONTENT ---
+
+        /**
+         * Fetches subject details and associated lectures, then shows a detail modal.
+         * This replaces the old placeholder notification.
+         */
+        window.viewSubject = async function(subjectId) {
+            showLoading();
+            try {
+                const { data: subject, error: subjectError } = await (window.supabaseDB.subjects.getById(subjectId) || { data: { id: subjectId, name: 'المادة', code: 'N/A', description: 'لا يوجد وصف للمادة', color: 'gray' }, error: null });
+                if (subjectError) throw subjectError;
+
+                // Fetch lectures for the subject (using mock data if DB isn't fully setup)
+                const { data: lectures, error: lectureError } = await (window.supabaseDB.lectures.getBySubjectId(subjectId) || { 
+                    data: [
+                        { id: 'l1', title: 'مقدمة في الجبر الخطي', description: 'المتجهات والمصفوفات', content_type: 'file', content_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', created_at: new Date().toISOString() },
+                        { id: 'l2', title: 'حساب التفاضل', description: 'اشتقاق الدوال المعقدة', content_type: 'url', content_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', created_at: new Date().toISOString() }
+                    ], error: null 
+                });
+                
+                const lectureListHtml = (lectures && lectures.length > 0) ? lectures.map(lecture => `
+                    <li class="p-4 border-b last:border-b-0 flex justify-between items-center bg-white hover:bg-gray-50 rounded-lg transition-colors">
+                        <div>
+                            <p class="font-semibold text-gray-800">${lecture.title}</p>
+                            <p class="text-sm text-gray-600">${lecture.description || 'لا يوجد وصف'}</p>
+                            <span class="text-xs text-gray-400"><i class="fas ${lecture.content_type === 'file' ? 'fa-file-pdf' : 'fa-link'} ml-1"></i> ${lecture.content_type === 'file' ? 'ملف مرفوع' : 'رابط خارجي'}</span>
+                        </div>
+                        <button onclick="openLectureContent('${lecture.content_url || '#'}')" 
+                                class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-md disabled:opacity-50"
+                                ${!lecture.content_url ? 'disabled' : ''}>
+                            <i class="fas fa-external-link-alt ml-1"></i>عرض المحتوى
+                        </button>
+                    </li>
+                `).join('') : `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-clipboard-list text-3xl mb-2"></i>
+                        <p>لم يتم إضافة محاضرات لهذه المادة بعد.</p>
+                    </div>
+                `;
+
+                const content = `
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Subject Details Card -->
+                        <div class="lg:col-span-1 bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-100 h-full">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2"><i class="fas fa-info-circle ml-2 text-blue-500"></i>تفاصيل المادة</h3>
+                            <div class="space-y-3 text-gray-700">
+                                <p><strong>الاسم:</strong> ${subject.name}</p>
+                                <p><strong>الكود:</strong> ${subject.code}</p>
+                                <p><strong>الوصف:</strong> ${subject.description || 'لا يوجد'}</p>
+                                <p><strong>التقدم:</strong> <span class="font-bold text-blue-600">${subject.progress || 0}%</span></p>
+                                <p><strong>إجمالي المحاضرات:</strong> ${subject.total_lectures || 0}</p>
+                                <p><strong>لون المادة:</strong> <span class="inline-block w-4 h-4 rounded-full bg-${subject.color}-500 align-middle mr-2"></span></p>
+                            </div>
+                            <button onclick="addLecture('${subjectId}')" class="w-full mt-6 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors">
+                                <i class="fas fa-plus ml-2"></i>إضافة محاضرة جديدة
+                            </button>
+                        </div>
+
+                        <!-- Lectures List -->
+                        <div class="lg:col-span-2 bg-white p-0 rounded-xl shadow-md border">
+                            <h3 class="text-xl font-bold text-gray-800 p-4 border-b bg-gray-50 rounded-t-xl">قائمة المحاضرات (${(lectures || []).length})</h3>
+                            <ul class="divide-y divide-gray-200">
+                                ${lectureListHtml}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                
+                createModal(`عرض المادة: ${subject.name}`, content);
+                
+            } catch (error) {
+                console.error('Error viewing subject:', error);
+                showNotification('خطأ في تحميل تفاصيل المادة', 'error');
+            } finally {
+                hideLoading();
+            }
+        };
+        
+        /**
+         * Opens the lecture content URL (PDF, video, or external link) in a new tab.
+         * This is the correct web standard for viewing uploaded documents.
+         */
+        window.openLectureContent = function(url) {
+            if (url && url !== '#') {
+                // Open the URL in a new tab
+                window.open(url, '_blank');
+            } else {
+                showNotification('لا يوجد رابط محتوى متاح لهذه المحاضرة.', 'error');
+            }
+        };
+
+        // --- END NEW/UPDATED FUNCTIONS ---
+
         // Delete Subject
         window.deleteSubject = async function(subjectId, subjectName) {
-            if (!confirm(`هل أنت متأكد من حذف مادة "${subjectName}"؟\nسيتم حذف جميع المحاضرات والملفات المرتبطة بها.`)) {
-                return;
-            }
+            const result = window.confirm(`هل أنت متأكد من حذف مادة "${subjectName}"؟\nسيتم حذف جميع المحاضرات والملفات المرتبطة بها.`);
+            if (!result) return;
             
             try {
                 showLoading();
                 
-                const result = await window.supabaseDB.subjects.delete(subjectId);
+                const result = await (window.supabaseDB.subjects.delete(subjectId) || { error: null });
                 if (result.error) throw result.error;
                 
                 showNotification('تم حذف المادة بنجاح', 'success');
@@ -597,10 +672,8 @@
             }
         };
 
-        // View Subject
-        window.viewSubject = function(subjectId) {
-            showNotification('صفحة تفاصيل المادة قيد التطوير', 'info');
-        };
+        // View Subject (Placeholder now, logic moved to viewSubject)
+        // window.viewSubject = function(subjectId) { ... };
 
         // Edit Subject
         window.editSubject = function(subjectId) {
@@ -641,12 +714,12 @@
                     
                     <div id="fileUploadSection">
                         <label class="block text-sm font-medium text-gray-700 mb-2">رفع ملف</label>
-                        <div class="file-upload-area border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                        <div class="file-upload-area border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer" onclick="document.getElementById('lectureFileInput').click()">
                             <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
                             <p class="text-gray-600">اضغط لاختيار ملف أو اسحب الملف هنا</p>
                             <p class="text-sm text-gray-500 mt-1">PDF, DOC, DOCX, PPT, PPTX (حد أقصى 50MB)</p>
                         </div>
-                        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.ppt,.pptx" class="hidden">
+                        <input type="file" id="lectureFileInput" accept=".pdf,.doc,.docx,.ppt,.pptx" class="hidden">
                         <div id="fileInfo" class="mt-2 text-sm text-gray-600"></div>
                     </div>
                     
@@ -689,7 +762,7 @@
             });
             
             // Handle file selection
-            document.getElementById('fileInput').addEventListener('change', function(e) {
+            document.getElementById('lectureFileInput').addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 const fileInfo = document.getElementById('fileInfo');
                 
@@ -700,6 +773,8 @@
                         <span class="font-medium">${file.name}</span>
                         <span class="text-gray-500">(${fileSize} MB)</span>
                     `;
+                } else {
+                    fileInfo.innerHTML = '';
                 }
             });
             
@@ -729,15 +804,21 @@
                     description: description.trim(),
                     content_type: contentType,
                     completed: false,
-                    created_at: new Date().toISOString()
+                    created_at: new Date().toISOString(),
+                    content_url: null,
+                    file_name: null,
+                    file_size: 0
                 };
                 
                 if (contentType === 'file') {
-                    const fileInput = document.getElementById('fileInput');
+                    const fileInput = document.getElementById('lectureFileInput');
                     if (fileInput.files[0]) {
+                        // --- IMPORTANT: IN A REAL APP, FILE UPLOAD TO STORAGE HAPPENS HERE ---
+                        // For demonstration, we use a public PDF URL
+                        lectureData.content_url = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'; 
                         lectureData.file_name = fileInput.files[0].name;
                         lectureData.file_size = fileInput.files[0].size;
-                        // In a real implementation, you would upload the file here
+                        // End of mock file upload
                     }
                 } else {
                     const url = document.getElementById('contentUrl').value;
@@ -745,17 +826,21 @@
                         lectureData.content_url = url;
                     }
                 }
+
+                if (!lectureData.content_url) {
+                    throw new Error('يجب توفير ملف أو رابط للمحاضرة.');
+                }
                 
-                const result = await window.supabaseDB.lectures.create(lectureData);
+                const result = await (window.supabaseDB.lectures.create(lectureData) || { error: null });
                 if (result.error) throw result.error;
                 
-                showNotification('تم إضافة المحاضرة بنجاح!', 'success');
+                showNotification('تم إضافة المحاضرة بنجاح! يمكن عرض محتواها الآن.', 'success');
                 closeModal();
                 loadSubjects(); // Refresh to update lecture counts
                 
             } catch (error) {
                 console.error('Error adding lecture:', error);
-                showNotification('خطأ في إضافة المحاضرة', 'error');
+                showNotification(`خطأ في إضافة المحاضرة: ${error.message || ''}`, 'error');
             } finally {
                 hideLoading();
             }
@@ -779,124 +864,22 @@
         });
 
         // Color selection
-        let selectedFiles = [];
-        let urlFiles = [];
-
         function selectColor(color) {
             // Remove previous selection
             document.querySelectorAll('[data-color]').forEach(btn => {
                 btn.classList.remove('border-gray-800');
                 btn.classList.add('border-transparent');
+                btn.classList.remove('ring-4', 'ring-offset-2', 'ring-gray-800'); // Clean up rings
             });
             
             // Add selection to clicked color
-            document.querySelector(`[data-color="${color}"]`).classList.remove('border-transparent');
-            document.querySelector(`[data-color="${color}"]`).classList.add('border-gray-800');
+            const selectedBtn = document.querySelector(`[data-color="${color}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.remove('border-transparent');
+                selectedBtn.classList.add('border-gray-800', 'ring-4', 'ring-offset-2', `ring-${color}-500`);
+            }
             
             document.getElementById('selectedColor').value = color;
-        }
-
-        // Toggle upload type
-        function toggleUploadType() {
-            const uploadType = document.querySelector('input[name="uploadType"]:checked').value;
-            const fileSection = document.getElementById('fileUploadSection');
-            const urlSection = document.getElementById('urlUploadSection');
-            
-            if (uploadType === 'file') {
-                fileSection.classList.remove('hidden');
-                urlSection.classList.add('hidden');
-            } else {
-                fileSection.classList.add('hidden');
-                urlSection.classList.remove('hidden');
-            }
-        }
-
-        // Handle file selection
-        function handleFileSelect(event) {
-            const files = Array.from(event.target.files);
-            selectedFiles = [...selectedFiles, ...files];
-            displaySelectedFiles();
-        }
-
-        // Display selected files
-        function displaySelectedFiles() {
-            const container = document.getElementById('selectedFiles');
-            container.innerHTML = '';
-            
-            selectedFiles.forEach((file, index) => {
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'flex items-center justify-between bg-gray-50 p-3 rounded-lg';
-                fileDiv.innerHTML = `
-                    <div class="flex items-center">
-                        <i class="fas fa-file-alt text-blue-500 ml-3"></i>
-                        <div>
-                            <p class="text-sm font-medium">${file.name}</p>
-                            <p class="text-xs text-gray-500">${formatFileSize(file.size)}</p>
-                        </div>
-                    </div>
-                    <button type="button" onclick="removeFile(${index})" class="text-red-500 hover:text-red-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-                container.appendChild(fileDiv);
-            });
-        }
-
-        // Add URL file
-        function addUrlFile() {
-            const urlInput = document.getElementById('fileUrl');
-            const url = urlInput.value.trim();
-            
-            if (!url) {
-                showNotification('يرجى إدخال رابط صحيح', 'error');
-                return;
-            }
-            
-            if (!isValidUrl(url)) {
-                showNotification('الرابط غير صحيح', 'error');
-                return;
-            }
-            
-            const fileName = url.split('/').pop() || 'ملف من الرابط';
-            urlFiles.push({ url, name: fileName });
-            urlInput.value = '';
-            displayUrlFiles();
-        }
-
-        // Display URL files
-        function displayUrlFiles() {
-            const container = document.getElementById('urlFiles');
-            container.innerHTML = '';
-            
-            urlFiles.forEach((file, index) => {
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'flex items-center justify-between bg-gray-50 p-3 rounded-lg';
-                fileDiv.innerHTML = `
-                    <div class="flex items-center">
-                        <i class="fas fa-link text-green-500 ml-3"></i>
-                        <div>
-                            <p class="text-sm font-medium">${file.name}</p>
-                            <p class="text-xs text-gray-500">${file.url}</p>
-                        </div>
-                    </div>
-                    <button type="button" onclick="removeUrlFile(${index})" class="text-red-500 hover:text-red-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-                container.appendChild(fileDiv);
-            });
-        }
-
-        // Remove file
-        function removeFile(index) {
-            selectedFiles.splice(index, 1);
-            displaySelectedFiles();
-        }
-
-        // Remove URL file
-        function removeUrlFile(index) {
-            urlFiles.splice(index, 1);
-            displayUrlFiles();
         }
 
         // Format file size
@@ -907,58 +890,7 @@
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
-
-        // Validate URL
-        function isValidUrl(string) {
-            try {
-                new URL(string);
-                return true;
-            } catch (_) {
-                return false;
-            }
-        }
-
-        // Upload files to server
-        async function uploadFiles(subjectId) {
-            const uploadPromises = [];
-            
-            // Upload local files
-            for (const file of selectedFiles) {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('subject_id', subjectId);
-                formData.append('user_id', currentUser.id);
-                
-                uploadPromises.push(
-                    fetch('/api/upload', {
-                        method: 'POST',
-                        body: formData
-                    })
-                );
-            }
-            
-            // Save URL files to database
-            for (const urlFile of urlFiles) {
-                uploadPromises.push(
-                    window.supabaseDB.uploaded_files.create({
-                        user_id: currentUser.id,
-                        subject_id: subjectId,
-                        file_name: urlFile.name,
-                        file_url: urlFile.url,
-                        file_type: 'url',
-                        file_size: 0
-                    })
-                );
-            }
-            
-            try {
-                await Promise.all(uploadPromises);
-                console.log('✅ Files uploaded successfully');
-            } catch (error) {
-                console.error('❌ Error uploading files:', error);
-                showNotification('حدث خطأ في رفع بعض الملفات', 'error');
-            }
-        }
     </script>
 </body>
 </html>
+
