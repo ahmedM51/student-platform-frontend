@@ -54,7 +54,7 @@
             color: white;
             padding: 0.75rem 1rem;
             border-radius: 1rem 1rem 0.25rem 1rem;
-            margin-left: 2rem;
+            margin-left: auto; /* Aligns to the right */
             text-align: right;
             max-width: 85%;
             word-wrap: break-word;
@@ -64,7 +64,7 @@
             color: #374151;
             padding: 0.75rem 1rem;
             border-radius: 1rem 1rem 1rem 0.25rem;
-            margin-right: 2rem;
+            margin-right: auto; /* Aligns to the left */
             max-width: 85%;
             word-wrap: break-word;
         }
@@ -78,6 +78,10 @@
         }
         #chatArea::-webkit-scrollbar-track {
             background-color: #f3f4f6; /* gray-100 */
+        }
+        /* RTL adjustments */
+        .space-x-reverse > :not([hidden]) ~ :not([hidden]) {
+            --tw-space-x-reverse: 1;
         }
     </style>
 </head>
@@ -176,8 +180,6 @@
                                     <option value="10" selected>10 أسئلة</option>
                                     <option value="15">15 سؤال</option>
                                     <option value="20">20 سؤال</option>
-                                    <option value="25">25 سؤال</option>
-                                    <option value="30">30 سؤال</option>
                                 </select>
                             </div>
                         </div>
@@ -196,35 +198,84 @@
         <div id="quizContainer" class="hidden mt-8">
             <!-- Quiz content will be injected here -->
         </div>
-
-        <!-- Quiz Results -->
-        <div id="quizResults" class="hidden mt-8">
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 p-6">
-                    <h2 class="text-xl font-bold text-white flex items-center">
-                        <i class="fas fa-trophy ml-3"></i>نتائج الاختبار
-                    </h2>
-                </div>
-                
-                <div class="p-6" id="resultsContent">
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script>
-        // Gemini API Configuration
-        // تأكد من أن هذا المفتاح صحيح لضمان عمل النموذج 'الحقيقي'
-        const GEMINI_API_KEY ="AIzaSyBp5fSEvq0yoTANjQlxpstYMmG2fT1EScs";
-        
+        // ===================================================================================
+        // !! تنبيه أمان هام جداً !!
+        // ===================================================================================
+        // لا تضع مفتاح API الخاص بك هنا في نسخة الإنتاج (Production).
+        // أي شخص يمكنه رؤيته وسرقته. هذا المفتاح مخصص للتجربة المحلية فقط.
+        // الحل الصحيح: قم بإنشاء واجهة خلفية (Backend) مثل Supabase Edge Function
+        // لتتعامل مع طلبات Gemini API بشكل آمن.
+        // ===================================================================================
+        const GEMINI_API_KEY = "ادخل-مفتاح-GEMINI-الخاص-بك-هنا";
+
+        // --- المتغيرات العامة ---
         let currentUser = null;
         let currentQuiz = null;
         let currentQuestionIndex = 0;
         let userAnswers = [];
 
+        /**
+         * Checks if the Gemini API key has been set by the developer.
+         * @returns {boolean} True if the key is set, false otherwise.
+         */
+        function isApiKeySet() {
+            if (GEMINI_API_KEY === "ادخل-مفتاح-GEMINI-الخاص-بك-هنا" || !GEMINI_API_KEY) {
+                showNotification('خطأ: مفتاح Gemini API غير مهيأ في الكود.', 'error');
+                return false;
+            }
+            return true;
+        }
+
+        /**
+         * Fetches a response from the Gemini API with retry logic.
+         * @param {object} payload - The payload to send to the Gemini API.
+         * @returns {Promise<object>} The JSON response from the API.
+         */
+        async function fetchGeminiWithRetry(payload) {
+            // Updated to a more recent model
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+            const MAX_RETRIES = 3;
+
+            for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        return await response.json();
+                    }
+
+                    // Handle specific, common errors
+                    const errorData = await response.json();
+                    if (response.status === 400) {
+                         throw new Error(`خطأ في الطلب: ${errorData.error?.message || 'تأكد من صحة البيانات المرسلة.'}`);
+                    }
+                     if (response.status === 429) {
+                        throw new Error('تم تجاوز حد الطلبات. يرجى الانتظار والمحاولة مرة أخرى.');
+                    }
+                    if (attempt < MAX_RETRIES - 1) {
+                        console.warn(`Attempt ${attempt + 1} failed with status ${response.status}. Retrying...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt))); // Exponential backoff
+                    } else {
+                        throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
+                    }
+                } catch (error) {
+                    // Rethrow caught errors to be handled by the calling function
+                    if (attempt >= MAX_RETRIES - 1) throw error;
+                    console.error(`Fetch error on attempt ${attempt + 1}:`, error);
+                }
+            }
+        }
+        
         /**
          * Get AI text response from Gemini API for Q&A, grounded in lecture context.
          * @param {string} textPrompt - User's question or prompt
@@ -232,82 +283,36 @@
          * @returns {Promise<string>} The generated text response.
          */
         async function getGeminiQaResponse(textPrompt, lectureContext) {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-            
-            // Build comprehensive context from lecture data
-            let lectureContent = '';
-            // Prioritize the dedicated full content if available
-            if (lectureContext.full_content) {
-                lectureContent = lectureContext.full_content;
-            } else {
-                // Fallback compilation if full_content is missing
-                lectureContent = `عنوان المحاضرة: ${lectureContext.title}\n`;
-                if (lectureContext.description) lectureContent += `وصف المحاضرة: ${lectureContext.description}\n`;
-                if (lectureContext.file_content) lectureContent += `محتوى الملف: ${lectureContext.file_content}\n`;
-                if (lectureContext.notes) lectureContent += `ملاحظات إضافية: ${lectureContext.notes}\n`;
-            }
+            let lectureContent = lectureContext.full_content || `عنوان: ${lectureContext.title}\nوصف: ${lectureContext.description || ''}\nمحتوى: ${lectureContext.file_content || ''}\nملاحظات: ${lectureContext.notes || ''}`;
 
-            // System Instruction (Persona and Rules) - **Updated: added rule 4 to suppress lecture type/title**
-            const systemInstructionText = `أنت **خبير أكاديمي ومتخصص في تحليل المحاضرات**. مهمتك هي الإجابة على سؤال الطالب بأقصى دقة، ويجب أن تكون إجابتك **مؤسسة بالكامل** على محتوى المحاضرة المقدم.
-            
-            **قواعد الإجابة الصارمة:**
-            1.  **الأولوية القصوى للمحاضرة**: يجب أن تستخدم المعلومات الموجودة في محتوى المحاضرة فقط لإعطاء الإجابة. لا تخمن.
-            2.  **الاحترافية واللغة**: قدم إجابة شاملة ومفصلة باستخدام لغة عربية فصحى احترافية ومناسبة للبيئة الأكاديمية. استخدم التنسيقات (العناوين، القوائم النقطية) لسهولة القراءة.
-            3.  **المعرفة العامة**: إذا لم تستطع العثور على المعلومة داخل المحاضرة بعد البحث، يجب أن تذكر ذلك بوضوح في إجابتك. **مثال**: "بناءً على المحاضرة، لا تتوفر هذه المعلومة. لكن، كمعرفة عامة،..."
-            4.  **التركيز على الإجابة**: **لا** تذكر عنوان المحاضرة أو نوعها أو مصدرها في الرد. يجب أن تكون الإجابة مباشرة على سؤال الطالب.`;
-
-            // User Query Content
-            const userContentParts = [
-                {
-                    text: `محتوى المحاضرة المتاح الذي يجب عليك الاعتماد عليه:
-======================================
-${lectureContent}
-======================================`
-                },
-                {
-                    text: `سؤال الطالب: ${textPrompt}`
-                }
-            ];
+            const systemInstructionText = `أنت خبير أكاديمي متخصص في تحليل المحاضرات. مهمتك هي الإجابة على سؤال الطالب بدقة، ويجب أن تكون إجابتك مؤسسة بالكامل على محتوى المحاضرة المقدم.
+            قواعد الإجابة:
+            1.  استخدم محتوى المحاضرة فقط. لا تخمن.
+            2.  قدم إجابة شاملة بلغة عربية فصحى احترافية.
+            3.  إذا لم تجد المعلومة، اذكر ذلك بوضوح. مثال: "بناءً على المحاضرة، لا تتوفر هذه المعلومة...".
+            4.  لا تذكر عنوان المحاضرة في الرد. كن مباشراً.`;
 
             const payload = {
-                contents: [{ parts: userContentParts }],
+                contents: [{
+                    parts: [
+                        { text: `محتوى المحاضرة:\n================\n${lectureContent}\n================` },
+                        { text: `سؤال الطالب: ${textPrompt}` }
+                    ]
+                }],
                 systemInstruction: { parts: [{ text: systemInstructionText }] },
             };
 
             try {
-                // Implementing simple retry mechanism for robustness
-                const MAX_RETRIES = 3;
-                let response = null;
-                for (let i = 0; i < MAX_RETRIES; i++) {
-                    response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.ok) break;
-
-                    if (i < MAX_RETRIES - 1) {
-                        console.warn(`Retry attempt ${i + 1} for Gemini Q&A due to status ${response.status}`);
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000)); // Exponential backoff
-                    } else {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
-                    }
-                }
-
-                const result = await response.json();
+                const result = await fetchGeminiWithRetry(payload);
                 const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
-                if (aiResponse) {
-                    return aiResponse;
-                } else {
-                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء رد (قد يكون المحتوى غير كافٍ للإجابة).');
+                if (!aiResponse) {
+                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء رد (قد يكون المحتوى غير كافٍ).');
                 }
+                return aiResponse;
             } catch (error) {
-                console.error("Gemini API Error:", error);
-                // Return a user-friendly error message
-                return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي أو انتهت مهلة الرد: ${error.message}. يرجى المحاولة بسؤال آخر أو اختيار محاضرة مختلفة.`;
+                console.error("Gemini Q&A Error:", error);
+                return `عذراً، حدث خطأ: ${error.message}. يرجى التحقق من مفتاح API والمحاولة مرة أخرى.`;
             }
         }
 
@@ -315,13 +320,10 @@ ${lectureContent}
          * Get AI structured JSON response for Quiz generation.
          */
         async function getGeminiQuiz(lectureContent, questionCount, questionType) {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-            
-            // Define the JSON schema for the quiz structure (ensures 100% valid JSON output)
             const quizSchema = {
                 type: "OBJECT",
                 properties: {
-                    title: { type: "STRING", description: "عنوان جذاب ومناسب للاختبار." },
+                    title: { type: "STRING", description: "عنوان جذاب للاختبار." },
                     questions: {
                         type: "ARRAY",
                         items: {
@@ -329,12 +331,8 @@ ${lectureContent}
                             properties: {
                                 question: { type: "STRING", description: "نص السؤال." },
                                 type: { type: "STRING", description: "نوع السؤال: 'multiple' أو 'truefalse'." },
-                                options: { 
-                                    type: "ARRAY", 
-                                    items: { type: "STRING" },
-                                    description: "قائمة بالخيارات (مثلاً: أ) الخيار الأول، ب) الخيار الثاني، ج) الخيار الثالث، د) الخيار الرابع) أو (صح، خطأ)."
-                                },
-                                correct: { type: "INTEGER", description: "مؤشر الإجابة الصحيحة في قائمة الخيارات (0، 1، 2، 3 أو 0، 1)." }
+                                options: { type: "ARRAY", items: { type: "STRING" }, description: "قائمة الخيارات." },
+                                correct: { type: "INTEGER", description: "مؤشر الإجابة الصحيحة (يبدأ من 0)." }
                             },
                             required: ["question", "type", "options", "correct"]
                         }
@@ -344,27 +342,23 @@ ${lectureContent}
             };
 
             let questionTypeInstructions = '';
-            if (questionType === 'multiple') {
-                questionTypeInstructions = `أنشئ ${questionCount} سؤال اختيار من متعدد (multiple) بـ 4 خيارات لكل سؤال.`;
-            } else if (questionType === 'truefalse') {
-                questionTypeInstructions = `أنشئ ${questionCount} سؤال صح وخطأ (truefalse) بخيارين (صح أو خطأ) لكل سؤال.`;
-            } else if (questionType === 'mixed') {
-                const multipleCount = Math.ceil(questionCount * 0.6);
-                const trueFalseCount = questionCount - multipleCount;
-                questionTypeInstructions = `أنشئ ${multipleCount} سؤال اختيار من متعدد (multiple) و ${trueFalseCount} سؤال صح وخطأ (truefalse).`;
+            if (questionType === 'mixed') {
+                const multiCount = Math.ceil(questionCount * 0.6);
+                questionTypeInstructions = `أنشئ ${multiCount} سؤال اختيار من متعدد و ${questionCount - multiCount} سؤال صح وخطأ.`;
+            } else {
+                questionTypeInstructions = `أنشئ ${questionCount} سؤال من نوع '${questionType}'.`;
             }
 
-            const quizPrompt = `أنت خبير في إنشاء اختبارات تعليمية. مهمتك هي إنشاء اختبار تعليمي باللغة العربية حصراً بناءً على محتوى المحاضرة المقدم.
-
-            **التعليمات:**
-            - **المحتوى**: يجب أن تكون جميع الأسئلة والإجابات الصحيحة مستمدة **فقط** من محتوى المحاضرة المرفق أدناه.
-            - **العدد والنوع**: ${questionTypeInstructions}
-            - **التنسيق**: يجب أن يكون الإخراج بصيغة JSON صالح يتبع المخطط المحدد، ولا يجب أن يحتوي على أي نص إضافي قبل أو بعد الـ JSON.
+            const quizPrompt = `أنت خبير في إنشاء اختبارات تعليمية. مهمتك هي إنشاء اختبار باللغة العربية حصراً بناءً على محتوى المحاضرة التالي.
+            التعليمات:
+            - يجب أن تكون جميع الأسئلة والإجابات مستمدة فقط من محتوى المحاضرة.
+            - ${questionTypeInstructions}
+            - يجب أن يكون الإخراج بصيغة JSON صالح يتبع المخطط المحدد تماماً.
 
             محتوى المحاضرة:
-            ======================================
+            ================
             ${lectureContent}
-            ======================================`;
+            ================`;
 
             const payload = {
                 contents: [{ parts: [{ text: quizPrompt }] }],
@@ -375,84 +369,44 @@ ${lectureContent}
             };
 
             try {
-                // Implementing simple retry mechanism for robustness
-                const MAX_RETRIES = 3;
-                let response = null;
-                for (let i = 0; i < MAX_RETRIES; i++) {
-                    response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.ok) break;
-
-                    if (i < MAX_RETRIES - 1) {
-                        console.warn(`Retry attempt ${i + 1} for Gemini Quiz due to status ${response.status}`);
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000)); // Exponential backoff
-                    } else {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
-                    }
-                }
-
-                const result = await response.json();
+                const result = await fetchGeminiWithRetry(payload);
                 const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                if (jsonText) {
-                    return JSON.parse(jsonText);
-                } else {
-                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء JSON صالح أو كانت الاستجابة فارغة.');
+                if (!jsonText) {
+                    throw new Error('استجابة API كانت فارغة.');
                 }
+                return JSON.parse(jsonText);
             } catch (error) {
-                console.error("Gemini API Error (Quiz):", error);
-                throw new Error(`فشل الاتصال بـ Gemini أو تحليل الاستجابة: ${error.message}`);
+                console.error("Gemini Quiz Error:", error);
+                throw new Error(`فشل إنشاء الاختبار: ${error.message}`);
             }
         }
 
         // Initialize page
-        document.addEventListener('DOMContentLoaded', async function() {
+        document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Initialize Supabase
-                if (window.initializeSupabase) {
-                    await window.initializeSupabase();
-                }
+                if (window.initializeSupabase) await window.initializeSupabase();
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Wait for authentication
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Check authentication
-                const isAuthenticated = await checkAuthentication();
-                if (!isAuthenticated) {
+                if (!(await checkAuthentication())) {
                     window.location.href = 'auth.html';
                     return;
                 }
                 
-                // Load user data and lectures
                 await loadUserData();
                 await loadLectures();
-                
                 console.log('✅ AI Assistant initialized successfully');
-                
             } catch (error) {
                 console.error('❌ Error initializing AI assistant:', error);
                 showNotification('حدث خطأ في تحميل المساعد الذكي', 'error');
             }
         });
 
-        // Check authentication
         async function checkAuthentication() {
             try {
-                if (!window.supabaseClient || !window.supabaseAuth) {
-                    return false;
-                }
-                
+                if (!window.supabaseClient || !window.supabaseAuth) return false;
                 const { data } = await window.supabaseAuth.getSession();
                 if (data?.session?.user) {
                     currentUser = data.session.user;
-                    localStorage.setItem('userEmail', currentUser.email);
-                    localStorage.setItem('userId', currentUser.id);
-                    localStorage.setItem('userName', currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]);
                     return true;
                 }
                 return false;
@@ -462,412 +416,240 @@ ${lectureContent}
             }
         }
 
-        // Load user data
-        async function loadUserData() {
-            try {
-                const userName = localStorage.getItem('userName') || currentUser?.email?.split('@')[0] || 'المستخدم';
-                // const userEmail = localStorage.getItem('userEmail') || currentUser?.email || ''; // Unused variable
-                document.getElementById('userEmail').textContent = `مرحباً، ${userName}`;
-            } catch (error) {
-                console.error('Error loading user data:', error);
-            }
+        function loadUserData() {
+            const userName = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+            document.getElementById('userEmail').textContent = `مرحباً، ${userName}`;
         }
 
-        // Load lectures for dropdown
         async function loadLectures() {
             try {
-                if (!currentUser) {
-                    console.warn('No current user available');
-                    return;
-                }
+                if (!currentUser) return;
+                const { data: subjects, error: subjectsError } = await window.supabaseDB.subjects.getByUser(currentUser.id);
+                if (subjectsError) throw subjectsError;
 
-                // Load subjects from database
-                const subjectsResult = await window.supabaseDB.subjects.getByUser(currentUser.id);
-                if (subjectsResult.error) {
-                    console.error('Error loading subjects:', subjectsResult.error);
-                    return;
-                }
+                const qaSelect = document.getElementById('qaLectureSelect');
+                const quizSelect = document.getElementById('quizLectureSelect');
+                qaSelect.innerHTML = '<option value="">-- اختر محاضرة --</option>';
+                quizSelect.innerHTML = '';
 
-                const subjects = subjectsResult.data || [];
-                const qaLectureSelect = document.getElementById('qaLectureSelect');
-                const quizLectureSelect = document.getElementById('quizLectureSelect');
-                
-                qaLectureSelect.innerHTML = '<option value="">-- اختر محاضرة --</option>';
-                quizLectureSelect.innerHTML = ''; // Keep quiz empty until data is loaded
-
-                // Load lectures for each subject
-                let hasLectures = false;
+                let lectureCount = 0;
                 for (const subject of subjects) {
-                    const lecturesResult = await window.supabaseDB.lectures.getBySubject(subject.id);
-                    if (lecturesResult.data && lecturesResult.data.length > 0) {
-                        hasLectures = true;
-                        lecturesResult.data.forEach(lecture => {
-                            const lectureTitle = `${lecture.title} - ${subject.name}`;
-
-                            // Add to Q&A dropdown
-                            const qaOption = document.createElement('option');
-                            qaOption.value = lecture.id;
-                            qaOption.textContent = lectureTitle;
-                            qaLectureSelect.appendChild(qaOption);
-
-                            // Add to Quiz dropdown
-                            const quizOption = document.createElement('option');
-                            quizOption.value = lecture.id;
-                            quizOption.textContent = lectureTitle;
-                            quizLectureSelect.appendChild(quizOption);
+                    const { data: lectures, error: lecturesError } = await window.supabaseDB.lectures.getBySubject(subject.id);
+                    if (lecturesError) throw lecturesError;
+                    
+                    if (lectures && lectures.length > 0) {
+                        lectureCount += lectures.length;
+                        lectures.forEach(lecture => {
+                            const title = `${lecture.title} - ${subject.name}`;
+                            [qaSelect, quizSelect].forEach(select => {
+                                const option = document.createElement('option');
+                                option.value = lecture.id;
+                                option.textContent = title;
+                                select.appendChild(option);
+                            });
                         });
                     }
                 }
 
-                if (!hasLectures) {
-                    const noLectureText = '<option value="" disabled>لا توجد محاضرات متاحة - أضف محاضرات</option>';
-                    qaLectureSelect.innerHTML = noLectureText;
-                    quizLectureSelect.innerHTML = noLectureText;
-                } else {
-                     // Add a default selection prompt for quiz selection if needed
-                     // Not necessary for multi-select, but helpful for single select Q&A
+                if (lectureCount === 0) {
+                    const noLectureText = '<option value="" disabled>لا توجد محاضرات. أضف بعض المحاضرات أولاً.</option>';
+                    qaSelect.innerHTML = noLectureText;
+                    quizSelect.innerHTML = noLectureText;
                 }
-
-                console.log('✅ Lectures loaded from database');
-
             } catch (error) {
                 console.error('❌ Error loading lectures:', error);
                 showNotification('حدث خطأ في تحميل المحاضرات', 'error');
             }
         }
 
-        // Enable Q&A when lecture is selected
         function enableQA() {
             const lectureId = document.getElementById('qaLectureSelect').value;
             const questionInput = document.getElementById('questionInput');
             const askBtn = document.getElementById('askBtn');
-            const chatArea = document.getElementById('chatArea');
             
-            if (lectureId) {
-                questionInput.disabled = false;
-                askBtn.disabled = false;
-                
-                chatArea.innerHTML = `
-                    <div class="ai-message chat-message">
-                        <p>مرحباً! لقد اخترت محاضرة. يمكنك الآن طرح أي سؤال عن محتوى هذه المحاضرة.</p>
-                    </div>
-                `;
+            const isEnabled = !!lectureId;
+            questionInput.disabled = !isEnabled;
+            askBtn.disabled = !isEnabled;
+            
+            if (isEnabled) {
+                 document.getElementById('chatArea').innerHTML = `<div class="ai-message chat-message"><p>لقد اخترت محاضرة. يمكنك الآن طرح أي سؤال عنها.</p></div>`;
             } else {
-                questionInput.disabled = true;
-                askBtn.disabled = true;
-                chatArea.innerHTML = `
-                    <div class="text-center text-gray-500 py-8">
-                        <i class="fas fa-robot text-4xl mb-2"></i>
-                        <p>مرحباً! اختر محاضرة واسأل أي سؤال تريد</p>
-                    </div>
-                `;
+                document.getElementById('chatArea').innerHTML = `<div class="text-center text-gray-500 py-8"><i class="fas fa-robot text-4xl mb-2"></i><p>اختر محاضرة لبدء المحادثة</p></div>`;
             }
-            scrollToBottom();
         }
 
-        // Enable quiz generation when lectures are selected
         document.getElementById('quizLectureSelect').addEventListener('change', function() {
-            const selectedLectures = Array.from(this.selectedOptions);
-            document.getElementById('generateQuizBtn').disabled = selectedLectures.length === 0;
+            document.getElementById('generateQuizBtn').disabled = this.selectedOptions.length === 0;
         });
 
-        // Handle Enter key for questions
         function handleEnterKey(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
+            if (event.key === 'Enter') sendMessage();
         }
 
-        // Send message
         async function sendMessage() {
+            if (!isApiKeySet()) return;
             const input = document.getElementById('questionInput');
             const message = input.value.trim();
-            
             if (!message) return;
-            
-            const lectureSelect = document.getElementById('qaLectureSelect');
-            if (!lectureSelect.value) {
+
+            const lectureId = document.getElementById('qaLectureSelect').value;
+            if (!lectureId) {
                 showNotification('يرجى اختيار محاضرة أولاً', 'error');
                 return;
             }
 
-            // Add user message
             addMessage(message, 'user');
             input.value = '';
-            
-            // Show typing indicator
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'message typing-indicator-wrapper';
-            typingDiv.innerHTML = `
-                <div class="ai-message">
-                    <div class="flex items-center">
-                        <span class="typing-indicator"></span>
-                        <span class="typing-indicator"></span>
-                        <span class="typing-indicator"></span>
-                        <span class="mr-2">المساعد يكتب...</span>
-                    </div>
-                </div>
-            `;
-            document.getElementById('chatArea').appendChild(typingDiv);
-            scrollToBottom();
+            showTypingIndicator();
 
             try {
-                const lectureId = lectureSelect.value;
-                
-                // Get lecture content from database including file content
-                const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
-                const lecture = lectureResult.data;
-                
-                if (!lecture) {
-                    throw new Error('لم يتم العثور على المحاضرة');
-                }
+                const { data: lecture } = await window.supabaseDB.lectures.getWithContent(lectureId);
+                if (!lecture) throw new Error('لم يتم العثور على المحاضرة');
 
-                // Generate AI response using the updated grounded function
                 const response = await getGeminiQaResponse(message, lecture);
-                
-                // Remove typing indicator
-                typingDiv.remove();
-                
-                // Add AI response
                 addMessage(response, 'ai');
-                
             } catch (error) {
-                console.error('Error generating response:', error);
-                typingDiv.remove();
-                addMessage('عذراً، حدث خطأ في معالجة سؤالك. يرجى المحاولة مرة أخرى.', 'ai');
+                console.error('Error in sendMessage:', error);
+                addMessage(`عذراً، حدث خطأ: ${error.message}`, 'ai');
+            } finally {
+                hideTypingIndicator();
             }
         }
-
-        // Generate quiz
+        
         async function generateQuiz() {
+            if (!isApiKeySet()) return;
+
             const lectureSelect = document.getElementById('quizLectureSelect');
             const selectedOptions = Array.from(lectureSelect.selectedOptions);
-            
             if (selectedOptions.length === 0) {
                 showNotification('يرجى اختيار محاضرة واحدة على الأقل', 'error');
                 return;
             }
 
-            const generateQuizBtn = document.getElementById('generateQuizBtn');
-            const originalBtnText = generateQuizBtn.innerHTML;
-            generateQuizBtn.disabled = true;
-            generateQuizBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>';
+            const btn = document.getElementById('generateQuizBtn');
+            const originalBtnHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>';
 
             try {
-                // Show loading state
-                const quizContainer = document.getElementById('quizContainer');
-                quizContainer.classList.remove('hidden');
-                quizContainer.innerHTML = `
-                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                        <div class="bg-gradient-to-r from-green-500 to-green-600 p-6">
-                            <h2 class="text-xl font-bold text-white flex items-center">
-                                <i class="fas fa-magic ml-3"></i>جاري إنشاء الاختبار
-                            </h2>
-                        </div>
-                        <div class="p-6">
-                            <div class="text-center py-8">
-                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-                                <p class="text-gray-600">جاري إنشاء الاختبار بواسطة الذكاء الاصطناعي...</p>
-                                <p class="text-sm text-gray-500 mt-2">قد يستغرق هذا بضع ثوانٍ</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                showQuizLoadingState();
 
-                // Get quiz settings
-                const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
-                const questionType = document.getElementById('questionType').value || 'multiple';
+                const questionCount = document.getElementById('questionCount').value;
+                const questionType = document.getElementById('questionType').value;
                 
-                // Use content from the first selected lecture for simplicity in prompting
-                const lectureId = selectedOptions[0].value;
-                const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
-                const lecture = lectureResult.data;
-                
-                if (!lecture) {
-                    throw new Error('لم يتم العثور على المحاضرة');
+                // Combine content from all selected lectures for a richer quiz
+                let combinedContent = '';
+                for (const option of selectedOptions) {
+                    const { data: lecture } = await window.supabaseDB.lectures.getWithContent(option.value);
+                    if(lecture) {
+                        combinedContent += (lecture.full_content || `عنوان: ${lecture.title}\nمحتوى: ${lecture.file_content || ''}\n`) + "\n\n---\n\n";
+                    }
                 }
-
-                // Build comprehensive lecture content for prompting
-                let lectureContent = '';
-                if (lecture.full_content) {
-                    lectureContent = lecture.full_content;
-                } else {
-                    lectureContent = `عنوان المحاضرة: ${lecture.title}\n`;
-                    if (lecture.description) lectureContent += `وصف المحاضرة: ${lecture.description}\n`;
-                    if (lecture.file_content) lectureContent += `محتوى الملف: ${lecture.file_content}\n`;
-                    if (lecture.notes) lectureContent += `ملاحظات إضافية: ${lecture.notes}\n`;
-                }
-
-                // Generate quiz data using the structured response function
-                const quizData = await getGeminiQuiz(lectureContent, questionCount, questionType);
                 
-                // Reset button state
-                generateQuizBtn.innerHTML = originalBtnText;
-                generateQuizBtn.disabled = false;
+                if (!combinedContent.trim()) throw new Error('محتوى المحاضرات المحدد فارغ.');
 
-                // Validation (minimal check before display)
+                const quizData = await getGeminiQuiz(combinedContent, questionCount, questionType);
+                
                 if (!quizData || !quizData.questions || quizData.questions.length === 0) {
-                    throw new Error('الاستجابة كانت فارغة أو غير مكتملة. ربما المحتوى كان قصيراً جداً.');
+                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء أسئلة. قد يكون المحتوى قصيراً جداً.');
                 }
-
+                
                 currentQuiz = quizData;
                 currentQuestionIndex = 0;
                 userAnswers = new Array(currentQuiz.questions.length).fill(-1);
                 
                 displayQuiz();
                 showNotification('تم إنشاء الاختبار بنجاح!', 'success');
-                
+
             } catch (error) {
                 console.error('Error generating quiz:', error);
-                
-                // Reset button state
-                generateQuizBtn.innerHTML = originalBtnText;
-                generateQuizBtn.disabled = Array.from(lectureSelect.selectedOptions).length === 0;
-
-                document.getElementById('quizContainer').innerHTML = `
-                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                        <div class="bg-gradient-to-r from-red-500 to-red-600 p-6">
-                            <h2 class="text-xl font-bold text-white flex items-center">
-                                <i class="fas fa-exclamation-triangle ml-3"></i>خطأ في إنشاء الاختبار
-                            </h2>
-                        </div>
-                        <div class="p-6 text-center">
-                            <div class="text-red-500 mb-4">
-                                <i class="fas fa-exclamation-triangle text-4xl"></i>
-                            </div>
-                            <p class="text-red-600 mb-4">${error.message || 'حدث خطأ غير متوقع في إنشاء الاختبار'}</p>
-                            <button onclick="generateQuiz()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
-                                <i class="fas fa-redo ml-2"></i>المحاولة مرة أخرى
-                            </button>
-                        </div>
-                    </div>
-                `;
+                showQuizErrorState(error.message);
                 showNotification('حدث خطأ في إنشاء الاختبار', 'error');
+            } finally {
+                btn.innerHTML = originalBtnHtml;
+                btn.disabled = lectureSelect.selectedOptions.length === 0;
             }
         }
 
-        // Display quiz
-        function displayQuiz() {
-            if (!currentQuiz || !currentQuiz.questions || currentQuiz.questions.length === 0) {
-                console.error('No quiz data available');
-                return;
-            }
+        function showQuizLoadingState() {
+             const quizContainer = document.getElementById('quizContainer');
+             quizContainer.classList.remove('hidden');
+             quizContainer.innerHTML = `
+                <div class="bg-white rounded-xl shadow-lg p-6 text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+                    <p class="text-gray-600">جاري إنشاء الاختبار بواسطة الذكاء الاصطناعي...</p>
+                    <p class="text-sm text-gray-500 mt-2">قد يستغرق هذا بضع ثوانٍ</p>
+                </div>`;
+            quizContainer.scrollIntoView({ behavior: 'smooth' });
+        }
 
-            // Initialize user answers array
-            if (userAnswers.length !== currentQuiz.questions.length) {
-                userAnswers = new Array(currentQuiz.questions.length).fill(-1);
-            }
-            
+        function showQuizErrorState(errorMessage) {
+            document.getElementById('quizContainer').innerHTML = `
+                <div class="bg-white rounded-xl shadow-lg p-6 text-center border-2 border-red-200">
+                    <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+                    <h3 class="text-lg font-semibold text-red-700">خطأ في إنشاء الاختبار</h3>
+                    <p class="text-red-600 my-4">${errorMessage}</p>
+                    <button onclick="generateQuiz()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                        <i class="fas fa-redo ml-2"></i>المحاولة مرة أخرى
+                    </button>
+                </div>`;
+        }
+        
+        // --- Quiz Display and Logic (No major changes needed here) ---
+        function displayQuiz() {
+            if (!currentQuiz || !currentQuiz.questions) return;
             const quizArea = document.getElementById('quizContainer');
             quizArea.innerHTML = `
                 <div class="bg-white rounded-lg border-2 border-green-200 p-6">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-bold text-green-800">${currentQuiz.title || 'الاختبار الجديد'}</h3>
-                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm" id="questionCounter">
-                            السؤال ${currentQuestionIndex + 1} من ${currentQuiz.questions.length}
+                        <h3 class="text-lg font-bold text-green-800">${currentQuiz.title || 'الاختبار'}</h3>
+                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                            ${currentQuestionIndex + 1} / ${currentQuiz.questions.length}
                         </span>
                     </div>
-                    
-                    <div class="mb-6">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-600">التقدم في الاختبار</span>
-                            <span class="text-sm font-medium text-green-600" id="progressPercentage">
-                                ${Math.round(((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100)}%
-                            </span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
-                            <div class="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500" 
-                                 id="progressBar" style="width: ${((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100}%"></div>
-                        </div>
-                        <div class="flex justify-between text-xs text-gray-500">
-                            <span>تم الإجابة على <span id="answeredCount">${userAnswers.filter(a => a !== -1).length}</span> من ${currentQuiz.questions.length} سؤال</span>
-                            <span>${currentQuiz.questions.length - userAnswers.filter(a => a !== -1).length} سؤال متبقي</span>
-                        </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
+                        <div class="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-300" 
+                             style="width: ${((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100}%"></div>
                     </div>
-
                     <div id="questionContainer" class="mb-6">
                         ${renderQuestion(currentQuestionIndex)}
                     </div>
-
-                    <div class="flex justify-between flex-wrap gap-3">
-                        <button id="prevBtn" onclick="previousQuestion()" 
-                                class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                ${currentQuestionIndex === 0 ? 'disabled' : ''}>
-                            <i class="fas fa-arrow-right ml-2"></i>
-                            السابق
-                        </button>
-                        
-                        <button id="nextBtn" onclick="nextQuestion()" 
-                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors flex-1 min-w-[120px]">
-                            ${currentQuestionIndex === currentQuiz.questions.length - 1 ? 
-                                '<i class="fas fa-check ml-2"></i>إنهاء الاختبار' : 
-                                'التالي<i class="fas fa-arrow-left mr-2"></i>'}
+                    <div class="flex justify-between">
+                        <button onclick="previousQuestion()" 
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg disabled:opacity-50"
+                                ${currentQuestionIndex === 0 ? 'disabled' : ''}>السابق</button>
+                        <button onclick="nextQuestion()" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
+                            ${currentQuestionIndex === currentQuiz.questions.length - 1 ? 'إنهاء الاختبار' : 'التالي'}
                         </button>
                     </div>
-                </div>
-            `;
-            // Scroll to quiz section
+                </div>`;
             quizArea.scrollIntoView({ behavior: 'smooth' });
         }
-
+        
         function renderQuestion(index) {
             const question = currentQuiz.questions[index];
-            if (!question) return '';
+            let optionsHtml = question.options.map((option, i) => `
+                <div class="mb-3">
+                    <label class="flex items-center p-3 border-2 rounded-lg cursor-pointer hover:bg-gray-50 ${userAnswers[index] === i ? 'border-green-500 bg-green-50' : 'border-gray-200'}">
+                        <input type="radio" name="q_${index}" value="${i}" onchange="selectAnswer(${index}, ${i})" ${userAnswers[index] === i ? 'checked' : ''} class="ml-3">
+                        <span>${option}</span>
+                    </label>
+                </div>`).join('');
 
-            let optionsHtml = '';
-            question.options.forEach((option, optionIndex) => {
-                const isSelected = userAnswers[index] === optionIndex;
-                optionsHtml += `
-                    <div class="mb-3">
-                        <label class="flex items-center p-3 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200'}">
-                            <input type="radio" name="question_${index}" value="${optionIndex}" 
-                                   onchange="selectAnswer(${index}, ${optionIndex})" 
-                                   ${isSelected ? 'checked' : ''} class="ml-3">
-                            <span class="text-gray-800">${option}</span>
-                        </label>
-                    </div>
-                `;
-            });
-
-            return `
-                <div class="question-content">
-                    <h4 class="text-lg font-semibold text-gray-800 mb-4">السؤال ${index + 1}: ${question.question}</h4>
-                    <div class="options-container">
-                        ${optionsHtml}
-                    </div>
-                </div>
-            `;
+            return `<h4 class="text-lg font-semibold mb-4">السؤال ${index + 1}: ${question.question}</h4><div>${optionsHtml}</div>`;
         }
-
-        function selectAnswer(questionIndex, answerIndex) {
-            userAnswers[questionIndex] = answerIndex;
-            
-            // Update progress indicators immediately
-            updateQuizProgress();
-            
-            // Add visual feedback
-            const selectedOption = document.querySelector(`input[name="question_${questionIndex}"][value="${answerIndex}"]`);
-            if (selectedOption) {
-                const label = selectedOption.closest('label');
-                // Remove previous selections
-                document.querySelectorAll(`input[name="question_${questionIndex}"]`).forEach(input => {
-                    const parentLabel = input.closest('label');
-                    parentLabel.classList.remove('border-green-500', 'bg-green-50');
-                    parentLabel.classList.add('border-gray-200');
-                });
-                
-                // Highlight selected option
-                label.classList.remove('border-gray-200');
-                label.classList.add('border-green-500', 'bg-green-50');
-            }
+        
+        function selectAnswer(qIndex, aIndex) {
+            userAnswers[qIndex] = aIndex;
+            // Re-render to show selection
+             document.getElementById('questionContainer').innerHTML = renderQuestion(currentQuestionIndex);
         }
 
         function nextQuestion() {
             if (currentQuestionIndex < currentQuiz.questions.length - 1) {
                 currentQuestionIndex++;
-                document.getElementById('questionContainer').innerHTML = renderQuestion(currentQuestionIndex);
-                updateQuizProgress();
-                updateNavigationButtons();
+                displayQuiz();
             } else {
                 finishQuiz();
             }
@@ -876,261 +658,119 @@ ${lectureContent}
         function previousQuestion() {
             if (currentQuestionIndex > 0) {
                 currentQuestionIndex--;
-                document.getElementById('questionContainer').innerHTML = renderQuestion(currentQuestionIndex);
-                updateQuizProgress();
-                updateNavigationButtons();
+                displayQuiz();
             }
         }
-
-        function updateQuizProgress() {
-            const progressBar = document.getElementById('progressBar');
-            const questionCounter = document.getElementById('questionCounter');
-            const progressPercentage = document.getElementById('progressPercentage');
-            const answeredCount = document.getElementById('answeredCount');
-            
-            if (!currentQuiz) return; // Guard against null quiz
-            
-            if (progressBar) {
-                const progressPercent = ((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100;
-                progressBar.style.width = `${progressPercent}%`;
-            }
-            
-            if (questionCounter) {
-                questionCounter.textContent = `السؤال ${currentQuestionIndex + 1} من ${currentQuiz.questions.length}`;
-            }
-            
-            if (progressPercentage) {
-                progressPercentage.textContent = `${Math.round(((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100)}%`;
-            }
-            
-            if (answeredCount) {
-                const answered = userAnswers.filter(a => a !== -1).length;
-                answeredCount.textContent = `${answered}`;
-                
-                // Update remaining count
-                const remainingElement = answeredCount.parentElement.nextElementSibling;
-                if (remainingElement) {
-                    remainingElement.textContent = `${currentQuiz.questions.length - answered} سؤال متبقي`;
-                }
-            }
-        }
-
-        function updateNavigationButtons() {
-            const prevBtn = document.getElementById('prevBtn');
-            const nextBtn = document.getElementById('nextBtn');
-            
-            if (prevBtn) {
-                prevBtn.disabled = currentQuestionIndex === 0;
-            }
-            
-            if (nextBtn) {
-                nextBtn.innerHTML = currentQuestionIndex === currentQuiz.questions.length - 1 ? 
-                    '<i class="fas fa-check ml-2"></i>إنهاء الاختبار' : 
-                    'التالي<i class="fas fa-arrow-left mr-2"></i>';
-            }
-        }
-
+        
         function finishQuiz() {
-            const score = calculateScore();
+            let score = userAnswers.reduce((acc, answer, i) => acc + (answer === currentQuiz.questions[i].correct ? 1 : 0), 0);
             const percentage = Math.round((score / currentQuiz.questions.length) * 100);
             
-            // Calculate grade
-            let gradeColor = 'text-red-600';
-            let gradeMessage = 'يحتاج تحسين ';
-            
-            if (percentage >= 90) {
-                gradeColor = 'text-green-600';
-                gradeMessage = 'ممتاز جداً! ';
-            } else if (percentage >= 80) {
-                gradeColor = 'text-green-600';
-                gradeMessage = 'ممتاز! ';
-            } else if (percentage >= 70) {
-                gradeColor = 'text-blue-600';
-                gradeMessage = 'جيد جداً! ';
-            } else if (percentage >= 60) {
-                gradeColor = 'text-yellow-600';
-                gradeMessage = 'جيد! ';
-            } else if (percentage >= 50) {
-                gradeColor = 'text-orange-600';
-                gradeMessage = 'مقبول ';
-            }
-            
-            const quizContainer = document.getElementById('quizContainer');
-            quizContainer.innerHTML = `
-                <div class="bg-white rounded-lg border-2 border-blue-200 p-6 text-center">
-                    <div class="mb-6">
-                        <i class="fas fa-trophy text-6xl text-yellow-500 mb-4"></i>
-                        <h3 class="text-2xl font-bold text-gray-800 mb-2">انتهى الاختبار!</h3>
-                        <p class="text-gray-600">لقد أكملت الاختبار بنجاح</p>
-                    </div>
-                    
-                    <div class="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 mb-6">
-                        <div class="text-4xl font-bold text-blue-600">${percentage}%</div>
-                        <div class="text-lg text-gray-700 mb-2">${score} من ${currentQuiz.questions.length} إجابة صحيحة</div>
-                        <div class="text-lg font-medium ${gradeColor}">${gradeMessage}</div>
-                    </div>
-                    
-                    <div class="flex gap-4 justify-center flex-wrap">
-                        <button onclick="reviewAnswers()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
-                            <i class="fas fa-eye ml-2"></i>
-                            مراجعة الإجابات
-                        </button>
-                        <button onclick="generateNewQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
-                            <i class="fas fa-redo ml-2"></i>
-                            اختبار جديد
-                        </button>
-                    </div>
-                </div>
-            `;
-            quizContainer.scrollIntoView({ behavior: 'smooth' });
-        }
+            let grade = { text: 'يحتاج تحسين', color: 'text-red-600' };
+            if (percentage >= 90) grade = { text: 'ممتاز جداً!', color: 'text-green-600' };
+            else if (percentage >= 80) grade = { text: 'ممتاز!', color: 'text-green-600' };
+            else if (percentage >= 70) grade = { text: 'جيد جداً!', color: 'text-blue-600' };
+            else if (percentage >= 60) grade = { text: 'جيد!', color: 'text-yellow-600' };
 
-        function calculateScore() {
-            let score = 0;
-            for (let i = 0; i < currentQuiz.questions.length; i++) {
-                if (userAnswers[i] === currentQuiz.questions[i].correct) {
-                    score++;
-                }
-            }
-            return score;
+            document.getElementById('quizContainer').innerHTML = `
+                <div class="bg-white rounded-lg p-6 text-center">
+                    <i class="fas fa-trophy text-6xl text-yellow-500 mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2">انتهى الاختبار!</h3>
+                    <div class="bg-gray-100 rounded-lg p-6 my-6">
+                        <div class="text-4xl font-bold text-blue-600">${percentage}%</div>
+                        <div class="text-lg mb-2">${score} من ${currentQuiz.questions.length} إجابة صحيحة</div>
+                        <div class="text-lg font-medium ${grade.color}">${grade.text}</div>
+                    </div>
+                    <div class="flex gap-4 justify-center">
+                        <button onclick="reviewAnswers()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">مراجعة الإجابات</button>
+                        <button onclick="generateNewQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">اختبار جديد</button>
+                    </div>
+                </div>`;
         }
 
         function reviewAnswers() {
-            let reviewHtml = `
-                <div class="bg-white rounded-lg border-2 border-gray-200 p-6">
-                    <div class="flex items-center justify-between mb-6 flex-wrap gap-2">
-                        <h4 class="text-lg font-semibold text-gray-800 flex items-center">
-                            <i class="fas fa-list-check ml-2"></i>
-                            مراجعة الإجابات
-                        </h4>
-                        <button onclick="generateNewQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm">
-                            <i class="fas fa-plus ml-1"></i>
-                            اختبار جديد
-                        </button>
-                    </div>
-            `;
-
-            currentQuiz.questions.forEach((question, index) => {
-                const userAnswer = userAnswers[index];
-                const correctAnswer = question.correct;
-                const isCorrect = userAnswer === correctAnswer;
-                const wasAnswered = userAnswer !== -1;
-
-                // Ensure options are safe
-                const correctOptionText = question.options[correctAnswer] || 'غير متاح';
-                const userAnswerText = wasAnswered ? (question.options[userAnswer] || 'غير متاح') : 'لم تجب على هذا السؤال';
-
+            let reviewHtml = `<div class="bg-white rounded-lg p-6">
+                <h4 class="text-lg font-semibold mb-6">مراجعة الإجابات</h4>`;
+            
+            currentQuiz.questions.forEach((q, i) => {
+                const userAnswer = userAnswers[i];
+                const isCorrect = userAnswer === q.correct;
                 reviewHtml += `
-                    <div class="mb-6 p-4 border rounded-lg ${
-                        !wasAnswered ? 'border-gray-300 bg-gray-50' :
-                        isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
-                    }">
-                        <div class="flex items-center mb-3">
-                            <i class="fas ${
-                                !wasAnswered ? 'fa-question-circle text-gray-500' :
-                                isCorrect ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'
-                            } ml-2"></i>
-                            <span class="font-semibold">السؤال ${index + 1}</span>
-                        </div>
-                        <p class="font-medium mb-3">${question.question}</p>
+                    <div class="mb-6 p-4 border rounded-lg ${isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+                        <p class="font-medium mb-3"><b>السؤال ${i + 1}:</b> ${q.question}</p>
                         <div class="text-sm space-y-2 border-t pt-3">
-                            <div class="flex items-start">
-                                <span class="text-gray-600 ml-2 min-w-[70px]">إجابتك:</span>
-                                <span class="${wasAnswered && isCorrect ? 'text-green-600 font-medium' : wasAnswered ? 'text-red-600 line-through' : 'text-gray-500 italic'}">${userAnswerText}</span>
-                            </div>
-                            
-                            ${!isCorrect || !wasAnswered ? `
-                                <div class="flex items-start">
-                                    <span class="text-gray-600 ml-2 min-w-[70px]">الصحيحة:</span>
-                                    <span class="text-green-600 font-medium">${correctOptionText}</span>
-                                </div>
-                            ` : ''}
+                            <p class="${isCorrect ? 'text-green-700' : 'text-red-700 line-through'}"><b>إجابتك:</b> ${userAnswer > -1 ? q.options[userAnswer] : 'لم تجب'}</p>
+                            ${!isCorrect ? `<p class="text-green-700"><b>الصحيحة:</b> ${q.options[q.correct]}</p>` : ''}
                         </div>
-                    </div>
-                `;
+                    </div>`;
             });
-
-            reviewHtml += `
-                </div>
-            `;
-
+            reviewHtml += `</div>`;
             document.getElementById('quizContainer').innerHTML = reviewHtml;
-            document.getElementById('quizContainer').scrollIntoView({ behavior: 'smooth' });
         }
 
-        // Generate new quiz
         function generateNewQuiz() {
-            document.getElementById('quizResults').classList.add('hidden');
             document.getElementById('quizContainer').classList.add('hidden');
-            
-            // Reset quiz state
             currentQuiz = null;
-            currentQuestionIndex = 0;
-            userAnswers = [];
-            
-            // Scroll to quiz generation section
-            document.querySelector('.bg-gradient-to-r.from-green-500').scrollIntoView({ 
-                behavior: 'smooth' 
-            });
+            document.querySelector('#quizLectureSelect').scrollIntoView({ behavior: 'smooth' });
         }
-
-        // Add message to chat
+        
+        // --- Chat UI Helpers ---
         function addMessage(message, sender) {
             const chatArea = document.getElementById('chatArea');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message`;
-            
-            // Create inner content with correct class
-            const innerDiv = document.createElement('div');
-            innerDiv.className = `${sender}-message chat-message`;
-            
-            // Apply line breaks for formatting
-            innerDiv.innerHTML = `<p>${message.replace(/\n/g, '<br>')}</p>`;
-            
-            messageDiv.appendChild(innerDiv);
-            chatArea.appendChild(messageDiv);
-            
-            // Remove any old typing indicators if they somehow persisted
-            document.querySelectorAll('.typing-indicator-wrapper').forEach(el => el.remove());
-            
+            // Sanitize message to prevent HTML injection
+            const safeMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>');
+
+            chatArea.insertAdjacentHTML('beforeend', `
+                <div class="message flex ${sender === 'user' ? 'justify-end' : 'justify-start'}">
+                    <div class="${sender}-message chat-message">
+                        <p>${safeMessage}</p>
+                    </div>
+                </div>`);
             scrollToBottom();
         }
 
-        // Scroll to bottom of chat area
+        function showTypingIndicator() {
+            hideTypingIndicator(); // Remove any old ones
+            document.getElementById('chatArea').insertAdjacentHTML('beforeend', `
+                <div class="message flex justify-start typing-indicator-wrapper">
+                    <div class="ai-message">
+                        <div class="flex items-center">
+                            <span class="typing-indicator"></span><span class="typing-indicator"></span><span class="typing-indicator"></span>
+                            <span class="mr-2 text-sm">المساعد يكتب...</span>
+                        </div>
+                    </div>
+                </div>`);
+            scrollToBottom();
+        }
+
+        function hideTypingIndicator() {
+            document.querySelector('.typing-indicator-wrapper')?.remove();
+        }
+
         function scrollToBottom() {
             const chatArea = document.getElementById('chatArea');
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // Show notification
         function showNotification(message, type = 'info') {
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
             const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 p-4 rounded-lg text-white font-medium z-50 transition-all duration-300 transform translate-x-0 ${
-                type === 'success' ? 'bg-green-500' : 
-                type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-            }`;
+            notification.className = `fixed top-5 right-5 p-4 rounded-lg text-white font-medium z-50 transition-transform duration-300 translate-x-full ${colors[type]}`;
             notification.textContent = message;
             document.body.appendChild(notification);
             
-            // Animation for removal
+            setTimeout(() => notification.classList.remove('translate-x-full'), 100);
             setTimeout(() => {
-                notification.classList.add('translate-x-full', 'opacity-0');
-                notification.classList.remove('translate-x-0');
-            }, 2500);
-            
-            setTimeout(() => notification.remove(), 3000);
+                notification.classList.add('translate-x-full');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
         }
 
-        // Logout function
         async function logout() {
             try {
-                if (window.supabaseAuth) {
-                    await window.supabaseAuth.signOut();
-                }
+                if (window.supabaseAuth) await window.supabaseAuth.signOut();
+            } finally {
                 localStorage.clear();
-                window.location.href = 'auth.html';
-            } catch (error) {
-                console.error('❌ Logout error:', error);
                 window.location.href = 'auth.html';
             }
         }
