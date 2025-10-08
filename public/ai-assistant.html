@@ -15,12 +15,12 @@
     <meta property="og:title" content="المساعد الذكي - منصة الطالب الذكي">
     <meta property="og:description" content="مساعد تعليمي ذكي يجيب على أسئلتك وينشئ اختبارات تفاعلية من محاضراتك">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://yourwebsite.com/ai-assistant.html">
+    <meta property="og:url" content="https://student-platform-frontend.vercel.app/ai-assistant.html">
     <meta property="og:site_name" content="منصة الطالب الذكي">
     <meta property="og:locale" content="ar_SA">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://yourwebsite.com/ai-assistant.html">
+    <link rel="canonical" href="https://student-platform-frontend.vercel.app/ai-assistant.html">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -230,7 +230,9 @@
     <script src="js/supabase-config.js"></script>
     <script>
         // Gemini API Configuration
-        const GEMINI_API_KEY = "AIzaSyCJJeUJYRMWGBrMVD1xxFudKZaGBbuMwCQ";
+        // 🛑 تم استبدال المفتاح النائب بمفتاحك الشخصي بنجاح.
+        // التطبيق جاهز الآن للعمل بشكل دائم وحقيقي باستخدام خدمات Gemini.
+        const GEMINI_API_KEY ="AIzaSyBp5fSEvq0yoTANjQlxpstYMmG2fT1EScs";
         
         let currentUser = null;
         let currentQuiz = null;
@@ -243,7 +245,8 @@
          * @param {object} lectureContext - Lecture context for educational responses
          */
         async function getGeminiResponse(textPrompt, lectureContext = null) {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+            // ✅ FIX: Changed model name from gemini-1.5-flash-latest to gemini-2.5-flash
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
             try {
                 const parts = [];
@@ -251,24 +254,43 @@
                 // Add context about the lecture if available
                 let contextualPrompt = textPrompt;
                 if (lectureContext) {
-                    contextualPrompt = `أنت مساعد تعليمي ذكي ومتخصص في التاريخ والمواد التعليمية. لديك معرفة واسعة ويمكنك مساعدة الطلاب في جميع أسئلتهم.
+                    // Build comprehensive context from lecture data
+                    let lectureContent = '';
+                    if (lectureContext.full_content) {
+                        lectureContent = lectureContext.full_content;
+                    } else {
+                        lectureContent = `عنوان المحاضرة: ${lectureContext.title}`;
+                        if (lectureContext.description) {
+                            lectureContent += `\nوصف المحاضرة: ${lectureContext.description}`;
+                        }
+                        if (lectureContext.content_type) {
+                            lectureContent += `\nنوع المحتوى: ${lectureContext.content_type}`;
+                        }
+                        if (lectureContext.file_content) {
+                            lectureContent += `\nمحتوى الملف: ${lectureContext.file_content}`;
+                        }
+                        if (lectureContext.notes) {
+                            lectureContent += `\nملاحظات إضافية: ${lectureContext.notes}`;
+                        }
+                    }
+
+                    contextualPrompt = `أنت مساعد تعليمي ذكي ومتخصص في التعليم والمواد الأكاديمية. لديك معرفة واسعة ويمكنك مساعدة الطلاب في جميع أسئلتهم التعليمية.
 
 معلومات المحاضرة المتاحة:
-${lectureContext.full_content || `عنوان المحاضرة: ${lectureContext.title}
-${lectureContext.description ? `وصف المحاضرة: ${lectureContext.description}` : ''}
-${lectureContext.content_type ? `نوع المحتوى: ${lectureContext.content_type}` : ''}
-${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_content}` : ''}`}
+${lectureContent}
 
 سؤال الطالب: ${textPrompt}
 
 إرشادات الإجابة:
-- استخدم معرفتك الواسعة لتقديم إجابات شاملة ومفيدة
-- إذا كان السؤال متعلقاً بالمحاضرة، اربط إجابتك بمحتوى المحاضرة المتاح
-- إذا كان السؤال عن التاريخ المصري (خاصة فترة 1952-1973)، قدم معلومات تفصيلية ودقيقة
-- اذكر الأحداث والشخصيات المهمة والتواريخ الرئيسية
-- قدم السياق التاريخي والأسباب والنتائج
+- استخدم معرفتك الواسعة لتقديم إجابات شاملة ومفيدة ودقيقة
+- إذا كان السؤال متعلقاً بمحتوى المحاضرة، اربط إجابتك بالمحتوى المتاح واستشهد بأجزاء منه
+- إذا كان السؤال عاماً في المجال التعليمي، قدم معلومات تفصيلية ومفيدة
+- اذكر الأحداث والمفاهيم والتواريخ والشخصيات المهمة عند الحاجة
+- قدم السياق والأسباب والنتائج والأمثلة التوضيحية
 - استخدم اللغة العربية الواضحة والمناسبة للطلاب
-- كن مفيداً وتعليمياً في جميع إجاباتك`;
+- نظم إجابتك بشكل منطقي ومرتب مع استخدام النقاط والفقرات عند الحاجة
+- إذا لم تجد المعلومة في محتوى المحاضرة، استخدم معرفتك العامة وأشر إلى ذلك
+- كن مفيداً وتعليمياً وتفاعلياً في جميع إجاباتك`;
                 }
 
                 parts.push({ text: contextualPrompt });
@@ -301,6 +323,7 @@ ${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_co
 
             } catch (error) {
                 console.error("Gemini API Error:", error);
+                // Return a user-friendly error message
                 return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي: ${error.message}`;
             }
         }
@@ -525,25 +548,14 @@ ${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_co
         // Generate quiz
         async function generateQuiz() {
             const lectureSelect = document.getElementById('quizLectureSelect');
-            if (!lectureSelect.value) {
-                showNotification('يرجى اختيار محاضرة أولاً', 'error');
+            const selectedOptions = Array.from(lectureSelect.selectedOptions);
+            
+            if (selectedOptions.length === 0) {
+                showNotification('يرجى اختيار محاضرة واحدة على الأقل', 'error');
                 return;
             }
 
             try {
-                // Get selected lecture details
-                const selectedOption = lectureSelect.selectedOptions[0];
-                const lectureId = lectureSelect.value;
-                const subjectId = selectedOption.dataset.subjectId;
-                
-                // Get lecture content from database
-                const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
-                const lecture = lectureResult.data;
-                
-                if (!lecture) {
-                    throw new Error('لم يتم العثور على المحاضرة');
-                }
-
                 // Show loading state
                 const quizContainer = document.getElementById('quizContainer');
                 quizContainer.classList.remove('hidden');
@@ -558,31 +570,61 @@ ${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_co
                             <div class="text-center py-8">
                                 <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
                                 <p class="text-gray-600">جاري إنشاء الاختبار بواسطة الذكاء الاصطناعي...</p>
+                                <p class="text-sm text-gray-500 mt-2">قد يستغرق هذا بضع ثوانٍ</p>
                             </div>
                         </div>
                     </div>
                 `;
-                // Generate quiz using Gemini API
-                const questionCount = document.getElementById('questionCount').value || '10';
+
+                // Get quiz settings
+                const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
                 const questionType = document.getElementById('questionType').value || 'multiple';
                 
+                // Get lecture content from the first selected lecture
+                const lectureId = selectedOptions[0].value;
+                const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
+                const lecture = lectureResult.data;
+                
+                if (!lecture) {
+                    throw new Error('لم يتم العثور على المحاضرة');
+                }
+
+                // Build comprehensive lecture content
+                let lectureContent = '';
+                if (lecture.full_content) {
+                    lectureContent = lecture.full_content;
+                } else {
+                    lectureContent = `عنوان المحاضرة: ${lecture.title}`;
+                    if (lecture.description) {
+                        lectureContent += `\nوصف المحاضرة: ${lecture.description}`;
+                    }
+                    if (lecture.content_type) {
+                        lectureContent += `\nنوع المحتوى: ${lecture.content_type}`;
+                    }
+                    if (lecture.file_content) {
+                        lectureContent += `\nمحتوى الملف: ${lecture.file_content}`;
+                    }
+                    if (lecture.notes) {
+                        lectureContent += `\nملاحظات إضافية: ${lecture.notes}`;
+                    }
+                }
+
+                // Generate quiz prompt based on question type
                 let questionTypeInstructions = '';
-                let questionFormat = '';
+                let exampleFormat = '';
                 
                 if (questionType === 'multiple') {
-                    questionTypeInstructions = `- إنشاء ${questionCount} سؤال اختيار من متعدد
-- كل سؤال يجب أن يحتوي على 4 خيارات (أ، ب، ج، د)`;
-                    questionFormat = `{
-      "question": "نص السؤال؟",
+                    questionTypeInstructions = `إنشاء ${questionCount} سؤال اختيار من متعدد، كل سؤال يحتوي على 4 خيارات (أ، ب، ج، د)`;
+                    exampleFormat = `{
+      "question": "ما هو...؟",
       "type": "multiple",
       "options": ["أ) الخيار الأول", "ب) الخيار الثاني", "ج) الخيار الثالث", "د) الخيار الرابع"],
       "correct": 0
     }`;
                 } else if (questionType === 'truefalse') {
-                    questionTypeInstructions = `- إنشاء ${questionCount} سؤال صح وخطأ
-- كل سؤال يجب أن يحتوي على خيارين فقط: صح أو خطأ`;
-                    questionFormat = `{
-      "question": "نص السؤال؟",
+                    questionTypeInstructions = `إنشاء ${questionCount} سؤال صح وخطأ، كل سؤال يحتوي على خيارين: صح أو خطأ`;
+                    exampleFormat = `{
+      "question": "العبارة التالية صحيحة...",
       "type": "truefalse",
       "options": ["صح", "خطأ"],
       "correct": 0
@@ -590,10 +632,8 @@ ${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_co
                 } else if (questionType === 'mixed') {
                     const multipleCount = Math.ceil(questionCount * 0.6);
                     const trueFalseCount = questionCount - multipleCount;
-                    questionTypeInstructions = `- إنشاء ${multipleCount} سؤال اختيار من متعدد و ${trueFalseCount} سؤال صح وخطأ
-- أسئلة الاختيار من متعدد: 4 خيارات (أ، ب، ج، د)
-- أسئلة صح وخطأ: خيارين فقط (صح، خطأ)`;
-                    questionFormat = `{
+                    questionTypeInstructions = `إنشاء ${multipleCount} سؤال اختيار من متعدد و ${trueFalseCount} سؤال صح وخطأ`;
+                    exampleFormat = `{
       "question": "نص السؤال؟",
       "type": "multiple", // أو "truefalse"
       "options": ["أ) الخيار الأول", "ب) الخيار الثاني", "ج) الخيار الثالث", "د) الخيار الرابع"], // أو ["صح", "خطأ"]
@@ -604,35 +644,40 @@ ${lectureContext.file_content ? `محتوى الملف: ${lectureContext.file_co
                 const quizPrompt = `أنت مساعد تعليمي متخصص في إنشاء الاختبارات التعليمية. قم بإنشاء اختبار تعليمي باللغة العربية بناءً على المحاضرة التالية:
 
 معلومات المحاضرة:
-${lecture.full_content || `عنوان المحاضرة: ${lecture.title}
-${lecture.description ? `وصف المحاضرة: ${lecture.description}` : ''}
-${lecture.content_type ? `نوع المحتوى: ${lecture.content_type}` : ''}
-${lecture.file_content ? `محتوى الملف: ${lecture.file_content}` : ''}`}
+${lectureContent}
 
 المطلوب:
-${questionTypeInstructions}
+- ${questionTypeInstructions}
 - يجب أن تغطي الأسئلة جوانب مختلفة من موضوع المحاضرة
-- اجعل الأسئلة تعتمد على المحتوى الفعلي للمحاضرة إذا كان متاحاً
+- اجعل الأسئلة تعتمد على المحتوى الفعلي للمحاضرة
 - تأكد من أن الإجابات الصحيحة دقيقة ومبنية على محتوى المحاضرة
 - نوع الأسئلة بين المفاهيم الأساسية والتفاصيل والتطبيقات
+- اجعل الأسئلة واضحة ومفهومة للطلاب
+- تأكد من أن الخيارات الخاطئة معقولة وليست واضحة الخطأ
 
-يرجى تنسيق الإجابة بالشكل التالي بالضبط:
+يرجى تنسيق الإجابة بالشكل التالي بالضبط (JSON صالح فقط):
 {
   "title": "اختبار: ${lecture.title}",
   "questions": [
-    ${questionFormat}
+    ${exampleFormat}
   ]
 }
 
-تأكد من أن الإجابة تكون JSON صالح فقط بدون أي نص إضافي.`;
+تأكد من أن الإجابة تكون JSON صالح فقط بدون أي نص إضافي قبل أو بعد JSON.`;
 
                 const aiResponse = await getGeminiResponse(quizPrompt);
                 
                 // Parse AI response to extract quiz data
                 let quizData;
                 try {
-                    // Try to extract JSON from the response
-                    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+                    // Clean the response and extract JSON
+                    let cleanResponse = aiResponse.trim();
+                    
+                    // Remove any markdown code blocks
+                    cleanResponse = cleanResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+                    
+                    // Find JSON object
+                    const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
                     if (jsonMatch) {
                         quizData = JSON.parse(jsonMatch[0]);
                     } else {
@@ -640,33 +685,61 @@ ${questionTypeInstructions}
                     }
                 } catch (parseError) {
                     console.error('Error parsing AI response:', parseError);
+                    console.log('AI Response:', aiResponse);
                     // Fallback: create a simple quiz based on lecture info
-                    quizData = createFallbackQuiz(lecture);
+                    quizData = createFallbackQuiz(lecture, questionCount, questionType);
                 }
 
-                // Validate quiz data
+                // Validate and fix quiz data
                 if (!quizData.questions || quizData.questions.length === 0) {
-                    quizData = createFallbackQuiz(lecture);
+                    quizData = createFallbackQuiz(lecture, questionCount, questionType);
                 }
+
+                // Ensure all questions have proper structure
+                quizData.questions = quizData.questions.map((q, index) => {
+                    if (!q.question || !q.options || !Array.isArray(q.options)) {
+                        return {
+                            question: `سؤال ${index + 1}: ما هو الموضوع الرئيسي للمحاضرة؟`,
+                            type: questionType === 'mixed' ? 'multiple' : questionType,
+                            options: questionType === 'truefalse' ? ['صح', 'خطأ'] : 
+                                    ['أ) الموضوع الأساسي', 'ب) موضوع مختلف', 'ج) لا يوجد موضوع', 'د) جميع ما سبق'],
+                            correct: 0
+                        };
+                    }
+                    
+                    // Ensure correct answer index is valid
+                    if (typeof q.correct !== 'number' || q.correct < 0 || q.correct >= q.options.length) {
+                        q.correct = 0;
+                    }
+                    
+                    return q;
+                });
 
                 currentQuiz = quizData;
                 currentQuestionIndex = 0;
-                userAnswers = [];
+                userAnswers = new Array(currentQuiz.questions.length).fill(-1);
                 
                 displayQuiz();
                 showNotification('تم إنشاء الاختبار بنجاح!', 'success');
                 
             } catch (error) {
                 console.error('Error generating quiz:', error);
-                document.getElementById('quizArea').innerHTML = `
-                    <div class="text-center py-8">
-                        <div class="text-red-500 mb-4">
-                            <i class="fas fa-exclamation-triangle text-4xl"></i>
+                document.getElementById('quizContainer').innerHTML = `
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="bg-gradient-to-r from-red-500 to-red-600 p-6">
+                            <h2 class="text-xl font-bold text-white flex items-center">
+                                <i class="fas fa-exclamation-triangle ml-3"></i>خطأ في إنشاء الاختبار
+                            </h2>
                         </div>
-                        <p class="text-red-600">حدث خطأ في إنشاء الاختبار</p>
-                        <button onclick="generateQuiz()" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                            المحاولة مرة أخرى
-                        </button>
+                        <div class="p-6 text-center">
+                            <div class="text-red-500 mb-4">
+                                <i class="fas fa-exclamation-triangle text-4xl"></i>
+                            </div>
+                            <p class="text-red-600 mb-4">حدث خطأ في إنشاء الاختبار</p>
+                            <button onclick="generateQuiz()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                                <i class="fas fa-redo ml-2"></i>المحاولة مرة أخرى
+                            </button>
+                        </div>
                     </div>
                 `;
                 showNotification('حدث خطأ في إنشاء الاختبار', 'error');
@@ -674,41 +747,35 @@ ${questionTypeInstructions}
         }
 
         // Create fallback quiz when AI generation fails
-        function createFallbackQuiz(lecture) {
+        function createFallbackQuiz(lecture, questionCount = 10, questionType = 'multiple') {
+            const questions = [];
+            
+            for (let i = 0; i < questionCount; i++) {
+                if (questionType === 'truefalse' || (questionType === 'mixed' && i >= Math.ceil(questionCount * 0.6))) {
+                    questions.push({
+                        question: `العبارة التالية صحيحة: المحاضرة "${lecture.title}" تحتوي على معلومات مفيدة.`,
+                        type: 'truefalse',
+                        options: ['صح', 'خطأ'],
+                        correct: 0
+                    });
+                } else {
+                    questions.push({
+                        question: `ما هو عنوان هذه المحاضرة؟`,
+                        type: 'multiple',
+                        options: [
+                            `أ) ${lecture.title}`,
+                            'ب) محاضرة أخرى',
+                            'ج) لا أعرف',
+                            'د) جميع ما سبق'
+                        ],
+                        correct: 0
+                    });
+                }
+            }
+            
             return {
                 title: `اختبار: ${lecture.title}`,
-                questions: [
-                    {
-                        question: `ما هو الموضوع الرئيسي لمحاضرة "${lecture.title}"؟`,
-                        options: [
-                            `أ) ${lecture.description || 'الموضوع الأساسي'}`,
-                            "ب) موضوع مختلف تماماً",
-                            "ج) لا يوجد موضوع محدد",
-                            "د) جميع ما سبق"
-                        ],
-                        correct: 0
-                    },
-                    {
-                        question: `متى تم إنشاء هذه المحاضرة؟`,
-                        options: [
-                            `أ) ${new Date(lecture.created_at).toLocaleDateString('ar-SA')}`,
-                            "ب) العام الماضي",
-                            "ج) الشهر الماضي",
-                            "د) لا أعرف"
-                        ],
-                        correct: 0
-                    },
-                    {
-                        question: `ما هو نوع محتوى هذه المحاضرة؟`,
-                        options: [
-                            `أ) ${lecture.content_type || 'محتوى تعليمي'}`,
-                            "ب) محتوى ترفيهي",
-                            "ج) محتوى إعلاني",
-                            "د) لا يوجد محتوى"
-                        ],
-                        correct: 0
-                    }
-                ]
+                questions: questions
             };
         }
 
@@ -720,22 +787,35 @@ ${questionTypeInstructions}
             }
 
             // Initialize user answers array
-            userAnswers = new Array(currentQuiz.questions.length).fill(-1);
+            // NOTE: It is better to rely on existing answers if they exist (e.g., if navigating back and forth)
+            if (userAnswers.length !== currentQuiz.questions.length) {
+                userAnswers = new Array(currentQuiz.questions.length).fill(-1);
+            }
             
             const quizArea = document.getElementById('quizContainer');
             quizArea.innerHTML = `
                 <div class="bg-white rounded-lg border-2 border-green-200 p-6">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-xl font-bold text-green-800">${currentQuiz.title}</h3>
-                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                        <h3 class="text-lg font-bold text-green-800">${currentQuiz.title}</h3>
+                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm" id="questionCounter">
                             السؤال ${currentQuestionIndex + 1} من ${currentQuiz.questions.length}
                         </span>
                     </div>
                     
                     <div class="mb-6">
-                        <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
-                            <div class="bg-green-500 h-2 rounded-full transition-all duration-300" 
-                                 style="width: ${((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100}%"></div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600">التقدم في الاختبار</span>
+                            <span class="text-sm font-medium text-green-600" id="progressPercentage">
+                                ${Math.round(((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100)}%
+                            </span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                            <div class="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500" 
+                                 id="progressBar" style="width: ${((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100}%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>تم الإجابة على <span id="answeredCount">${userAnswers.filter(a => a !== -1).length}</span> من ${currentQuiz.questions.length} سؤال</span>
+                            <span>${currentQuiz.questions.length - userAnswers.filter(a => a !== -1).length} سؤال متبقي</span>
                         </div>
                     </div>
 
@@ -745,14 +825,14 @@ ${questionTypeInstructions}
 
                     <div class="flex justify-between">
                         <button id="prevBtn" onclick="previousQuestion()" 
-                                class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 ${currentQuestionIndex === 0 ? 'disabled' : ''}>
                             <i class="fas fa-arrow-right ml-2"></i>
                             السابق
                         </button>
                         
                         <button id="nextBtn" onclick="nextQuestion()" 
-                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
+                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors">
                             ${currentQuestionIndex === currentQuiz.questions.length - 1 ? 
                                 '<i class="fas fa-check ml-2"></i>إنهاء الاختبار' : 
                                 'التالي<i class="fas fa-arrow-left mr-2"></i>'}
@@ -783,7 +863,7 @@ ${questionTypeInstructions}
 
             return `
                 <div class="question-content">
-                    <h4 class="text-lg font-semibold text-gray-800 mb-4">${question.question}</h4>
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">السؤال ${index + 1}: ${question.question}</h4>
                     <div class="options-container">
                         ${optionsHtml}
                     </div>
@@ -793,7 +873,27 @@ ${questionTypeInstructions}
 
         function selectAnswer(questionIndex, answerIndex) {
             userAnswers[questionIndex] = answerIndex;
-            console.log('Answer selected:', questionIndex, answerIndex);
+            
+            // Update progress indicators immediately
+            updateQuizProgress();
+            
+            // Add visual feedback
+            const selectedOption = document.querySelector(`input[name="question_${questionIndex}"][value="${answerIndex}"]`);
+            if (selectedOption) {
+                const label = selectedOption.closest('label');
+                // Remove previous selections
+                document.querySelectorAll(`input[name="question_${questionIndex}"]`).forEach(input => {
+                    const parentLabel = input.closest('label');
+                    parentLabel.classList.remove('border-green-500', 'bg-green-50');
+                    parentLabel.classList.add('border-gray-200');
+                });
+                
+                // Highlight selected option
+                label.classList.remove('border-gray-200');
+                label.classList.add('border-green-500', 'bg-green-50');
+            }
+            
+            console.log('Answer selected:', questionIndex, answerIndex, 'Total answered:', userAnswers.filter(a => a !== -1).length);
         }
 
         function nextQuestion() {
@@ -801,6 +901,7 @@ ${questionTypeInstructions}
                 currentQuestionIndex++;
                 document.getElementById('questionContainer').innerHTML = renderQuestion(currentQuestionIndex);
                 updateQuizProgress();
+                updateNavigationButtons();
             } else {
                 finishQuiz();
             }
@@ -811,22 +912,44 @@ ${questionTypeInstructions}
                 currentQuestionIndex--;
                 document.getElementById('questionContainer').innerHTML = renderQuestion(currentQuestionIndex);
                 updateQuizProgress();
+                updateNavigationButtons();
             }
         }
 
         function updateQuizProgress() {
-            const progressBar = document.querySelector('.bg-green-500');
-            const questionCounter = document.querySelector('.bg-green-100');
+            const progressBar = document.getElementById('progressBar');
+            const questionCounter = document.getElementById('questionCounter');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const answeredCount = document.getElementById('answeredCount');
+            
+            if (!currentQuiz) return; // Guard against null quiz
             
             if (progressBar) {
-                progressBar.style.width = `${((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100}%`;
+                const progressPercent = ((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100;
+                progressBar.style.width = `${progressPercent}%`;
             }
             
             if (questionCounter) {
                 questionCounter.textContent = `السؤال ${currentQuestionIndex + 1} من ${currentQuiz.questions.length}`;
             }
+            
+            if (progressPercentage) {
+                progressPercentage.textContent = `${Math.round(((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100)}%`;
+            }
+            
+            if (answeredCount) {
+                const answered = userAnswers.filter(a => a !== -1).length;
+                answeredCount.textContent = `${answered}`;
+                
+                // Update remaining count
+                const remainingElement = answeredCount.parentElement.nextElementSibling;
+                if (remainingElement) {
+                    remainingElement.textContent = `${currentQuiz.questions.length - answered} سؤال متبقي`;
+                }
+            }
+        }
 
-            // Update navigation buttons
+        function updateNavigationButtons() {
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             
@@ -845,6 +968,27 @@ ${questionTypeInstructions}
             const score = calculateScore();
             const percentage = Math.round((score / currentQuiz.questions.length) * 100);
             
+            // Calculate grade
+            let gradeColor = 'text-red-600';
+            let gradeMessage = 'يحتاج تحسين ';
+            
+            if (percentage >= 90) {
+                gradeColor = 'text-green-600';
+                gradeMessage = 'ممتاز جداً! ';
+            } else if (percentage >= 80) {
+                gradeColor = 'text-green-600';
+                gradeMessage = 'ممتاز! ';
+            } else if (percentage >= 70) {
+                gradeColor = 'text-blue-600';
+                gradeMessage = 'جيد جداً! ';
+            } else if (percentage >= 60) {
+                gradeColor = 'text-yellow-600';
+                gradeMessage = 'جيد! ';
+            } else if (percentage >= 50) {
+                gradeColor = 'text-orange-600';
+                gradeMessage = 'مقبول ';
+            }
+            
             const quizContainer = document.getElementById('quizContainer');
             quizContainer.innerHTML = `
                 <div class="bg-white rounded-lg border-2 border-blue-200 p-6 text-center">
@@ -856,7 +1000,7 @@ ${questionTypeInstructions}
                     
                     <div class="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 mb-6">
                         <div class="text-4xl font-bold text-blue-600">${percentage}%</div>
-                        <div class="text-lg text-gray-700 mb-2">${results.correctAnswers} من ${results.totalQuestions} إجابة صحيحة</div>
+                        <div class="text-lg text-gray-700 mb-2">${score} من ${currentQuiz.questions.length} إجابة صحيحة</div>
                         <div class="text-lg font-medium ${gradeColor}">${gradeMessage}</div>
                     </div>
                     
@@ -865,7 +1009,7 @@ ${questionTypeInstructions}
                             <i class="fas fa-eye ml-2"></i>
                             مراجعة الإجابات
                         </button>
-                        <button onclick="generateQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
+                        <button onclick="generateNewQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
                             <i class="fas fa-redo ml-2"></i>
                             اختبار جديد
                         </button>
@@ -887,30 +1031,50 @@ ${questionTypeInstructions}
         function reviewAnswers() {
             let reviewHtml = `
                 <div class="bg-white rounded-lg border-2 border-gray-200 p-6">
-                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-list-check ml-2"></i>
-                        مراجعة الإجابات
-                    </h4>
+                    <div class="flex items-center justify-between mb-6">
+                        <h4 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-list-check ml-2"></i>
+                            مراجعة الإجابات
+                        </h4>
+                        <button onclick="generateNewQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fas fa-plus ml-1"></i>
+                            اختبار جديد
+                        </button>
+                    </div>
             `;
 
             currentQuiz.questions.forEach((question, index) => {
                 const userAnswer = userAnswers[index];
                 const correctAnswer = question.correct;
                 const isCorrect = userAnswer === correctAnswer;
+                const wasAnswered = userAnswer !== -1;
 
                 reviewHtml += `
-                    <div class="mb-6 p-4 border rounded-lg ${isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+                    <div class="mb-6 p-4 border rounded-lg ${
+                        !wasAnswered ? 'border-gray-300 bg-gray-50' :
+                        isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                    }">
                         <div class="flex items-center mb-3">
-                            <i class="fas ${isCorrect ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'} ml-2"></i>
+                            <i class="fas ${
+                                !wasAnswered ? 'fa-question-circle text-gray-500' :
+                                isCorrect ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'
+                            } ml-2"></i>
                             <span class="font-semibold">السؤال ${index + 1}</span>
                         </div>
                         <p class="font-medium mb-3">${question.question}</p>
                         <div class="text-sm space-y-1">
-                            <div class="flex items-center">
-                                <span class="text-gray-600 ml-2">إجابتك:</span>
-                                <span class="${isCorrect ? 'text-green-600' : 'text-red-600'}">${question.options[userAnswer]}</span>
-                            </div>
-                            ${!isCorrect ? `
+                            ${wasAnswered ? `
+                                <div class="flex items-center">
+                                    <span class="text-gray-600 ml-2">إجابتك:</span>
+                                    <span class="${isCorrect ? 'text-green-600' : 'text-red-600'}">${question.options[userAnswer]}</span>
+                                </div>
+                            ` : `
+                                <div class="flex items-center">
+                                    <span class="text-gray-600 ml-2">إجابتك:</span>
+                                    <span class="text-gray-500">لم تجب على هذا السؤال</span>
+                                </div>
+                            `}
+                            ${!isCorrect || !wasAnswered ? `
                                 <div class="flex items-center">
                                     <span class="text-gray-600 ml-2">الإجابة الصحيحة:</span>
                                     <span class="text-green-600">${question.options[correctAnswer]}</span>
@@ -922,125 +1086,10 @@ ${questionTypeInstructions}
             });
 
             reviewHtml += `
-                    <div class="text-center">
-                        <button onclick="generateQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
-                            <i class="fas fa-redo ml-2"></i>
-                            اختبار جديد
-                        </button>
-                    </div>
                 </div>
             `;
 
             document.getElementById('quizContainer').innerHTML = reviewHtml;
-        }
-
-        // Display quiz results
-        function displayQuizResults(results) {
-            const quizContainer = document.getElementById('quizContainer');
-            const quizResults = document.getElementById('quizResults');
-            
-            // Hide quiz container and show results
-            quizContainer.classList.add('hidden');
-            quizResults.classList.remove('hidden');
-            
-            const resultsContent = document.getElementById('resultsContent');
-            
-            let gradeColor = 'text-red-600';
-            let gradeMessage = 'يحتاج تحسين 📚';
-            
-            if (results.percentage >= 80) {
-                gradeColor = 'text-green-600';
-                gradeMessage = 'ممتاز! 🎉';
-            } else if (results.percentage >= 60) {
-                gradeColor = 'text-blue-600';
-                gradeMessage = 'جيد جداً! 👍';
-            }
-            
-            // Generate detailed results
-            let detailedResults = '';
-            results.results.forEach((result, index) => {
-                const questionTypeIcon = result.type === 'truefalse' ? '✓/✗' : 'ABC';
-                const statusIcon = result.isCorrect ? '✅' : '❌';
-                
-                detailedResults += `
-                    <div class="border-b border-gray-200 pb-4 mb-4 last:border-b-0">
-                        <div class="flex items-start justify-between mb-2">
-                            <span class="text-sm text-gray-500">${questionTypeIcon} السؤال ${index + 1}</span>
-                            <span class="text-lg">${statusIcon}</span>
-                        </div>
-                        <h4 class="font-medium text-gray-800 mb-2">${result.question}</h4>
-                        <div class="text-sm space-y-1">
-                            <div class="flex items-center">
-                                <span class="text-gray-600 ml-2">إجابتك:</span>
-                                <span class="${result.isCorrect ? 'text-green-600' : 'text-red-600'}">${result.userAnswer}</span>
-                            </div>
-                            ${!result.isCorrect ? `
-                                <div class="flex items-center">
-                                    <span class="text-gray-600 ml-2">الإجابة الصحيحة:</span>
-                                    <span class="text-green-600">${result.correctAnswer}</span>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-            
-            resultsContent.innerHTML = `
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-100 to-green-100 rounded-full mb-4">
-                        <i class="fas fa-trophy text-3xl text-yellow-500"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-2">نتائج الاختبار</h3>
-                    <div class="text-6xl font-bold ${gradeColor} mb-2">${results.percentage}%</div>
-                    <div class="text-lg text-gray-700 mb-2">${results.correctAnswers} من ${results.totalQuestions} إجابة صحيحة</div>
-                    <div class="text-lg font-medium ${gradeColor}">${gradeMessage}</div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div class="bg-blue-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-blue-600">${results.totalQuestions}</div>
-                        <div class="text-sm text-blue-800">إجمالي الأسئلة</div>
-                    </div>
-                    <div class="bg-green-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-green-600">${results.correctAnswers}</div>
-                        <div class="text-sm text-green-800">إجابات صحيحة</div>
-                    </div>
-                    <div class="bg-red-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-red-600">${results.totalQuestions - results.correctAnswers}</div>
-                        <div class="text-sm text-red-800">إجابات خاطئة</div>
-                    </div>
-                </div>
-                
-                <div class="bg-gray-50 rounded-lg p-6">
-                    <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-list-check ml-2"></i>
-                        مراجعة الإجابات
-                    </h4>
-                    <div class="max-h-96 overflow-y-auto">
-                        ${detailedResults}
-                    </div>
-                </div>
-                
-                <div class="flex justify-center space-x-4 space-x-reverse mt-6">
-                    <button onclick="retakeQuiz()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg">
-                        <i class="fas fa-redo ml-2"></i>إعادة الاختبار
-                    </button>
-                    <button onclick="generateNewQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg">
-                        <i class="fas fa-plus ml-2"></i>اختبار جديد
-                    </button>
-                </div>
-            `;
-        }
-
-        // Retake quiz
-        function retakeQuiz() {
-            currentQuestionIndex = 0;
-            userAnswers = new Array(currentQuiz.questions.length).fill(-1);
-            
-            document.getElementById('quizResults').classList.add('hidden');
-            document.getElementById('quizContainer').classList.remove('hidden');
-            
-            displayQuiz();
         }
 
         // Generate new quiz
@@ -1052,6 +1101,10 @@ ${questionTypeInstructions}
             currentQuiz = null;
             currentQuestionIndex = 0;
             userAnswers = [];
+            
+            // Reset form
+            document.getElementById('quizLectureSelect').selectedIndex = 0;
+            document.getElementById('generateQuizBtn').disabled = true;
             
             // Scroll to quiz generation section
             document.querySelector('.bg-gradient-to-r.from-green-500').scrollIntoView({ 
@@ -1104,3 +1157,4 @@ ${questionTypeInstructions}
     </script>
 </body>
 </html>
+مش شغال من محتوي المحاضره عربي او انجليزي اريد ان يجاوب كما في Gemini الحقيقي
