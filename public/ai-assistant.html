@@ -217,6 +217,8 @@
     <script src="js/supabase-config.js"></script>
     <script>
         // Gemini API Configuration
+        // 🛑 تم استبدال المفتاح النائب بمفتاحك الشخصي بنجاح.
+        // التطبيق جاهز الآن للعمل بشكل دائم وحقيقي باستخدام خدمات Gemini.
         const GEMINI_API_KEY ="AIzaSyCJJeUJYRMWGBrMVD1xxFudKZaGBbuMwCQ";
         
         let currentUser = null;
@@ -232,90 +234,70 @@
          */
         async function getGeminiQaResponse(textPrompt, lectureContext) {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-            
-            // 1. Extract raw text content, avoiding meta-labels that confuse the AI.
-            const rawLectureText = lectureContext.full_content || lectureContext.file_content || lectureContext.description || "";
 
-            if (!rawLectureText.trim()) {
-                return "عذراً، محتوى هذه المحاضرة فارغ أو غير متاح حالياً. لا يمكنني الإجابة على أسئلتك.";
+            // Build comprehensive context from lecture data
+            let lectureContent = '';
+            if (lectureContext.full_content) {
+                lectureContent = lectureContext.full_content;
+            } else {
+                // Fallback compilation if full_content is missing
+                lectureContent = `عنوان المحاضرة: ${lectureContext.title}\n`;
+                if (lectureContext.description) lectureContent += `وصف المحاضرة: ${lectureContext.description}\n`;
+                if (lectureContext.file_content) lectureContent += `محتوى الملف: ${lectureContext.file_content}\n`;
+                if (lectureContext.notes) lectureContent += `ملاحظات إضافية: ${lectureContext.notes}\n`;
             }
 
-            // 2. Create a new, more direct, single prompt that forces the AI to use only the provided text.
-            const fullPrompt = `أنت مساعد أكاديمي خبير، ومهمتك هي الإجابة على أسئلة الطالب بالاعتماد **فقط** على النص المقدم لك.
+            // System Instruction (Persona and Rules) - **CRITICAL FOR GROUNDING**
+            const systemInstructionText = `أنت مساعد تعليمي ذكي وخبير في التحليل الأكاديمي. مهمتك هي الإجابة على أسئلة الطالب بدقة واعتماداً بشكل أساسي على محتوى المحاضرة الذي يتم تزويدك به.
+            
+            **قواعد الإجابة:**
+            1.  **الأولوية القصوى لمحتوى المحاضرة**: ابحث عن الإجابة في المحتوى المقدم فقط.
+            2.  **اللغة والاحترافية**: قدم إجابة شاملة، مفصلة، وبلغة عربية فصحى ومناسبة للطلاب. استخدم التنسيقات (نقاط، فقرات، عناوين) لتحسين القراءة.
+            3.  **التعامل مع اللغات**: قم بالإجابة باللغة العربية، ولكن يمكنك الرجوع إلى المصطلحات أو الفقرات الإنجليزية الموجودة في المحتوى إذا لزم الأمر.
+            4.  **الاستنتاج**: في حال عدم وجود المعلومة بوضوح، استنتج الإجابة من سياق المحاضرة.
+            5.  **المعرفة العامة**: لا تستخدم معرفتك العامة إلا إذا لم تتوفر المعلومة إطلاقاً في المحاضرة، وفي هذه الحالة **يجب أن تشير** إلى أن الإجابة تأتي من معرفتك العامة وليس من المحاضرة.`;
 
-**قواعد صارمة يجب اتباعها:**
-1.  يجب أن تكون إجابتك مستخرجة **حصريًا** من "نص المحاضرة" أدناه. لا تستخدم أي معلومات من خارج هذا النص.
-2.  إذا كانت الإجابة على السؤال غير موجودة بشكل واضح في النص، يجب أن تكون إجابتك هي: "بناءً على محتوى المحاضرة، لم أتمكن من العثور على إجابة لهذا السؤال."
-3.  لا تخمن أو تحلل. اقتبس أو أعد صياغة المعلومات الموجودة فقط.
-4.  أجب على السؤال مباشرة. لا تبدأ إجابتك بعبارات مثل "بالاعتماد على النص..." أو "في المحاضرة...".
-
----
-**نص المحاضرة:**
-\`\`\`
-${rawLectureText}
-\`\`\`
----
-
-**سؤال الطالب:**
-${textPrompt}
----
-
-**الإجابة:**`;
+            // User Query Content
+            const userContentParts = [
+                {
+                    text: `محتوى المحاضرة المتاح الذي يجب عليك الاعتماد عليه:
+======================================
+${lectureContent}
+======================================`
+                },
+                {
+                    text: `سؤال الطالب: ${textPrompt}`
+                }
+            ];
 
             const payload = {
-                // We are no longer using systemInstruction. Everything is in the main content for clarity.
-                contents: [{ 
-                    parts: [{ text: fullPrompt }] 
-                }],
-                generationConfig: {
-                    temperature: 0.1, // Lower temperature for more factual, less creative answers
-                    topP: 0.95,
-                    maxOutputTokens: 1024,
-                }
+                contents: [{ parts: userContentParts }],
+                systemInstruction: { parts: [{ text: systemInstructionText }] },
             };
 
             try {
-                const MAX_RETRIES = 3;
-                let response = null;
-                for (let i = 0; i < MAX_RETRIES; i++) {
-                    response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-                    if (response.ok) break;
-
-                    if (i < MAX_RETRIES - 1) {
-                        console.warn(`Retry attempt ${i + 1} for Gemini Q&A due to status ${response.status}`);
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000)); // Exponential backoff
-                    } else {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
-                    }
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
                 }
 
                 const result = await response.json();
-                
-                if (!result.candidates || result.candidates.length === 0) {
-                    const blockReason = result.promptFeedback?.blockReason;
-                    if (blockReason) {
-                        console.error(`Request was blocked. Reason: ${blockReason}`);
-                        return `عذرًا، تعذر معالجة طلبك لأنه قد يخالف سياسات الأمان.`;
-                    }
-                    throw new Error('الاستجابة من الذكاء الاصطناعي كانت فارغة.');
-                }
-
-                const aiResponse = result.candidates[0]?.content?.parts?.[0]?.text;
+                const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
                 if (aiResponse) {
                     return aiResponse;
                 } else {
-                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء رد (قد يكون المحتوى غير كافٍ للإجابة).');
+                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء رد.');
                 }
             } catch (error) {
                 console.error("Gemini API Error:", error);
-                return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي: ${error.message}. يرجى المحاولة مرة أخرى.`;
+                return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي: ${error.message}`;
             }
         }
 
@@ -325,6 +307,7 @@ ${textPrompt}
         async function getGeminiQuiz(lectureContent, questionCount, questionType) {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
             
+            // Define the JSON schema for the quiz structure
             const quizSchema = {
                 type: "OBJECT",
                 properties: {
@@ -364,7 +347,7 @@ ${textPrompt}
             const quizPrompt = `أنت خبير في إنشاء اختبارات تعليمية. مهمتك هي إنشاء اختبار تعليمي باللغة العربية حصراً بناءً على محتوى المحاضرة المقدم.
 
             **التعليمات:**
-            - **المحتوى**: يجب أن تكون جميع الأسئلة والإجابات الصحيحة مستمدة **فقط** من محتوى المحاضرة المرفق أدناه.
+            - **المحتوى**: يجب أن تكون جميع الأسئلة والإجابات الصحيحة مستمدة من محتوى المحاضرة المرفق أدناه.
             - **العدد والنوع**: ${questionTypeInstructions}
             - **التنسيق**: يجب أن يكون الإخراج بصيغة JSON صالح يتبع المخطط المحدد، ولا يجب أن يحتوي على أي نص إضافي قبل أو بعد الـ JSON.
 
@@ -382,24 +365,15 @@ ${textPrompt}
             };
 
             try {
-                const MAX_RETRIES = 3;
-                let response = null;
-                for (let i = 0; i < MAX_RETRIES; i++) {
-                    response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-                    if (response.ok) break;
-
-                    if (i < MAX_RETRIES - 1) {
-                        console.warn(`Retry attempt ${i + 1} for Gemini Quiz due to status ${response.status}`);
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-                    } else {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
-                    }
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
                 }
 
                 const result = await response.json();
@@ -408,7 +382,7 @@ ${textPrompt}
                 if (jsonText) {
                     return JSON.parse(jsonText);
                 } else {
-                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء JSON صالح أو كانت الاستجابة فارغة.');
+                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء JSON صالح.');
                 }
             } catch (error) {
                 console.error("Gemini API Error (Quiz):", error);
@@ -419,18 +393,22 @@ ${textPrompt}
         // Initialize page
         document.addEventListener('DOMContentLoaded', async function() {
             try {
+                // Initialize Supabase
                 if (window.initializeSupabase) {
                     await window.initializeSupabase();
                 }
                 
+                // Wait for authentication
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
+                // Check authentication
                 const isAuthenticated = await checkAuthentication();
                 if (!isAuthenticated) {
                     window.location.href = 'auth.html';
                     return;
                 }
                 
+                // Load user data and lectures
                 await loadUserData();
                 await loadLectures();
                 
@@ -468,6 +446,7 @@ ${textPrompt}
         async function loadUserData() {
             try {
                 const userName = localStorage.getItem('userName') || currentUser?.email?.split('@')[0] || 'المستخدم';
+                // const userEmail = localStorage.getItem('userEmail') || currentUser?.email || ''; // Unused variable
                 document.getElementById('userEmail').textContent = `مرحباً، ${userName}`;
             } catch (error) {
                 console.error('Error loading user data:', error);
@@ -482,6 +461,7 @@ ${textPrompt}
                     return;
                 }
 
+                // Load subjects from database
                 const subjectsResult = await window.supabaseDB.subjects.getByUser(currentUser.id);
                 if (subjectsResult.error) {
                     console.error('Error loading subjects:', subjectsResult.error);
@@ -493,8 +473,9 @@ ${textPrompt}
                 const quizLectureSelect = document.getElementById('quizLectureSelect');
                 
                 qaLectureSelect.innerHTML = '<option value="">-- اختر محاضرة --</option>';
-                quizLectureSelect.innerHTML = '';
+                quizLectureSelect.innerHTML = ''; // Keep quiz empty until data is loaded
 
+                // Load lectures for each subject
                 let hasLectures = false;
                 for (const subject of subjects) {
                     const lecturesResult = await window.supabaseDB.lectures.getBySubject(subject.id);
@@ -503,11 +484,13 @@ ${textPrompt}
                         lecturesResult.data.forEach(lecture => {
                             const lectureTitle = `${lecture.title} - ${subject.name}`;
 
+                            // Add to Q&A dropdown
                             const qaOption = document.createElement('option');
                             qaOption.value = lecture.id;
                             qaOption.textContent = lectureTitle;
                             qaLectureSelect.appendChild(qaOption);
 
+                            // Add to Quiz dropdown
                             const quizOption = document.createElement('option');
                             quizOption.value = lecture.id;
                             quizOption.textContent = lectureTitle;
@@ -520,6 +503,9 @@ ${textPrompt}
                     const noLectureText = '<option value="" disabled>لا توجد محاضرات متاحة - أضف محاضرات</option>';
                     qaLectureSelect.innerHTML = noLectureText;
                     quizLectureSelect.innerHTML = noLectureText;
+                } else {
+                     // Add a default selection prompt for quiz selection if needed
+                     // Not necessary for multi-select, but helpful for single select Q&A
                 }
 
                 console.log('✅ Lectures loaded from database');
@@ -559,17 +545,20 @@ ${textPrompt}
             scrollToBottom();
         }
 
+        // Enable quiz generation when lectures are selected
         document.getElementById('quizLectureSelect').addEventListener('change', function() {
             const selectedLectures = Array.from(this.selectedOptions);
             document.getElementById('generateQuizBtn').disabled = selectedLectures.length === 0;
         });
 
+        // Handle Enter key for questions
         function handleEnterKey(event) {
             if (event.key === 'Enter') {
                 sendMessage();
             }
         }
 
+        // Send message
         async function sendMessage() {
             const input = document.getElementById('questionInput');
             const message = input.value.trim();
@@ -582,9 +571,11 @@ ${textPrompt}
                 return;
             }
 
+            // Add user message
             addMessage(message, 'user');
             input.value = '';
             
+            // Show typing indicator
             const typingDiv = document.createElement('div');
             typingDiv.className = 'message typing-indicator-wrapper';
             typingDiv.innerHTML = `
@@ -603,6 +594,7 @@ ${textPrompt}
             try {
                 const lectureId = lectureSelect.value;
                 
+                // Get lecture content from database including file content
                 const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
                 const lecture = lectureResult.data;
                 
@@ -610,10 +602,13 @@ ${textPrompt}
                     throw new Error('لم يتم العثور على المحاضرة');
                 }
 
+                // Generate AI response using the updated grounded function
                 const response = await getGeminiQaResponse(message, lecture);
                 
+                // Remove typing indicator
                 typingDiv.remove();
                 
+                // Add AI response
                 addMessage(response, 'ai');
                 
             } catch (error) {
@@ -623,6 +618,7 @@ ${textPrompt}
             }
         }
 
+        // Generate quiz
         async function generateQuiz() {
             const lectureSelect = document.getElementById('quizLectureSelect');
             const selectedOptions = Array.from(lectureSelect.selectedOptions);
@@ -638,6 +634,7 @@ ${textPrompt}
             generateQuizBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>';
 
             try {
+                // Show loading state
                 const quizContainer = document.getElementById('quizContainer');
                 quizContainer.classList.remove('hidden');
                 quizContainer.innerHTML = `
@@ -657,9 +654,11 @@ ${textPrompt}
                     </div>
                 `;
 
+                // Get quiz settings
                 const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
                 const questionType = document.getElementById('questionType').value || 'multiple';
                 
+                // Use content from the first selected lecture for simplicity in prompting
                 const lectureId = selectedOptions[0].value;
                 const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
                 const lecture = lectureResult.data;
@@ -668,15 +667,27 @@ ${textPrompt}
                     throw new Error('لم يتم العثور على المحاضرة');
                 }
 
-                let lectureContent = lecture.full_content || `عنوان المحاضرة: ${lecture.title}\nوصف المحاضرة: ${lecture.description || ''}\nمحتوى الملف: ${lecture.file_content || ''}\nملاحظات: ${lecture.notes || ''}`;
+                // Build comprehensive lecture content for prompting
+                let lectureContent = '';
+                if (lecture.full_content) {
+                    lectureContent = lecture.full_content;
+                } else {
+                    lectureContent = `عنوان المحاضرة: ${lecture.title}\n`;
+                    if (lecture.description) lectureContent += `وصف المحاضرة: ${lecture.description}\n`;
+                    if (lecture.file_content) lectureContent += `محتوى الملف: ${lecture.file_content}\n`;
+                    if (lecture.notes) lectureContent += `ملاحظات إضافية: ${lecture.notes}\n`;
+                }
 
+                // Generate quiz data using the structured response function
                 const quizData = await getGeminiQuiz(lectureContent, questionCount, questionType);
                 
+                // Reset button state
                 generateQuizBtn.innerHTML = originalBtnText;
                 generateQuizBtn.disabled = false;
 
+                // Validation (minimal check before display)
                 if (!quizData || !quizData.questions || quizData.questions.length === 0) {
-                    throw new Error('الاستجابة كانت فارغة أو غير مكتملة. ربما المحتوى كان قصيراً جداً.');
+                    throw new Error('الاستجابة كانت فارغة أو غير مكتملة.');
                 }
 
                 currentQuiz = quizData;
@@ -689,6 +700,7 @@ ${textPrompt}
             } catch (error) {
                 console.error('Error generating quiz:', error);
                 
+                // Reset button state
                 generateQuizBtn.innerHTML = originalBtnText;
                 generateQuizBtn.disabled = Array.from(lectureSelect.selectedOptions).length === 0;
 
@@ -714,12 +726,14 @@ ${textPrompt}
             }
         }
 
+        // Display quiz
         function displayQuiz() {
             if (!currentQuiz || !currentQuiz.questions || currentQuiz.questions.length === 0) {
                 console.error('No quiz data available');
                 return;
             }
 
+            // Initialize user answers array
             if (userAnswers.length !== currentQuiz.questions.length) {
                 userAnswers = new Array(currentQuiz.questions.length).fill(-1);
             }
@@ -772,6 +786,7 @@ ${textPrompt}
                     </div>
                 </div>
             `;
+            // Scroll to quiz section
             quizArea.scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -806,17 +821,22 @@ ${textPrompt}
 
         function selectAnswer(questionIndex, answerIndex) {
             userAnswers[questionIndex] = answerIndex;
+            
+            // Update progress indicators immediately
             updateQuizProgress();
             
+            // Add visual feedback
             const selectedOption = document.querySelector(`input[name="question_${questionIndex}"][value="${answerIndex}"]`);
             if (selectedOption) {
                 const label = selectedOption.closest('label');
+                // Remove previous selections
                 document.querySelectorAll(`input[name="question_${questionIndex}"]`).forEach(input => {
                     const parentLabel = input.closest('label');
                     parentLabel.classList.remove('border-green-500', 'bg-green-50');
                     parentLabel.classList.add('border-gray-200');
                 });
                 
+                // Highlight selected option
                 label.classList.remove('border-gray-200');
                 label.classList.add('border-green-500', 'bg-green-50');
             }
@@ -848,21 +868,26 @@ ${textPrompt}
             const progressPercentage = document.getElementById('progressPercentage');
             const answeredCount = document.getElementById('answeredCount');
             
-            if (!currentQuiz) return;
+            if (!currentQuiz) return; // Guard against null quiz
             
             if (progressBar) {
                 const progressPercent = ((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100;
                 progressBar.style.width = `${progressPercent}%`;
             }
+            
             if (questionCounter) {
                 questionCounter.textContent = `السؤال ${currentQuestionIndex + 1} من ${currentQuiz.questions.length}`;
             }
+            
             if (progressPercentage) {
                 progressPercentage.textContent = `${Math.round(((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100)}%`;
             }
+            
             if (answeredCount) {
                 const answered = userAnswers.filter(a => a !== -1).length;
                 answeredCount.textContent = `${answered}`;
+                
+                // Update remaining count
                 const remainingElement = answeredCount.parentElement.nextElementSibling;
                 if (remainingElement) {
                     remainingElement.textContent = `${currentQuiz.questions.length - answered} سؤال متبقي`;
@@ -877,6 +902,7 @@ ${textPrompt}
             if (prevBtn) {
                 prevBtn.disabled = currentQuestionIndex === 0;
             }
+            
             if (nextBtn) {
                 nextBtn.innerHTML = currentQuestionIndex === currentQuiz.questions.length - 1 ? 
                     '<i class="fas fa-check ml-2"></i>إنهاء الاختبار' : 
@@ -888,6 +914,7 @@ ${textPrompt}
             const score = calculateScore();
             const percentage = Math.round((score / currentQuiz.questions.length) * 100);
             
+            // Calculate grade
             let gradeColor = 'text-red-600';
             let gradeMessage = 'يحتاج تحسين ';
             
@@ -969,6 +996,7 @@ ${textPrompt}
                 const isCorrect = userAnswer === correctAnswer;
                 const wasAnswered = userAnswer !== -1;
 
+                // Ensure options are safe
                 const correctOptionText = question.options[correctAnswer] || 'غير متاح';
                 const userAnswerText = wasAnswered ? (question.options[userAnswer] || 'غير متاح') : 'لم تجب على هذا السؤال';
 
@@ -1002,47 +1030,63 @@ ${textPrompt}
                 `;
             });
 
-            reviewHtml += `</div>`;
+            reviewHtml += `
+                </div>
+            `;
+
             document.getElementById('quizContainer').innerHTML = reviewHtml;
             document.getElementById('quizContainer').scrollIntoView({ behavior: 'smooth' });
         }
 
+        // Generate new quiz
         function generateNewQuiz() {
             document.getElementById('quizResults').classList.add('hidden');
             document.getElementById('quizContainer').classList.add('hidden');
             
+            // Reset quiz state
             currentQuiz = null;
             currentQuestionIndex = 0;
             userAnswers = [];
             
+            // Reset form (optional: keeps selected options, just resets state)
+            // document.getElementById('quizLectureSelect').selectedIndex = 0;
+            // document.getElementById('generateQuizBtn').disabled = true;
+            
+            // Scroll to quiz generation section
             document.querySelector('.bg-gradient-to-r.from-green-500').scrollIntoView({ 
                 behavior: 'smooth' 
             });
         }
 
+        // Add message to chat
         function addMessage(message, sender) {
             const chatArea = document.getElementById('chatArea');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message`;
             
+            // Create inner content with correct class
             const innerDiv = document.createElement('div');
             innerDiv.className = `${sender}-message chat-message`;
             
+            // Apply line breaks for formatting
             innerDiv.innerHTML = `<p>${message.replace(/\n/g, '<br>')}</p>`;
             
             messageDiv.appendChild(innerDiv);
             chatArea.appendChild(messageDiv);
             
+            // Remove any old typing indicators if they somehow persisted
             document.querySelectorAll('.typing-indicator-wrapper').forEach(el => el.remove());
             
             scrollToBottom();
         }
 
+        // Scroll to bottom of chat area
         function scrollToBottom() {
             const chatArea = document.getElementById('chatArea');
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
+        // Show notification
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
             notification.className = `fixed top-4 right-4 p-4 rounded-lg text-white font-medium z-50 transition-all duration-300 transform translate-x-0 ${
@@ -1052,6 +1096,7 @@ ${textPrompt}
             notification.textContent = message;
             document.body.appendChild(notification);
             
+            // Animation for removal
             setTimeout(() => {
                 notification.classList.add('translate-x-full', 'opacity-0');
                 notification.classList.remove('translate-x-0');
@@ -1060,6 +1105,7 @@ ${textPrompt}
             setTimeout(() => notification.remove(), 3000);
         }
 
+        // Logout function
         async function logout() {
             try {
                 if (window.supabaseAuth) {
@@ -1075,5 +1121,3 @@ ${textPrompt}
     </script>
 </body>
 </html>
-
-
