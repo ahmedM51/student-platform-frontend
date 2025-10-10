@@ -203,7 +203,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./js/supabase-config.js"></script>
 
     <script>
         // Global variables
@@ -213,17 +212,20 @@
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(async () => {
                 try {
-                    // Load Supabase configuration first
+                    // Load Supabase configuration first (idempotent)
                     if (!window.supabaseClient) {
-                        await new Promise((resolve) => {
-                            const script = document.createElement('script');
-                            script.src = 'js/supabase-config.js';
-                            script.onload = resolve;
-                            document.head.appendChild(script);
-                        });
-                        
+                        // If not already in DOM, inject once
+                        if (!document.querySelector('script[data-supabase-config]')) {
+                            await new Promise((resolve) => {
+                                const script = document.createElement('script');
+                                script.src = 'js/supabase-config.js';
+                                script.setAttribute('data-supabase-config', 'true');
+                                script.onload = resolve;
+                                document.head.appendChild(script);
+                            });
+                        }
                         // Wait for initialization
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                        await new Promise(resolve => setTimeout(resolve, 300));
                     }
 
                     if (!window.supabaseAuth) {
@@ -332,6 +334,49 @@
             const modal = document.getElementById('dynamicModal');
             if (modal) {
                 modal.remove();
+            }
+        };
+
+        // Preview lecture inside a modal using Google Drive viewer
+        window.previewLecture = function(url, title = 'محاضرة') {
+            if (!url) return;
+            const content = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="text-gray-700 text-sm">${title}</div>
+                        <a href="${url}" target="_blank" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                            <i class=\"fas fa-external-link-alt ml-2\"></i>فتح في تبويب جديد
+                        </a>
+                    </div>
+                    <div class="w-full h-[70vh]">
+                        <iframe src="${url}" class="w-full h-full border rounded-lg" allowfullscreen></iframe>
+                    </div>
+                </div>
+            `;
+            window.createModal('معاينة المحاضرة', content);
+        };
+
+        // Build a Google Drive viewer URL for any file link
+        window.getDriveViewUrl = function(originalUrl) {
+            if (!originalUrl) return '';
+            try {
+                const u = new URL(originalUrl);
+                // If it's already a Google Drive file link, normalize to /view
+                if (u.hostname.includes('drive.google.com')) {
+                    // Patterns: /file/d/{id}/view or /open?id=...
+                    const idMatch = originalUrl.match(/\/file\/d\/([^/]+)\//);
+                    const idFromQuery = u.searchParams.get('id');
+                    const fileId = idMatch ? idMatch[1] : idFromQuery;
+                    if (fileId) return `https://drive.google.com/file/d/${fileId}/view`;
+                    return originalUrl;
+                }
+                // Otherwise, use viewerng with embedded=1
+                const enc = encodeURIComponent(originalUrl);
+                return `https://drive.google.com/viewerng/viewer?embedded=1&url=${enc}`;
+            } catch (_) {
+                // If URL constructor fails, fallback to viewerng
+                const enc = encodeURIComponent(originalUrl);
+                return `https://drive.google.com/viewerng/viewer?embedded=1&url=${enc}`;
             }
         };
 
@@ -657,7 +702,8 @@
                     list.className = 'space-y-3';
 
                     lectures.forEach(lec => {
-                        const url = lec.file_url || lec.url || lec.attachment_url || lec.download_url || '';
+                        const url = lec.file_url || lec.content_url || lec.url || lec.attachment_url || lec.download_url || '';
+                        const driveUrl = window.getDriveViewUrl(url);
                         const fileName = lec.file_name || lec.filename || '';
                         const card = document.createElement('div');
                         card.className = 'bg-white border rounded-lg p-4 flex items-center justify-between';
@@ -673,10 +719,15 @@
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2 space-x-reverse">
-                                ${url ? `<a href="${url}" target="_blank" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"><i class=\"fas fa-external-link-alt ml-2\"></i>فتح</a>` : ''}
-                                ${url ? `<a href="${url}" download class="px-3 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 text-sm"><i class=\"fas fa-download ml-2\"></i>تحميل</a>` : ''}
+                                ${`<button type="button" ${url ? `onclick=\"event.stopPropagation(); previewLecture(${JSON.stringify(driveUrl)}, ${JSON.stringify(lec.title || '')})\"` : 'disabled aria-disabled="true"'} class="px-3 py-2 rounded-md text-sm ${url ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}"><i class=\"fas fa-external-link-alt ml-2\"></i>عرض</button>`}
+                                ${url ? `<a href="${url}" download onclick="event.stopPropagation()" class="px-3 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 text-sm"><i class=\"fas fa-download ml-2\"></i>تحميل</a>` : `<button type="button" disabled aria-disabled="true" class="px-3 py-2 bg-gray-200 text-gray-400 rounded-md text-sm cursor-not-allowed"><i class=\"fas fa-download ml-2\"></i>تحميل</button>`}
                             </div>
+                            ${!url ? `<div class=\"text-xs text-gray-400 mt-1\">لا يوجد رابط متاح لهذه المحاضرة</div>` : ''}
                         `;
+                        if (url) {
+                            card.classList.add('cursor-pointer');
+                            card.setAttribute('onclick', `previewLecture(${JSON.stringify(driveUrl)}, ${JSON.stringify(lec.title || '')})`);
+                        }
                         list.appendChild(card);
                     });
 
@@ -802,6 +853,34 @@
             });
         };
 
+        /* ================= Storage Upload Helpers (Supabase Storage) ================= */
+        function slugifyFileName(name){
+            return (name || 'file')
+                .toString()
+                .normalize('NFD').replace(/\p{Diacritic}/gu,'')
+                .replace(/[^\w.\-]+/g,'-')
+                .replace(/-+/g,'-')
+                .replace(/^-|-$/g,'')
+                .toLowerCase();
+        }
+
+        async function uploadLectureFileToSupabase(file, subjectId){
+            const client = window.supabaseClient || (window.initializeSupabase && window.initializeSupabase());
+            if (!client) throw new Error('Supabase غير مُهيأ');
+            const bucket = 'lecture-files'; // تأكد من إنشاء الحافظة وجعلها Public
+            const safe = slugifyFileName(file.name || `lecture-${Date.now()}.bin`);
+            const userPart = (currentUser && currentUser.id) ? currentUser.id : 'user';
+            const path = `${userPart}/${subjectId}/${Date.now()}-${safe}`;
+            const { error: upErr } = await client.storage.from(bucket).upload(path, file, { upsert: true, cacheControl: '3600' });
+            if (upErr) throw upErr;
+            const { data: pub } = client.storage.from(bucket).getPublicUrl(path);
+            if (pub && pub.publicUrl) return pub.publicUrl;
+            // Fallback: signed URL 7 days
+            const { data: signed, error: signErr } = await client.storage.from(bucket).createSignedUrl(path, 60*60*24*7);
+            if (!signErr && signed && signed.signedUrl) return signed.signedUrl;
+            return null;
+        }
+
         async function addLectureToSubject(subjectId) {
             const title = document.getElementById('lectureTitle').value;
             const description = document.getElementById('lectureDescription').value;
@@ -827,9 +906,18 @@
                 if (contentType === 'file') {
                     const fileInput = document.getElementById('fileInput');
                     if (fileInput.files[0]) {
-                        lectureData.file_name = fileInput.files[0].name;
-                        lectureData.file_size = fileInput.files[0].size;
-                        // In a real implementation, you would upload the file here
+                        const file = fileInput.files[0];
+                        lectureData.file_name = file.name;
+                        lectureData.file_size = file.size;
+                        try {
+                            const publicUrl = await uploadLectureFileToSupabase(file, subjectId);
+                            if (publicUrl) {
+                                lectureData.file_url = publicUrl;
+                            }
+                        } catch (e) {
+                            console.error('Upload error:', e);
+                            showNotification('تعذر رفع الملف. يرجى المحاولة لاحقاً أو استخدام رابط خارجي.', 'error');
+                        }
                     }
                 } else {
                     const url = document.getElementById('contentUrl').value;
