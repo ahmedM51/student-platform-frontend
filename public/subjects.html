@@ -356,27 +356,39 @@
             window.createModal('معاينة المحاضرة', content);
         };
 
-        // Build a Google Drive viewer URL for any file link
+        // Compute best viewing URL for any lecture link
         window.getDriveViewUrl = function(originalUrl) {
             if (!originalUrl) return '';
             try {
                 const u = new URL(originalUrl);
-                // If it's already a Google Drive file link, normalize to /view
+                const href = u.href;
+                const isPdf = /\.pdf(?:[?#].*)?$/i.test(href);
+
+                // Google Drive file links
                 if (u.hostname.includes('drive.google.com')) {
-                    // Patterns: /file/d/{id}/view or /open?id=...
-                    const idMatch = originalUrl.match(/\/file\/d\/([^/]+)\//);
+                    // Normalize patterns: /file/d/{id} or /open?id=...
+                    const idMatch = href.match(/\/file\/d\/([^/]+)\//);
                     const idFromQuery = u.searchParams.get('id');
                     const fileId = idMatch ? idMatch[1] : idFromQuery;
-                    if (fileId) return `https://drive.google.com/file/d/${fileId}/view`;
-                    return originalUrl;
+                    if (fileId) {
+                        // Use preview for embedding
+                        return `https://drive.google.com/file/d/${fileId}/preview`;
+                    }
+                    // If it's a view/preview already, just return it
+                    return href;
                 }
-                // Otherwise, use viewerng with embedded=1
-                const enc = encodeURIComponent(originalUrl);
-                return `https://drive.google.com/viewerng/viewer?embedded=1&url=${enc}`;
+
+                // If direct PDF: use Google viewer for consistent embed
+                if (isPdf) {
+                    const enc = encodeURIComponent(href);
+                    return `https://drive.google.com/viewerng/viewer?embedded=1&url=${enc}`;
+                }
+
+                // For any other URL, use it directly (no wrapping)
+                return href;
             } catch (_) {
-                // If URL constructor fails, fallback to viewerng
-                const enc = encodeURIComponent(originalUrl);
-                return `https://drive.google.com/viewerng/viewer?embedded=1&url=${enc}`;
+                // If URL constructor fails, return original string
+                return originalUrl;
             }
         };
 
