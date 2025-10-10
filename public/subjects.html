@@ -4,6 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة المواد - منصة الطالب الذكي</title>
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="إدارة المواد - منصة الطالب الذكي">
+    <meta property="og:description" content="إدارة المواد والمحاضرات والملفات بسهولة في منصة الطالب الذكي.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://student-platform-frontend.vercel.app/subjects.html">
+    <meta property="og:image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    <meta property="og:image:alt" content="منصة الطالب الذكي - صورة تعريفية">
+    <meta property="og:site_name" content="منصة الطالب الذكي">
+    <meta property="og:locale" content="ar_SA">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="إدارة المواد - منصة الطالب الذكي">
+    <meta name="twitter:description" content="إدارة المواد والمحاضرات والملفات بسهولة في منصة الطالب الذكي.">
+    <meta name="twitter:image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    <meta itemprop="image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://student-platform-frontend.vercel.app/subjects.html">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -597,14 +617,86 @@
             }
         };
 
-        // View Subject
-        window.viewSubject = function(subjectId) {
-            showNotification('صفحة تفاصيل المادة قيد التطوير', 'info');
+        // View Subject (shows lectures list with open/download)
+        window.viewSubject = async function(subjectId) {
+            try {
+                showLoading();
+                // Load subject info (optional)
+                let subjectName = 'المادة';
+                if (window.supabaseDB && window.supabaseDB.subjects && window.supabaseDB.subjects.get) {
+                    try {
+                        const subject = await window.supabaseDB.subjects.get(subjectId);
+                        if (subject && (subject.name || subject.title)) {
+                            subjectName = subject.name || subject.title;
+                        }
+                    } catch (_) {}
+                }
+
+                // Fetch lectures for this subject
+                let lectures = [];
+                if (window.supabaseDB && window.supabaseDB.lectures && window.supabaseDB.lectures.getBySubject) {
+                    const res = await window.supabaseDB.lectures.getBySubject(subjectId);
+                    lectures = res?.data || [];
+                }
+
+                const content = document.createElement('div');
+                content.className = 'space-y-4';
+
+                if (!lectures.length) {
+                    content.innerHTML = `
+                        <div class="text-center text-gray-600 py-8">
+                            <i class="fas fa-file text-4xl mb-3 text-gray-400"></i>
+                            <div class="mb-4">لا توجد محاضرات بعد لهذه المادة</div>
+                            <button onclick="addLecture('${subjectId}')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-plus ml-2"></i>إضافة محاضرة
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    const list = document.createElement('div');
+                    list.className = 'space-y-3';
+
+                    lectures.forEach(lec => {
+                        const url = lec.file_url || lec.url || lec.attachment_url || lec.download_url || '';
+                        const fileName = lec.file_name || lec.filename || '';
+                        const card = document.createElement('div');
+                        card.className = 'bg-white border rounded-lg p-4 flex items-center justify-between';
+                        card.innerHTML = `
+                            <div class="flex items-start">
+                                <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center ml-3">
+                                    <i class="fas fa-file-alt"></i>
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-gray-900">${lec.title || 'محاضرة بدون عنوان'}</div>
+                                    ${lec.description ? `<div class=\"text-sm text-gray-600 mt-1\">${lec.description}</div>` : ''}
+                                    ${fileName ? `<div class=\"text-xs text-gray-500 mt-1\">${fileName}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 space-x-reverse">
+                                ${url ? `<a href="${url}" target="_blank" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"><i class=\"fas fa-external-link-alt ml-2\"></i>فتح</a>` : ''}
+                                ${url ? `<a href="${url}" download class="px-3 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 text-sm"><i class=\"fas fa-download ml-2\"></i>تحميل</a>` : ''}
+                            </div>
+                        `;
+                        list.appendChild(card);
+                    });
+
+                    content.appendChild(list);
+                }
+
+                const modal = window.createModal(`محاضرات مادة: ${subjectName}`, content.outerHTML);
+                return modal;
+            } catch (error) {
+                console.error('Error opening subject view:', error);
+                showNotification('حدث خطأ في عرض المحاضرات', 'error');
+            } finally {
+                hideLoading();
+            }
         };
 
-        // Edit Subject
+        // Edit Subject (temporarily opens the lectures view too)
         window.editSubject = function(subjectId) {
-            showNotification('ميزة التعديل قيد التطوير', 'info');
+            // لاحقاً يمكن إضافة نموذج تعديل للمادة
+            return window.viewSubject(subjectId);
         };
 
         // Add Lecture
