@@ -172,6 +172,7 @@
         <header class="bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-20">
+                    <!-- Brand -->
                     <div class="flex items-center space-x-4 space-x-reverse">
                         <div class="bg-white bg-opacity-20 p-2 rounded-lg">
                             <i class="fas fa-graduation-cap text-2xl"></i>
@@ -181,7 +182,9 @@
                             <p class="text-purple-100 text-sm">منصة التعلم الذكية</p>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-4 space-x-reverse">
+
+                    <!-- Desktop actions -->
+                    <div class="hidden md:flex items-center space-x-4 space-x-reverse">
                         <div class="flex items-center bg-white bg-opacity-20 px-4 py-2 rounded-lg space-x-4 space-x-reverse">
                             <button onclick="window.location.href='subjects.html'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-book ml-1"></i>المواد الدراسية
@@ -200,6 +203,34 @@
                             <i class="fas fa-sign-out-alt ml-2"></i>تسجيل الخروج
                         </button>
                     </div>
+
+                    <!-- Mobile hamburger -->
+                    <button id="mobileMenuBtn" aria-label="فتح القائمة" class="md:hidden inline-flex items-center justify-center p-2 rounded-md bg-white bg-opacity-20 hover:bg-opacity-30 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile menu -->
+            <div id="mobileMenu" class="md:hidden hidden border-t border-white border-opacity-10">
+                <div class="px-4 pt-2 pb-4 space-y-2">
+                    <button onclick="window.location.href='subjects.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-book ml-2"></i> المواد الدراسية
+                    </button>
+                    <button onclick="window.location.href='planner.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-calendar-alt ml-2"></i> المخطط الدراسي
+                    </button>
+                    <button onclick="window.location.href='study-timer.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-clock ml-2"></i> مؤقت المذاكرة
+                    </button>
+                    <button onclick="window.location.href='ai-assistant.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-robot ml-2"></i> المساعد الذكي
+                    </button>
+                    <button onclick="logout()" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-sign-out-alt ml-2"></i> تسجيل الخروج
+                    </button>
                 </div>
             </div>
         </header>
@@ -625,6 +656,18 @@
         document.addEventListener('DOMContentLoaded', initializePage);
 
         console.log('✅ Index page script loaded - Real Supabase mode only');
+    </script>
+    <script>
+        // Toggle mobile navbar without interfering existing scripts
+        (function(){
+            const btn = document.getElementById('mobileMenuBtn');
+            const menu = document.getElementById('mobileMenu');
+            if (btn && menu) {
+                btn.addEventListener('click', function(){
+                    menu.classList.toggle('hidden');
+                });
+            }
+        })();
     </script>
 </body>
 </html>
