@@ -244,17 +244,30 @@
                 lectureContent = `عنوان المحاضرة: ${lectureContext.title}\n`;
                 if (lectureContext.description) lectureContent += `وصف المحاضرة: ${lectureContext.description}\n`;
                 if (lectureContext.file_content) lectureContent += `محتوى الملف: ${lectureContext.file_content}\n`;
+                // Add any available URL so the model knows the source when no extracted text exists
+                const urlField = lectureContext.file_url || lectureContext.content_url || lectureContext.url || lectureContext.attachment_url || lectureContext.download_url || '';
+                if (urlField) lectureContent += `رابط الملف: ${urlField}\n`;
                 if (lectureContext.notes) lectureContent += `ملاحظات إضافية: ${lectureContext.notes}\n`;
             }
 
+            // Determine content strength
+            const contentWeak = !lectureContext.full_content && (!lectureContext.file_content || String(lectureContext.file_content).trim().length < 80);
+
             // System Instruction (Persona and Rules) - **Updated: added rule 4 to suppress lecture type/title**
-            const systemInstructionText = `أنت **خبير أكاديمي ومتخصص في تحليل المحاضرات**. مهمتك هي الإجابة على سؤال الطالب بأقصى دقة، ويجب أن تكون إجابتك **مؤسسة بالكامل** على محتوى المحاضرة المقدم.
-            
-            **قواعد الإجابة الصارمة:**
-            1.  **الأولوية القصوى للمحاضرة**: يجب أن تستخدم المعلومات الموجودة في محتوى المحاضرة فقط لإعطاء الإجابة. لا تخمن.
-            2.  **الاحترافية واللغة**: قدم إجابة شاملة ومفصلة باستخدام لغة عربية فصحى احترافية ومناسبة للبيئة الأكاديمية. استخدم التنسيقات (العناوين، القوائم النقطية) لسهولة القراءة.
-            3.  **المعرفة العامة**: إذا لم تستطع العثور على المعلومة داخل المحاضرة بعد البحث، يجب أن تذكر ذلك بوضوح في إجابتك. **مثال**: "بناءً على المحاضرة، لا تتوفر هذه المعلومة. لكن، كمعرفة عامة،..."
-            4.  **التركيز على الإجابة**: **لا** تذكر عنوان المحاضرة أو نوعها أو مصدرها في الرد. يجب أن تكون الإجابة مباشرة على سؤال الطالب.`;
+            const systemInstructionText = contentWeak
+                ? `أنت **خبير أكاديمي**. الإجابة يجب أن تكون باللغة العربية الفصحى وبنمط واضح.
+
+                قواعد:
+                1) إن كان محتوى المحاضرة المتاح محدوداً، صِف ذلك أولاً بجملة قصيرة مثل: "بالاعتماد على المعلومات المتاحة (عنوان/وصف)، سيتم تقديم إجابة عامة".
+                2) بعد ذلك قدّم إجابة تعليمية عامة دقيقة ومرتبة وفق أفضل الممارسات الأكاديمية (عناوين، قوائم).
+                3) لا تذكر مصادر خارجية صراحة؛ اجعل الإجابة مفهومة ومباشرة للطالب.
+                4) إذا كانت هناك نقاط تحتاج معلومات إضافية، وضّح ما يلزم بالضبط.`
+                : `أنت **خبير أكاديمي ومتخصص في تحليل المحاضرات**. مهمتك هي الإجابة على سؤال الطالب بأقصى دقة، ويجب أن تكون إجابتك **مؤسسة بالكامل** على محتوى المحاضرة المقدم.
+                
+                قواعد الإجابة:
+                1) استخدم محتوى المحاضرة فقط ولا تخمن.
+                2) اجعل اللغة عربية فصحى احترافية ومنسقة.
+                3) إن لم تجد المعلومة داخل النص، اذكر ذلك بصراحة.`;
 
             // User Query Content
             const userContentParts = [
@@ -300,6 +313,12 @@ ${lectureContent}
                 const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
                 if (aiResponse) {
+                    // If content was weak, show a gentle notice once
+                    try {
+                        if (contentWeak) {
+                            showNotification('تنبيه: لا يوجد نص للمحاضرة، تم تقديم إجابة عامة بناءً على العنوان/الوصف.', 'info');
+                        }
+                    } catch (_) {}
                     return aiResponse;
                 } else {
                     throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء رد (قد يكون المحتوى غير كافٍ للإجابة).');
