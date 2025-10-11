@@ -493,6 +493,23 @@ if (!window.SUPABASE_INITIALIZED) {
                         contentParts.push(`نوع المحتوى: ${lecture.content_type}`);
                     }
                     
+                    // Include any available URL so AI has context when no extracted text exists
+                    const availableUrl = lecture.file_url || lecture.content_url || lecture.url || lecture.attachment_url || lecture.download_url || '';
+                    if (availableUrl) {
+                        contentParts.push(`رابط الملف: ${availableUrl}`);
+                    }
+                    
+                    // Prefer pre-extracted text content if it exists in DB (best grounding)
+                    // Several possible field names are checked to be robust with schema variations
+                    const extractedText = (lecture.text_content && lecture.text_content.trim())
+                        || (lecture.extracted_text && lecture.extracted_text.trim())
+                        || (lecture.content_text && lecture.content_text.trim())
+                        || '';
+                    if (extractedText) {
+                        lecture.file_content = extractedText;
+                        contentParts.push(`محتوى الملف (نص مستخرج):\n${extractedText}`);
+                    }
+
                     // Add file information if available
                     if (lecture.file_name) {
                         contentParts.push(`اسم الملف: ${lecture.file_name}`);
@@ -547,8 +564,13 @@ if (!window.SUPABASE_INITIALIZED) {
                         contentParts.push(`حجم الملف: ${sizeInKB} كيلوبايت`);
                     }
                     
-                    // Try to get file content if URL exists
-                    if (lecture.content_url) {
+                    // Try to get file content only if we have an internal storage path (avoid external http/https URLs)
+                    if (lecture.content_url && !lecture.file_content) {
+                        const isExternal = /^https?:\/\//i.test(lecture.content_url);
+                        if (isExternal) {
+                            // Skip storage download attempts for external links to avoid 400 errors
+                            console.log('Skipping storage download for external URL:', lecture.content_url);
+                        } else {
                         console.log('Attempting to access file:', lecture.content_url);
                         try {
                             // Try different storage bucket names
@@ -713,6 +735,7 @@ if (!window.SUPABASE_INITIALIZED) {
 - الربط والاستنتاج`;
                             }
                             contentParts.push('ملاحظة: تم إنشاء محتوى بديل بناءً على معلومات المحاضرة');
+                        }
                         }
                     } else {
                         // No file attached - create content based on lecture info
@@ -1129,7 +1152,10 @@ async function initializeSupabase() {
         // جعل المتغيرات متاحة عالمياً
         window.supabaseClient = supabaseClient;
         window.supabaseAuth = supabaseAuth;
-        window.supabaseDB = supabaseDB;
+        // لا تستبدل واجهة قاعدة البيانات الغنية إذا كانت متاحة مسبقاً (خاصة lectures.getWithContent)
+        if (!window.supabaseDB || !window.supabaseDB.lectures || !window.supabaseDB.lectures.getWithContent) {
+            window.supabaseDB = supabaseDB;
+        }
         
         console.log('✅ Supabase initialized successfully for Vercel');
         return true;
