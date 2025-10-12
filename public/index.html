@@ -352,37 +352,75 @@
                         تواصل معانا
                     </h2>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- WhatsApp -->
-                        <a href="https://wa.me/201025612869" target="_blank" class="flex items-center justify-between bg-green-50 border border-green-200 hover:bg-green-100 rounded-xl p-4 transition-colors">
-                            <div class="flex items-center space-x-3 space-x-reverse">
-                                <span class="w-12 h-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center">
-                                    <i class="fab fa-whatsapp text-2xl"></i>
-                                </span>
-                                <div>
-                                    <div class="font-semibold text-gray-900">واتساب</div>
+                    <p class="text-gray-500 text-sm mb-4">اختر الطريقة المناسبة للتواصل</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <!-- WhatsApp Card -->
+                        <a href="https://wa.me/201025612869" target="_blank" class="group block rounded-2xl border border-green-100 bg-gradient-to-br from-green-50 to-white p-6 text-center shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center shadow-inner transform group-hover:scale-105 transition">
+                                    <i class="fab fa-whatsapp text-3xl"></i>
                                 </div>
+                                <div class="mt-3 font-bold text-gray-800">واتساب</div>
                             </div>
-                            <i class="fas fa-external-link-alt text-green-600"></i>
                         </a>
 
-                        <!-- Facebook -->
-                        <a href="https://www.facebook.com/share/1AtY6UZJQF/" target="_blank" class="flex items-center justify-between bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl p-4 transition-colors">
-                            <div class="flex items-center space-x-3 space-x-reverse">
-                                <span class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                                    <i class="fab fa-facebook text-2xl"></i>
-                                </span>
-                                <div>
-                                    <div class="font-semibold text-gray-900">فيسبوك</div>
+                        <!-- Facebook Card -->
+                        <a href="https://www.facebook.com/share/1AtY6UZJQF/" target="_blank" class="group block rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 text-center shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center shadow-inner transform group-hover:scale-105 transition">
+                                    <i class="fab fa-facebook text-3xl"></i>
                                 </div>
+                                <div class="mt-3 font-bold text-gray-800">فيسبوك</div>
                             </div>
-                            <i class="fas fa-external-link-alt text-blue-600"></i>
                         </a>
                     </div>
 
                 </div>
             </div>
         </section>
+
+        <!-- Floating Help (Chat Style) -->
+        <button id="helpFab" aria-label="مركز المساعدة" title="مركز المساعدة" class="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-xl ring-1 ring-white/20 flex items-center justify-center transition-transform duration-200 hover:scale-105">
+            <i class="fas fa-comment-dots text-xl"></i>
+        </button>
+
+        <div id="helpPanel" class="fixed bottom-24 right-6 z-40 w-[360px] max-w-[92vw] rounded-3xl shadow-2xl border border-gray-200 bg-white hidden opacity-0 translate-y-2 pointer-events-none transition-all duration-200">
+            <!-- Header -->
+            <div class="px-4 py-3 rounded-t-3xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <span class="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center"><i class="fas fa-comments"></i></span>
+                    <h3 class="font-bold text-sm">مركز المساعدة</h3>
+                </div>
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <button id="helpClose" class="text-white/90 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <!-- Messages -->
+            <div class="px-3 pt-3 pb-2 bg-[#f5f7fb]">
+                <div id="helpMessages" class="h-64 overflow-y-auto pr-1">
+                    <!-- Bot message -->
+                    <div class="flex items-start gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">B</div>
+                        <div>
+                            <div class="bg-white rounded-2xl rounded-bl-sm shadow-sm px-3 py-2 text-sm text-gray-800 max-w-[240px]">
+                                أهلاً بحضرتك في منصة الطالب الذكي! 😊 ازاي أقدر أساعدك؟
+                            </div>
+                            <div class="text-[11px] text-gray-400 mt-1">الآن</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Input row -->
+            <div class="px-3 py-3 bg-white rounded-b-3xl border-t border-gray-100">
+                <div class="flex items-center bg-gray-50 rounded-2xl border border-gray-200">
+                    <input id="helpInput" type="text" placeholder="اكتب رسالتك..." class="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none"/>
+                    <button id="helpSend" class="w-10 h-10 text-indigo-600 hover:text-indigo-700 flex items-center justify-center">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="text-[10px] text-gray-400 text-center mt-2">Powered by BlinkBot</div>
+            </div>
+        </div>
 
     </main>
 
@@ -393,6 +431,110 @@
     <script src="./js/supabase-config.js"></script>
 
     <script>
+        // Gemini API key (same as used in ai-assistant.html)
+        window.GEMINI_API_KEY = window.GEMINI_API_KEY || 'AIzaSyB8p4Vh8TmQplHOMrKaGwProWRLn5Dn2uc';
+        // Help panel toggle with animation
+        function toggleHelp(force) {
+            const panel = document.getElementById('helpPanel');
+            if (!panel) return;
+
+            const show = typeof force === 'boolean' ? force : panel.classList.contains('hidden');
+            if (show) {
+                panel.classList.remove('hidden');
+                // allow transition
+                requestAnimationFrame(() => {
+                    panel.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+                });
+            } else {
+                panel.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+                panel.addEventListener('transitionend', function onEnd(e){
+                    if (e.propertyName === 'opacity') {
+                        panel.classList.add('hidden');
+                        panel.removeEventListener('transitionend', onEnd);
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const fab = document.getElementById('helpFab');
+            const close = document.getElementById('helpClose');
+            const send = document.getElementById('helpSend');
+            const input = document.getElementById('helpInput');
+            const messages = document.getElementById('helpMessages');
+            fab && fab.addEventListener('click', () => toggleHelp());
+            close && close.addEventListener('click', () => toggleHelp(false));
+            // Send handlers
+            function appendUser(msg){
+                const wrap = document.createElement('div');
+                wrap.className = 'flex justify-end mb-2';
+                wrap.innerHTML = `<div class="bg-indigo-600 text-white px-3 py-2 rounded-2xl rounded-br-sm text-sm max-w-[240px]">${msg}</div>`;
+                messages.appendChild(wrap); messages.scrollTop = messages.scrollHeight;
+            }
+            function appendBot(msg){
+                const row = document.createElement('div');
+                row.className = 'flex items-start gap-2 mb-3';
+                row.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">B</div>
+                    <div>
+                        <div class="bg-white rounded-2xl rounded-bl-sm shadow-sm px-3 py-2 text-sm text-gray-800 max-w-[240px]">${msg}</div>
+                    </div>`;
+                messages.appendChild(row); messages.scrollTop = messages.scrollHeight;
+            }
+            function appendTyping(){
+                const row = document.createElement('div');
+                row.className = 'flex items-start gap-2 mb-3';
+                row.id = 'botTyping';
+                row.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">B</div>
+                    <div class="bg-white rounded-2xl rounded-bl-sm shadow-sm px-3 py-2 text-sm text-gray-800 max-w-[240px]">
+                        <span class="typing-indicator"></span>
+                        <span class="typing-indicator ml-1"></span>
+                        <span class="typing-indicator ml-1"></span>
+                    </div>`;
+                messages.appendChild(row); messages.scrollTop = messages.scrollHeight;                
+            }
+            function removeTyping(){
+                const t = document.getElementById('botTyping'); if(t) t.remove();
+            }
+
+            async function sendToGemini(prompt){
+                try{
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${window.GEMINI_API_KEY || ''}`;
+                    const payload = { contents: [{ parts: [{ text: prompt }]}] };
+                    const res = await fetch(apiUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+                    const data = await res.json();
+                    const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'لم أتمكن من إنشاء رد الآن.';
+                    return txt;
+                } catch(e){
+                    return 'حدث خطأ أثناء الاتصال بالنموذج. حاول مرة أخرى لاحقاً.';
+                }
+            }
+
+            async function handleSend(){
+                const val = (input?.value || '').trim();
+                if(!val) return;
+                appendUser(val);
+                input.value = '';
+                appendTyping();
+                const reply = await sendToGemini(val);
+                removeTyping();
+                appendBot(reply);
+            }
+
+            send && send.addEventListener('click', handleSend);
+            input && input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleSend(); }});
+            // Click outside to close
+            document.addEventListener('click', (e) => {
+                const panel = document.getElementById('helpPanel');
+                const fabBtn = document.getElementById('helpFab');
+                if (!panel || panel.classList.contains('hidden')) return;
+                if (!panel.contains(e.target) && !fabBtn.contains(e.target)) {
+                    toggleHelp(false);
+                }
+            });
+        });
+
         let currentUser = null;
 
         // Initialize page with fallback
