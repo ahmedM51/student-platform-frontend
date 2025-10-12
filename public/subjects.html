@@ -733,6 +733,7 @@
                             <div class="flex items-center space-x-2 space-x-reverse">
                                 ${`<button type="button" ${url ? `onclick=\"event.stopPropagation(); previewLecture(${JSON.stringify(driveUrl)}, ${JSON.stringify(lec.title || '')})\"` : 'disabled aria-disabled="true"'} class="px-3 py-2 rounded-md text-sm ${url ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}"><i class=\"fas fa-external-link-alt ml-2\"></i>عرض</button>`}
                                 ${url ? `<a href="${url}" download onclick="event.stopPropagation()" class="px-3 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 text-sm"><i class=\"fas fa-download ml-2\"></i>تحميل</a>` : `<button type="button" disabled aria-disabled="true" class="px-3 py-2 bg-gray-200 text-gray-400 rounded-md text-sm cursor-not-allowed"><i class=\"fas fa-download ml-2\"></i>تحميل</button>`}
+                                <button type="button" onclick="event.stopPropagation(); confirmDeleteLecture('${lec.id}', '${subjectId}')" class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"><i class="fas fa-trash ml-2"></i>حذف</button>
                             </div>
                             ${!url ? `<div class=\"text-xs text-gray-400 mt-1\">لا يوجد رابط متاح لهذه المحاضرة</div>` : ''}
                         `;
@@ -751,6 +752,37 @@
             } catch (error) {
                 console.error('Error opening subject view:', error);
                 showNotification('حدث خطأ في عرض المحاضرات', 'error');
+            } finally {
+                hideLoading();
+            }
+        };
+
+        // Delete a lecture (only the lecture, not the subject)
+        window.confirmDeleteLecture = function(lectureId, subjectId) {
+            if (confirm('هل أنت متأكد من حذف هذه المحاضرة؟')) {
+                window.deleteLecture(lectureId, subjectId);
+            }
+        };
+
+        window.deleteLecture = async function(lectureId, subjectId) {
+            try {
+                showLoading();
+                if (!window.supabaseDB || !window.supabaseDB.lectures || !window.supabaseDB.lectures.delete) {
+                    throw new Error('العمليات غير متاحة حالياً');
+                }
+                const res = await window.supabaseDB.lectures.delete(lectureId);
+                if (res && res.error) throw res.error;
+
+                showNotification('تم حذف المحاضرة بنجاح', 'success');
+                // Refresh modal content and subjects counters
+                closeModal();
+                await window.viewSubject(subjectId);
+                if (typeof loadSubjects === 'function') {
+                    loadSubjects();
+                }
+            } catch (err) {
+                console.error('Error deleting lecture:', err);
+                showNotification('خطأ في حذف المحاضرة', 'error');
             } finally {
                 hideLoading();
             }
