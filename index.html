@@ -18,8 +18,10 @@
     <meta property="og:description" content="منصة تعليمية ذكية تستخدم الذكاء الاصطناعي لمساعدة الطلاب في التعلم والمذاكرة. تشمل مساعد ذكي، مخطط دراسي، مؤقت مذاكرة، وإدارة المواد الدراسية.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://student-platform-frontend.vercel.app/">
-    <meta property="og:image" content="https://student-platform-frontend.vercel.app//images/platform-preview.jpg">
-    <meta property="og:image:alt" content="منصة الطالب الذكي - واجهة المنصة التعليمية">
+    <meta property="og:image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    <meta property="og:image" content="https://student-platform-frontend.vercel.app/images/jojo1.jpg">
+    <meta property="og:image" content="https://student-platform-frontend.vercel.app/images/jojo2.jpg">
+    <meta property="og:image:alt" content="منصة الطالب الذكي - صورة تعريفية">
     <meta property="og:site_name" content="منصة الطالب الذكي">
     <meta property="og:locale" content="ar_SA">
     
@@ -27,10 +29,12 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="منصة الطالب الذكي - منصة التعلم الذكية بالذكاء الاصطناعي">
     <meta name="twitter:description" content="منصة تعليمية ذكية تستخدم الذكاء الاصطناعي لمساعدة الطلاب في التعلم والمذاكرة.">
-    <meta name="twitter:image" content="https://student-platform-frontend.vercel.app//images/platform-preview.jpg">
+    <meta name="twitter:image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    <meta itemprop="image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://student-platform-frontend.vercel.app//">
+    <link rel="canonical" href="https://student-platform-frontend.vercel.app/">
+    <link rel="image_src" href="https://student-platform-frontend.vercel.app/images/jojo.jpg" />
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -49,7 +53,12 @@
       "name": "منصة الطالب الذكي",
       "description": "منصة تعليمية ذكية تستخدم الذكاء الاصطناعي لمساعدة الطلاب في التعلم والمذاكرة",
       "url": "https://student-platform-frontend.vercel.app/",
-      "logo": "https://student-platform-frontend.vercel.app//images/logo.png",
+      "logo": "https://student-platform-frontend.vercel.app/images/jojo.jpg",
+      "image": [
+        "https://student-platform-frontend.vercel.app/images/jojo.jpg",
+        "https://student-platform-frontend.vercel.app/images/jojo1.jpg",
+        "https://student-platform-frontend.vercel.app/images/jojo2.jpg"
+      ],
       "sameAs": [
         "https://facebook.com/https://www.facebook.com/share/1AtY6UZJQF/",
         "https://twitter.com/yourpage",
@@ -172,6 +181,7 @@
         <header class="bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-20">
+                    <!-- Brand -->
                     <div class="flex items-center space-x-4 space-x-reverse">
                         <div class="bg-white bg-opacity-20 p-2 rounded-lg">
                             <i class="fas fa-graduation-cap text-2xl"></i>
@@ -181,7 +191,9 @@
                             <p class="text-purple-100 text-sm">منصة التعلم الذكية</p>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-4 space-x-reverse">
+
+                    <!-- Desktop actions -->
+                    <div class="hidden md:flex items-center space-x-4 space-x-reverse">
                         <div class="flex items-center bg-white bg-opacity-20 px-4 py-2 rounded-lg space-x-4 space-x-reverse">
                             <button onclick="window.location.href='subjects.html'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-book ml-1"></i>المواد الدراسية
@@ -195,11 +207,45 @@
                             <button onclick="window.location.href='ai-assistant.html'" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-robot ml-1"></i>المساعد الذكي
                             </button>
+                            <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-headset ml-1"></i>تواصل معانا
+                            </button>
                         </div>
                         <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                             <i class="fas fa-sign-out-alt ml-2"></i>تسجيل الخروج
                         </button>
                     </div>
+
+                    <!-- Mobile hamburger -->
+                    <button id="mobileMenuBtn" aria-label="فتح القائمة" class="md:hidden inline-flex items-center justify-center p-2 rounded-md bg-white bg-opacity-20 hover:bg-opacity-30 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile menu -->
+            <div id="mobileMenu" class="md:hidden hidden border-t border-white border-opacity-10">
+                <div class="px-4 pt-2 pb-4 space-y-2">
+                    <button onclick="window.location.href='subjects.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-book ml-2"></i> المواد الدراسية
+                    </button>
+                    <button onclick="window.location.href='planner.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-calendar-alt ml-2"></i> المخطط الدراسي
+                    </button>
+                    <button onclick="window.location.href='study-timer.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-clock ml-2"></i> مؤقت المذاكرة
+                    </button>
+                    <button onclick="window.location.href='ai-assistant.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-robot ml-2"></i> المساعد الذكي
+                    </button>
+                    <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-headset ml-2"></i> تواصل معانا
+                    </button>
+                    <button onclick="logout()" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-sign-out-alt ml-2"></i> تسجيل الخروج
+                    </button>
                 </div>
             </div>
         </header>
@@ -220,7 +266,7 @@
                         <!-- استبدل VIDEO_ID بمعرّف الفيديو الخاص بك -->
                         <iframe 
                             class="absolute top-0 left-0 w-full h-full"
-                            src="https://www.youtube.com/embed/JGCtsFXr38Q?rel=0&modestbranding=1" 
+                            src="https://www.youtube.com/embed/zRHS9JEeHsM?rel=0&modestbranding=1" 
                             title="فيديو تعريفي بمنصة الطالب الذكي"
                             frameborder="0" 
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
@@ -297,6 +343,87 @@
             </div>
         </div>
 
+        <!-- Contact Section -->
+        <section id="contactSection" class="mt-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+                    <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-headset text-teal-600 ml-3"></i>
+                        تواصل معانا
+                    </h2>
+
+                    <p class="text-gray-500 text-sm mb-4">اختر الطريقة المناسبة للتواصل</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <!-- WhatsApp Card -->
+                        <a href="https://wa.me/201025612869" target="_blank" class="group block rounded-2xl border border-green-100 bg-gradient-to-br from-green-50 to-white p-6 text-center shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center shadow-inner transform group-hover:scale-105 transition">
+                                    <i class="fab fa-whatsapp text-3xl"></i>
+                                </div>
+                                <div class="mt-3 font-bold text-gray-800">واتساب</div>
+                            </div>
+                        </a>
+
+                        <!-- Facebook Card -->
+                        <a href="https://www.facebook.com/share/1AtY6UZJQF/" target="_blank" class="group block rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 text-center shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center shadow-inner transform group-hover:scale-105 transition">
+                                    <i class="fab fa-facebook text-3xl"></i>
+                                </div>
+                                <div class="mt-3 font-bold text-gray-800">فيسبوك</div>
+                            </div>
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Floating Help (Chat Style) -->
+        <button id="helpFab" aria-label="مركز المساعدة" title="مركز المساعدة" class="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-xl ring-1 ring-white/20 flex items-center justify-center transition-transform duration-200 hover:scale-105">
+            <i class="fas fa-comment-dots text-xl"></i>
+        </button>
+
+        <div id="helpPanel" class="fixed bottom-24 right-6 z-40 w-[360px] max-w-[92vw] rounded-3xl shadow-2xl border border-gray-200 bg-white hidden opacity-0 translate-y-2 pointer-events-none transition-all duration-200">
+            <!-- Header -->
+            <div class="px-4 py-3 rounded-t-3xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <span class="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center"><i class="fas fa-comments"></i></span>
+                    <h3 class="font-bold text-sm">مركز المساعدة</h3>
+                </div>
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <button id="helpClose" class="text-white/90 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <!-- Messages -->
+            <div class="px-3 pt-3 pb-2 bg-[#f5f7fb]">
+                <div id="helpMessages" class="h-64 overflow-y-auto pr-1">
+                    <!-- Bot message -->
+                    <div class="flex items-start gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">B</div>
+                        <div>
+                            <div class="bg-white rounded-2xl rounded-bl-sm shadow-sm px-3 py-2 text-sm text-gray-800 max-w-[240px]">
+                                أهلاً بحضرتك في منصة الطالب الذكي! 😊 ازاي أقدر أساعدك؟
+                            </div>
+                            <div class="text-[11px] text-gray-400 mt-1">الآن</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Input row -->
+            <div class="px-3 py-3 bg-white rounded-b-3xl border-t border-gray-100">
+                <div class="flex items-center bg-gray-50 rounded-2xl border border-gray-200">
+                    <input id="helpInput" type="text" placeholder="اكتب رسالتك..." class="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none"/>
+                    <button id="helpSend" class="w-10 h-10 text-indigo-600 hover:text-indigo-700 flex items-center justify-center">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="text-[10px] text-gray-400 text-center mt-2">Powered by BlinkBot</div>
+            </div>
+        </div>
+
+    </main>
+
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
@@ -304,6 +431,110 @@
     <script src="./js/supabase-config.js"></script>
 
     <script>
+        // Gemini API key (same as used in ai-assistant.html)
+        window.GEMINI_API_KEY = window.GEMINI_API_KEY || 'AIzaSyB8p4Vh8TmQplHOMrKaGwProWRLn5Dn2uc';
+        // Help panel toggle with animation
+        function toggleHelp(force) {
+            const panel = document.getElementById('helpPanel');
+            if (!panel) return;
+
+            const show = typeof force === 'boolean' ? force : panel.classList.contains('hidden');
+            if (show) {
+                panel.classList.remove('hidden');
+                // allow transition
+                requestAnimationFrame(() => {
+                    panel.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+                });
+            } else {
+                panel.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+                panel.addEventListener('transitionend', function onEnd(e){
+                    if (e.propertyName === 'opacity') {
+                        panel.classList.add('hidden');
+                        panel.removeEventListener('transitionend', onEnd);
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const fab = document.getElementById('helpFab');
+            const close = document.getElementById('helpClose');
+            const send = document.getElementById('helpSend');
+            const input = document.getElementById('helpInput');
+            const messages = document.getElementById('helpMessages');
+            fab && fab.addEventListener('click', () => toggleHelp());
+            close && close.addEventListener('click', () => toggleHelp(false));
+            // Send handlers
+            function appendUser(msg){
+                const wrap = document.createElement('div');
+                wrap.className = 'flex justify-end mb-2';
+                wrap.innerHTML = `<div class="bg-indigo-600 text-white px-3 py-2 rounded-2xl rounded-br-sm text-sm max-w-[240px]">${msg}</div>`;
+                messages.appendChild(wrap); messages.scrollTop = messages.scrollHeight;
+            }
+            function appendBot(msg){
+                const row = document.createElement('div');
+                row.className = 'flex items-start gap-2 mb-3';
+                row.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">B</div>
+                    <div>
+                        <div class="bg-white rounded-2xl rounded-bl-sm shadow-sm px-3 py-2 text-sm text-gray-800 max-w-[240px]">${msg}</div>
+                    </div>`;
+                messages.appendChild(row); messages.scrollTop = messages.scrollHeight;
+            }
+            function appendTyping(){
+                const row = document.createElement('div');
+                row.className = 'flex items-start gap-2 mb-3';
+                row.id = 'botTyping';
+                row.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">B</div>
+                    <div class="bg-white rounded-2xl rounded-bl-sm shadow-sm px-3 py-2 text-sm text-gray-800 max-w-[240px]">
+                        <span class="typing-indicator"></span>
+                        <span class="typing-indicator ml-1"></span>
+                        <span class="typing-indicator ml-1"></span>
+                    </div>`;
+                messages.appendChild(row); messages.scrollTop = messages.scrollHeight;                
+            }
+            function removeTyping(){
+                const t = document.getElementById('botTyping'); if(t) t.remove();
+            }
+
+            async function sendToGemini(prompt){
+                try{
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${window.GEMINI_API_KEY || ''}`;
+                    const payload = { contents: [{ parts: [{ text: prompt }]}] };
+                    const res = await fetch(apiUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+                    const data = await res.json();
+                    const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'لم أتمكن من إنشاء رد الآن.';
+                    return txt;
+                } catch(e){
+                    return 'حدث خطأ أثناء الاتصال بالنموذج. حاول مرة أخرى لاحقاً.';
+                }
+            }
+
+            async function handleSend(){
+                const val = (input?.value || '').trim();
+                if(!val) return;
+                appendUser(val);
+                input.value = '';
+                appendTyping();
+                const reply = await sendToGemini(val);
+                removeTyping();
+                appendBot(reply);
+            }
+
+            send && send.addEventListener('click', handleSend);
+            input && input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleSend(); }});
+            // Click outside to close
+            document.addEventListener('click', (e) => {
+                const panel = document.getElementById('helpPanel');
+                const fabBtn = document.getElementById('helpFab');
+                if (!panel || panel.classList.contains('hidden')) return;
+                if (!panel.contains(e.target) && !fabBtn.contains(e.target)) {
+                    toggleHelp(false);
+                }
+            });
+        });
+
         let currentUser = null;
 
         // Initialize page with fallback
@@ -626,6 +857,17 @@
 
         console.log('✅ Index page script loaded - Real Supabase mode only');
     </script>
+    <script>
+        // Toggle mobile navbar without interfering existing scripts
+        (function(){
+            const btn = document.getElementById('mobileMenuBtn');
+            const menu = document.getElementById('mobileMenu');
+            if (btn && menu) {
+                btn.addEventListener('click', function(){
+                    menu.classList.toggle('hidden');
+                });
+            }
+        })();
+    </script>
 </body>
 </html>
-
