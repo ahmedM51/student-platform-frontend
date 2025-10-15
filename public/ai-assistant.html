@@ -590,20 +590,22 @@
                 if (lectureContext.notes) lectureContent += `ملاحظات إضافية: ${lectureContext.notes}\n`;
             }
 
-            // Determine content strength
+            // Determine content strength and languages
             const contentWeak = !lectureContext.full_content && (!lectureContext.file_content || String(lectureContext.file_content).trim().length < 80);
+            const lectureLang = detectLanguage(lectureContent);
+            const questionLang = detectLanguage(textPrompt || '');
+            const respLang = questionLang || lectureLang || 'ar';
 
-            const lang = detectLanguage(lectureContent);
-            const systemInstructionText = lang === 'ar'
+            const systemInstructionText = respLang === 'ar'
                 ? (contentWeak
                     ? `أنت خبير أكاديمي. أجب باللغة العربية الفصحى وبأسلوب واضح.
 
 قواعد:
 1) إذا كان المحتوى المتاح محدوداً، اذكر ذلك بجملة قصيرة أولاً.
-2) قدّم إجابة تعليمية دقيقة ومنظمة (عناوين، قوائم).
-3) لا تفترض معلومات غير موجودة في النص.
+2) اعتمد فقط على محتوى المحاضرة المرفق، ويمكنك ترجمة المقتطفات للشرح إن كانت بلغة مختلفة.
+3) قدّم إجابة تعليمية دقيقة ومنظمة (عناوين، قوائم) دون اختلاق معلومات.
 4) إن كانت هناك معلومات ناقصة، وضّح المطلوب.`
-                    : `أنت خبير أكاديمي ومتخصص في تحليل المحاضرات. أجب باللغة العربية الفصحى اعتماداً فقط على محتوى المحاضرة المقدم.
+                    : `أنت خبير أكاديمي ومتخصص في تحليل المحاضرات. أجب بالعربية واعتمد فقط على محتوى المحاضرة المقدم (ترجم المقتطفات عند الحاجة دون إضافة معلومات خارج النص).
 
 قواعد:
 1) استخدم محتوى المحاضرة فقط.
@@ -614,25 +616,25 @@
 
 Rules:
 1) If the available content is limited, state that briefly first.
-2) Provide a concise, structured educational answer (headings, lists).
-3) Do not hallucinate outside the provided text.
-4) If information is missing, specify what is needed.`
-                    : `You are an academic expert specialized in lecture analysis. Answer strictly based on the provided lecture content in English.
+2) Ground strictly in the provided lecture content; translate excerpts if the source language differs.
+3) Provide a concise, structured answer (headings, lists) without hallucinating.
+4) If information is missing, say what exactly is needed.`
+                    : `You are an academic expert specialized in lecture analysis. Answer in English strictly based on the provided lecture content (you may translate excerpts when needed, but do not add outside info).
 
 Rules:
-1) Use only the lecture content; do not guess.
+1) Use only the lecture content.
 2) Keep a professional, structured English style.
 3) If the information is not present, say so.`);
 
             // User Query Content
             const userContentParts = [
                 {
-                    text: (lang === 'ar'
+                    text: (respLang === 'ar'
                         ? `محتوى المحاضرة المتاح الذي يجب عليك الاعتماد عليه:\n======================================\n${lectureContent}\n======================================`
                         : `Lecture content you must rely on:\n======================================\n${lectureContent}\n======================================`)
                 },
                 {
-                    text: (lang === 'ar' ? `سؤال الطالب: ${textPrompt}` : `Student question: ${textPrompt}`)
+                    text: (respLang === 'ar' ? `سؤال الطالب: ${textPrompt}` : `Student question: ${textPrompt}`)
                 }
             ];
 
