@@ -76,6 +76,80 @@
       }
     }
     </script>
+    <script>
+        // My Notes (Supabase + localStorage fallback)
+        async function initMyNotes(){
+            const listEl = document.getElementById('myNotesList');
+            const saveBtn = document.getElementById('addMyNoteBtn');
+            if (!listEl || !saveBtn) return; // section not present
+
+            async function fetchNotes(limit=5){
+                try{
+                    if (window.supabaseClient && window.SUPABASE_CONFIG && (currentUser || localStorage.getItem('userId'))){
+                        const uid = currentUser?.id || localStorage.getItem('userId');
+                        const { data, error } = await (window.supabaseClient
+                            .from('notes')
+                            .select('*')
+                            .eq('user_id', uid)
+                            .order('created_at', { ascending: false })
+                            .limit(limit));
+                        if (error) throw error;
+                        return Array.isArray(data)? data : [];
+                    }
+                } catch(e){ console.warn('Supabase notes fetch failed, using local', e); }
+                // Fallback to localStorage
+                const local = JSON.parse(localStorage.getItem('mynotes_notes')||'[]');
+                return local.slice(0, limit).map(n=>({ id:n.id, title:n.title, body:n.transcriptOriginal||n.body||'', created_at:new Date(n.createdAt).toISOString() }));
+            }
+
+            function renderNotes(items){
+                listEl.innerHTML = items.length? items.map(n=>`
+                    <div class="border rounded-lg p-3">
+                        <div class="flex items-center justify-between">
+                            <div class="font-semibold text-gray-800">${(n.title||'بدون عنوان')}</div>
+                            <div class="text-xs text-gray-500">${new Date(n.created_at||Date.now()).toLocaleString('ar')}</div>
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1 whitespace-pre-wrap">${(n.body||'').slice(0,180)}${(n.body||'').length>180?'...':''}</div>
+                    </div>
+                `).join('') : '<div class="text-gray-500">لا توجد ملاحظات بعد.</div>';
+            }
+
+            async function refresh(){
+                const notes = await fetchNotes(5);
+                renderNotes(notes);
+            }
+
+            saveBtn.addEventListener('click', async ()=>{
+                const title = (document.getElementById('myNoteTitle')?.value||'').trim();
+                const body = (document.getElementById('myNoteBody')?.value||'').trim();
+                if (!title && !body){ alert('أدخل عنواناً أو نصاً للملاحظة'); return; }
+                // Try Supabase first
+                let saved = false;
+                if (window.supabaseClient && window.SUPABASE_CONFIG && (currentUser || localStorage.getItem('userId'))){
+                    try{
+                        const uid = currentUser?.id || localStorage.getItem('userId');
+                        const { error } = await window.supabaseClient
+                            .from('notes')
+                            .insert([{ user_id: uid, title, body }]);
+                        if (error) throw error;
+                        saved = true;
+                    } catch(e){ console.warn('Supabase save failed, falling back to local', e); }
+                }
+                if (!saved){
+                    // Local fallback compatible with mynotes.html
+                    const notes = JSON.parse(localStorage.getItem('mynotes_notes')||'[]');
+                    notes.unshift({ id:'n_'+Date.now(), createdAt: Date.now(), title, transcriptOriginal: body });
+                    localStorage.setItem('mynotes_notes', JSON.stringify(notes));
+                }
+                // Clear form and refresh
+                if (document.getElementById('myNoteTitle')) document.getElementById('myNoteTitle').value='';
+                if (document.getElementById('myNoteBody')) document.getElementById('myNoteBody').value='';
+                await refresh();
+            });
+
+            await refresh();
+        }
+    </script>
     
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -207,6 +281,9 @@
                             <button onclick="window.location.href='ai-assistant.html'" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-robot ml-1"></i>المساعد الذكي
                             </button>
+                            <button onclick="window.location.href='my%20note.html'" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-microphone ml-1"></i>ملاحظاتي الصوتية
+                            </button>
                             <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-headset ml-1"></i>تواصل معانا
                             </button>
@@ -239,6 +316,9 @@
                     </button>
                     <button onclick="window.location.href='ai-assistant.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
                         <i class="fas fa-robot ml-2"></i> المساعد الذكي
+                    </button>
+                    <button onclick="window.location.href='my%20note.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-microphone ml-2"></i> ملاحظاتي الصوتية
                     </button>
                     <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
                         <i class="fas fa-headset ml-2"></i> تواصل معانا
@@ -329,6 +409,35 @@
                         <i class="fas fa-book text-3xl mb-3"></i>
                         <div class="text-sm font-medium">إدارة المواد</div>
                     </button>
+                    <button onclick="window.location.href='mynotes.html'" class="bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-note-sticky text-3xl mb-3"></i>
+                        <div class="text-sm font-medium">ملاحظاتي</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- My Notes (Quick) -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-note-sticky text-yellow-500 ml-2"></i>
+                    ملاحظاتي (سريع)
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-1 space-y-3">
+                        <input id="myNoteTitle" class="w-full p-3 border rounded" placeholder="عنوان الملاحظة"/>
+                        <textarea id="myNoteBody" rows="4" class="w-full p-3 border rounded" placeholder="اكتب ملاحظتك هنا..."></textarea>
+                        <button id="addMyNoteBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg">
+                            <i class="fas fa-plus ml-1"></i> حفظ الملاحظة
+                        </button>
+                        <p class="text-xs text-gray-500">يتم الحفظ في قاعدة البيانات عند تسجيل الدخول. في حال عدم تسجيل الدخول، يتم الحفظ محلياً.</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-semibold text-gray-800">أحدث الملاحظات</h3>
+                            <a href="mynotes.html" class="text-sm text-blue-600 hover:underline">فتح صفحة الملاحظات</a>
+                        </div>
+                        <div id="myNotesList" class="space-y-3"></div>
+                    </div>
                 </div>
             </div>
 
@@ -626,6 +735,11 @@
                 // Hide loading screen
                 hideLoadingScreen();
                 
+                // Initialize quick My Notes section after dashboard becomes visible
+                if (typeof initMyNotes === 'function') {
+                    try { await initMyNotes(); } catch(e){ console.warn('MyNotes init failed', e); }
+                }
+
                 console.log('✅ Dashboard loaded successfully');
                 
             } catch (error) {
