@@ -251,6 +251,7 @@
                     if (data?.session?.user) {
                         currentUser = data.session.user;
                         console.log('✅ User authenticated:', currentUser.email);
+                        await ensureUserRecord();
                         loadSubjects();
                     } else {
                         console.log('❌ No authenticated session found');
@@ -263,6 +264,24 @@
             } catch (error) {
                 console.error('❌ Authentication check failed:', error);
                 window.location.href = 'auth.html';
+            }
+        }
+
+        // Ensure current auth user exists in public.users to satisfy FK
+        async function ensureUserRecord() {
+            try {
+                if (!window.supabaseDB || !window.supabaseDB.users || !currentUser) return;
+                const { data } = await window.supabaseDB.users.get(currentUser.id);
+                if (!data) {
+                    await window.supabaseDB.users.create({
+                        id: currentUser.id,
+                        email: currentUser.email,
+                        full_name: (currentUser.user_metadata && (currentUser.user_metadata.full_name || currentUser.user_metadata.name)) || currentUser.email
+                    });
+                    console.log('👤 User record created in public.users for', currentUser.email);
+                }
+            } catch (e) {
+                console.warn('ensureUserRecord() warning:', e);
             }
         }
 
@@ -520,7 +539,6 @@
                 showLoading();
                 
                 const subjectData = {
-                    user_id: currentUser.id,
                     name: name.trim(),
                     code: code.trim(),
                     description: description.trim(),
