@@ -105,16 +105,10 @@ if (!window.SUPABASE_INITIALIZED) {
                     throw new Error('Supabase client not initialized. Please check your configuration.');
                 }
                 
-                // Get current domain for redirect
-                const currentDomain = window.location.origin;
-                const redirectUrl = `${currentDomain}/index.html`;
-                
-                console.log('🔐 Google OAuth redirect URL:', redirectUrl);
-                
                 const { data, error } = await client.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                        redirectTo: redirectUrl,
+                        redirectTo: `${window.location.origin}/index.html`,
                         queryParams: {
                             access_type: 'offline',
                             prompt: 'consent'
@@ -331,6 +325,7 @@ if (!window.SUPABASE_INITIALIZED) {
                         code: subjectData.code?.trim(),
                         description: subjectData.description?.trim() || '',
                         color: subjectData.color || 'blue',
+                        user_id: subjectData.user_id,
                         status: subjectData.status || 'نشط',
                         lectures: parseInt(subjectData.lectures) || 0,
                         files: parseInt(subjectData.files) || 0,
@@ -338,7 +333,7 @@ if (!window.SUPABASE_INITIALIZED) {
                     };
 
                     // Validate required fields
-                    if (!cleanData.name || !cleanData.code) {
+                    if (!cleanData.name || !cleanData.code || !cleanData.user_id) {
                         throw new Error('الحقول المطلوبة مفقودة');
                     }
 
@@ -463,22 +458,13 @@ if (!window.SUPABASE_INITIALIZED) {
                 try {
                     const client = window.supabaseClient || window.initializeSupabase();
                     
-                    // Get lecture details with simple retry (handles transient network issues)
-                    let lecture = null;
-                    let lectureError = null;
-                    for (let attempt = 0; attempt < 3; attempt++) {
-                        const { data, error } = await client
-                            .from('lectures')
-                            .select('*')
-                            .eq('id', lectureId)
-                            .single();
-                        lecture = data;
-                        lectureError = error;
-                        if (!lectureError && lecture) break;
-                        const delay = Math.pow(2, attempt) * 500; // 0.5s, 1s, 2s
-                        console.warn(`Retry getWithContent(${lectureId}) attempt ${attempt + 1} due to error:`, lectureError?.message || 'unknown');
-                        await new Promise(r => setTimeout(r, delay));
-                    }
+                    // Get lecture details
+                    const { data: lecture, error: lectureError } = await client
+                        .from('lectures')
+                        .select('*')
+                        .eq('id', lectureId)
+                        .single();
+                    
                     if (lectureError) throw lectureError;
                     
                     console.log('Lecture data:', lecture);
@@ -501,23 +487,6 @@ if (!window.SUPABASE_INITIALIZED) {
                         contentParts.push(`نوع المحتوى: ${lecture.content_type}`);
                     }
                     
-                    // Include any available URL so AI has context when no extracted text exists
-                    const availableUrl = lecture.file_url || lecture.content_url || lecture.url || lecture.attachment_url || lecture.download_url || '';
-                    if (availableUrl) {
-                        contentParts.push(`رابط الملف: ${availableUrl}`);
-                    }
-                    
-                    // Prefer pre-extracted text content if it exists in DB (best grounding)
-                    // Several possible field names are checked to be robust with schema variations
-                    const extractedText = (lecture.text_content && lecture.text_content.trim())
-                        || (lecture.extracted_text && lecture.extracted_text.trim())
-                        || (lecture.content_text && lecture.content_text.trim())
-                        || '';
-                    if (extractedText) {
-                        lecture.file_content = extractedText;
-                        contentParts.push(`محتوى الملف (نص مستخرج):\n${extractedText}`);
-                    }
-
                     // Add file information if available
                     if (lecture.file_name) {
                         contentParts.push(`اسم الملف: ${lecture.file_name}`);
@@ -572,13 +541,8 @@ if (!window.SUPABASE_INITIALIZED) {
                         contentParts.push(`حجم الملف: ${sizeInKB} كيلوبايت`);
                     }
                     
-                    // Try to get file content only if we have an internal storage path (avoid external http/https URLs)
-                    if (lecture.content_url && !lecture.file_content) {
-                        const isExternal = /^https?:\/\//i.test(lecture.content_url);
-                        if (isExternal) {
-                            // Skip storage download attempts for external links to avoid 400 errors
-                            console.log('Skipping storage download for external URL:', lecture.content_url);
-                        } else {
+                    // Try to get file content if URL exists
+                    if (lecture.content_url) {
                         console.log('Attempting to access file:', lecture.content_url);
                         try {
                             // Try different storage bucket names
@@ -743,7 +707,6 @@ if (!window.SUPABASE_INITIALIZED) {
 - الربط والاستنتاج`;
                             }
                             contentParts.push('ملاحظة: تم إنشاء محتوى بديل بناءً على معلومات المحاضرة');
-                        }
                         }
                     } else {
                         // No file attached - create content based on lecture info
@@ -1160,10 +1123,7 @@ async function initializeSupabase() {
         // جعل المتغيرات متاحة عالمياً
         window.supabaseClient = supabaseClient;
         window.supabaseAuth = supabaseAuth;
-        // لا تستبدل واجهة قاعدة البيانات الغنية إذا كانت متاحة مسبقاً (خاصة lectures.getWithContent)
-        if (!window.supabaseDB || !window.supabaseDB.lectures || !window.supabaseDB.lectures.getWithContent) {
-            window.supabaseDB = supabaseDB;
-        }
+        window.supabaseDB = supabaseDB;
         
         console.log('✅ Supabase initialized successfully for Vercel');
         return true;
