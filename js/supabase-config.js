@@ -331,7 +331,6 @@ if (!window.SUPABASE_INITIALIZED) {
                         code: subjectData.code?.trim(),
                         description: subjectData.description?.trim() || '',
                         color: subjectData.color || 'blue',
-                        user_id: subjectData.user_id,
                         status: subjectData.status || 'نشط',
                         lectures: parseInt(subjectData.lectures) || 0,
                         files: parseInt(subjectData.files) || 0,
@@ -339,7 +338,7 @@ if (!window.SUPABASE_INITIALIZED) {
                     };
 
                     // Validate required fields
-                    if (!cleanData.name || !cleanData.code || !cleanData.user_id) {
+                    if (!cleanData.name || !cleanData.code) {
                         throw new Error('الحقول المطلوبة مفقودة');
                     }
 
