@@ -76,6 +76,83 @@
       }
     }
     </script>
+    <!-- Firebase init for quick notes (module) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Match my note.html config
+        const firebaseConfig = {
+          apiKey: "AIzaSyBM7Y6ZEFwMOOPno1ighvtVumHB1f3keVA",
+          authDomain: "pharmacy-769cb.firebaseapp.com",
+          projectId: "pharmacy-769cb",
+          storageBucket: "pharmacy-769cb.firebasestorage.app",
+          messagingSenderId: "1024742648973",
+          appId: "1:1024742648973:web:d45439f85a8e3eca0146c4",
+          measurementId: "G-2EN0X2SL8P"
+        };
+
+        window.appId = window.appId || 'default-app-id';
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        window.db = db;
+
+        function ensureAuth(){
+          return new Promise((resolve) => {
+            onAuthStateChanged(auth, async (user) => {
+              if (user) {
+                window.userId = user.uid;
+                resolve(user);
+              } else {
+                await signInAnonymously(auth);
+              }
+            });
+          });
+        }
+
+        window.getFirestoreNotes = async function(max=5){
+          try{
+            await ensureAuth();
+            if (!window.userId) return [];
+            const basePath = `artifacts/${window.appId}/users/${window.userId}`;
+            const notesRef = collection(db, `${basePath}/notes`);
+            const q = query(notesRef, orderBy('createdAt', 'desc'), limit(max));
+            const snap = await getDocs(q);
+            const items = [];
+            snap.forEach(doc => {
+              const d = doc.data();
+              items.push({
+                id: doc.id,
+                title: d.audioFileName || 'ملاحظة صوتية',
+                body: d.transcription || '',
+                created_at: d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : (d.createdAt || new Date()).toString()
+              });
+            });
+            return items;
+          }catch(e){ console.warn('Firestore fetch failed', e); return []; }
+        }
+
+        window.saveQuickNoteToFirestore = async function(title, body){
+          try{
+            await ensureAuth();
+            if (!window.userId) return false;
+            const basePath = `artifacts/${window.appId}/users/${window.userId}`;
+            const notesRef = collection(db, `${basePath}/notes`);
+            const newNote = {
+              categoryId: null,
+              audioFileName: title || 'ملاحظة',
+              duration: '',
+              transcription: body || '',
+              translation: '',
+              createdAt: serverTimestamp()
+            };
+            await addDoc(notesRef, newNote);
+            return true;
+          }catch(e){ console.warn('Firestore save failed', e); return false; }
+        }
+    </script>
     <script>
         // My Notes (Supabase + localStorage fallback)
         async function initMyNotes(){
@@ -84,19 +161,11 @@
             if (!listEl || !saveBtn) return; // section not present
 
             async function fetchNotes(limit=5){
-                try{
-                    if (window.supabaseClient && window.SUPABASE_CONFIG && (currentUser || localStorage.getItem('userId'))){
-                        const uid = currentUser?.id || localStorage.getItem('userId');
-                        const { data, error } = await (window.supabaseClient
-                            .from('notes')
-                            .select('*')
-                            .eq('user_id', uid)
-                            .order('created_at', { ascending: false })
-                            .limit(limit));
-                        if (error) throw error;
-                        return Array.isArray(data)? data : [];
-                    }
-                } catch(e){ console.warn('Supabase notes fetch failed, using local', e); }
+                // Try Firestore first (voice notes)
+                if (window.getFirestoreNotes){
+                    const items = await window.getFirestoreNotes(limit);
+                    if (items && items.length) return items;
+                }
                 // Fallback to localStorage
                 const local = JSON.parse(localStorage.getItem('mynotes_notes')||'[]');
                 return local.slice(0, limit).map(n=>({ id:n.id, title:n.title, body:n.transcriptOriginal||n.body||'', created_at:new Date(n.createdAt).toISOString() }));
@@ -123,17 +192,10 @@
                 const title = (document.getElementById('myNoteTitle')?.value||'').trim();
                 const body = (document.getElementById('myNoteBody')?.value||'').trim();
                 if (!title && !body){ alert('أدخل عنواناً أو نصاً للملاحظة'); return; }
-                // Try Supabase first
+                // Try Firestore (same collection used by voice notes)
                 let saved = false;
-                if (window.supabaseClient && window.SUPABASE_CONFIG && (currentUser || localStorage.getItem('userId'))){
-                    try{
-                        const uid = currentUser?.id || localStorage.getItem('userId');
-                        const { error } = await window.supabaseClient
-                            .from('notes')
-                            .insert([{ user_id: uid, title, body }]);
-                        if (error) throw error;
-                        saved = true;
-                    } catch(e){ console.warn('Supabase save failed, falling back to local', e); }
+                if (window.saveQuickNoteToFirestore){
+                    saved = await window.saveQuickNoteToFirestore(title, body);
                 }
                 if (!saved){
                     // Local fallback compatible with mynotes.html
@@ -346,7 +408,7 @@
                         <!-- استبدل VIDEO_ID بمعرّف الفيديو الخاص بك -->
                         <iframe 
                             class="absolute top-0 left-0 w-full h-full"
-                            src="https://www.youtube.com/embed/zRHS9JEeHsM?rel=0&modestbranding=1" 
+                            src="https://www.youtube.com/embed/1fr5X8lJzFc?rel=0&modestbranding=1" 
                             title="فيديو تعريفي بمنصة الطالب الذكي"
                             frameborder="0" 
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
