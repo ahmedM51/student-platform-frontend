@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>المخطط الدراسي - منصة الطالب الذكي</title>
     
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="المخطط الدراسي - منصة الطالب الذكي">
+    <meta property="og:description" content="نظّم مهامك ودراستك بسهولة مع المخطط الدراسي الذكي.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://student-platform-frontend.vercel.app/planner.html">
+    <meta property="og:image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    <meta property="og:image:alt" content="منصة الطالب الذكي - صورة تعريفية">
+    <meta property="og:site_name" content="منصة الطالب الذكي">
+    <meta property="og:locale" content="ar_SA">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="المخطط الدراسي - منصة الطالب الذكي">
+    <meta name="twitter:description" content="نظّم مهامك ودراستك بسهولة مع المخطط الدراسي الذكي.">
+    <meta name="twitter:image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    <meta itemprop="image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://student-platform-frontend.vercel.app/planner.html">
+    
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -695,11 +715,18 @@
                     dayElement.classList.add('bg-blue-100', 'border-blue-300');
                 }
                 
+                // Include tasks from both local model (task.date) and Supabase model (task.due_date)
                 const dayTasks = tasks.filter(task => {
-                    if (!task.date) return false;
-                    const taskDate = new Date(task.date);
+                    const dateStr = task.date || task.due_date;
+                    if (!dateStr) return false;
+                    const taskDate = new Date(dateStr);
                     return taskDate.toDateString() === date.toDateString();
                 });
+                
+                // Visually highlight days that have tasks
+                if (dayTasks.length > 0) {
+                    dayElement.classList.add('has-tasks');
+                }
                 
                 dayElement.innerHTML = `
                     <div class="font-semibold">${date.getDate()}</div>
