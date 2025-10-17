@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- ************************************ -->
-    <!-- ✅ شفرة AdSense الأساسية: تربط الموقع بحسابك -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7650786028392749"
-         crossorigin="anonymous"></script>
-    <!-- ************************************ -->
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7650786028392749" crossorigin="anonymous"></script>
+    <meta name="google-adsense-account" content="ca-pub-7650786028392749">
     
     <!-- SEO Meta Tags -->
     <title>منصة الطالب الذكي - منصة التعلم الذكية بالذكاء الاصطناعي</title>
@@ -49,9 +46,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     
     <!-- Google Site Verification (أضف كودك هنا) -->
-    <!-- تذكير: يجب استبدال YOUR_VERIFICATION_CODE بالرمز الفعلي من Google Search Console -->
-    <meta name="google-adsense-account" content="ca-pub-7650786028392749">
-
+    <meta name="google-site-verification" content="YOUR_VERIFICATION_CODE" />
+    
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">
     {
@@ -83,62 +79,48 @@
       }
     }
     </script>
-    
-    <!-- Firebase init for quick notes (module) - تم التعديل لاستخدام المتغيرات العامة للبيئة -->
+    <!-- Firebase init for quick notes (module) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // استخدام المتغيرات العامة من بيئة التشغيل
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Match my note.html config
+        const firebaseConfig = {
+          apiKey: "AIzaSyBM7Y6ZEFwMOOPno1ighvtVumHB1f3keVA",
+          authDomain: "pharmacy-769cb.firebaseapp.com",
+          projectId: "pharmacy-769cb",
+          storageBucket: "pharmacy-769cb.firebasestorage.app",
+          messagingSenderId: "1024742648973",
+          appId: "1:1024742648973:web:d45439f85a8e3eca0146c4",
+          measurementId: "G-2EN0X2SL8P"
+        };
 
-        if (!firebaseConfig) {
-            console.error("❌ Firebase config is missing. Quick Notes will rely on localStorage.");
-        }
-        
-        // المتغيرات العامة التي تستخدمها دوال الملاحظات
-        window.appId = appId;
-        window.db = firebaseConfig ? getFirestore(initializeApp(firebaseConfig)) : null;
-        window.auth = firebaseConfig ? getAuth(initializeApp(firebaseConfig)) : null;
+        window.appId = window.appId || 'default-app-id';
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        window.db = db;
 
         function ensureAuth(){
           return new Promise((resolve) => {
-            if (!window.auth) return resolve(null);
-            
-            // محاولة تسجيل الدخول باستخدام الرمز المميز (Token) المخصص أو تسجيل الدخول كمجهول
-            onAuthStateChanged(window.auth, async (user) => {
+            onAuthStateChanged(auth, async (user) => {
               if (user) {
                 window.userId = user.uid;
                 resolve(user);
               } else {
-                try {
-                    if (initialAuthToken) {
-                        const credential = await signInWithCustomToken(window.auth, initialAuthToken);
-                        window.userId = credential.user.uid;
-                    } else {
-                        const credential = await signInAnonymously(window.auth);
-                        window.userId = credential.user.uid;
-                    }
-                    resolve(window.auth.currentUser);
-                } catch(e) {
-                    console.error("Firebase auth failed:", e);
-                    resolve(null);
-                }
+                await signInAnonymously(auth);
               }
             });
           });
         }
 
         window.getFirestoreNotes = async function(max=5){
-          if (!window.db || !window.auth) return [];
           try{
             await ensureAuth();
             if (!window.userId) return [];
             const basePath = `artifacts/${window.appId}/users/${window.userId}`;
-            const notesRef = collection(window.db, `${basePath}/notes`);
+            const notesRef = collection(db, `${basePath}/notes`);
             const q = query(notesRef, orderBy('createdAt', 'desc'), limit(max));
             const snap = await getDocs(q);
             const items = [];
@@ -156,12 +138,11 @@
         }
 
         window.saveQuickNoteToFirestore = async function(title, body){
-          if (!window.db || !window.auth) return false;
           try{
             await ensureAuth();
             if (!window.userId) return false;
             const basePath = `artifacts/${window.appId}/users/${window.userId}`;
-            const notesRef = collection(window.db, `${basePath}/notes`);
+            const notesRef = collection(db, `${basePath}/notes`);
             const newNote = {
               categoryId: null,
               audioFileName: title || 'ملاحظة',
@@ -176,31 +157,7 @@
         }
     </script>
     <script>
-        // دالة لعرض رسائل النظام المؤقتة بدلاً من alert()
-        function showTempMessage(text, isError = false) {
-            const messageContainer = document.getElementById('tempMessageContainer') || createTempMessageContainer();
-            messageContainer.textContent = text;
-            messageContainer.className = isError 
-                ? 'fixed bottom-24 right-1/2 translate-x-1/2 p-3 rounded-lg shadow-lg z-[5000] bg-red-600 text-white transition-opacity duration-300'
-                : 'fixed bottom-24 right-1/2 translate-x-1/2 p-3 rounded-lg shadow-lg z-[5000] bg-green-500 text-white transition-opacity duration-300';
-            messageContainer.style.opacity = '1';
-            
-            setTimeout(() => {
-                messageContainer.style.opacity = '0';
-                setTimeout(() => {
-                    messageContainer.remove();
-                }, 300);
-            }, 3000);
-        }
-
-        function createTempMessageContainer() {
-            const div = document.createElement('div');
-            div.id = 'tempMessageContainer';
-            document.body.appendChild(div);
-            return div;
-        }
-
-        // My Notes (Supabase + localStorage fallback) - تم تعديلها لإزالة alert()
+        // My Notes (Supabase + localStorage fallback)
         async function initMyNotes(){
             const listEl = document.getElementById('myNotesList');
             const saveBtn = document.getElementById('addMyNoteBtn');
@@ -237,25 +194,18 @@
             saveBtn.addEventListener('click', async ()=>{
                 const title = (document.getElementById('myNoteTitle')?.value||'').trim();
                 const body = (document.getElementById('myNoteBody')?.value||'').trim();
-                if (!title && !body){ 
-                    showTempMessage('أدخل عنواناً أو نصاً للملاحظة', true); // تم استبدال alert
-                    return; 
-                } 
+                if (!title && !body){ alert('أدخل عنواناً أو نصاً للملاحظة'); return; }
                 // Try Firestore (same collection used by voice notes)
                 let saved = false;
                 if (window.saveQuickNoteToFirestore){
                     saved = await window.saveQuickNoteToFirestore(title, body);
                 }
-                if (saved) {
-                    showTempMessage('تم حفظ الملاحظة بنجاح في قاعدة البيانات.');
-                } else {
+                if (!saved){
                     // Local fallback compatible with mynotes.html
                     const notes = JSON.parse(localStorage.getItem('mynotes_notes')||'[]');
                     notes.unshift({ id:'n_'+Date.now(), createdAt: Date.now(), title, transcriptOriginal: body });
                     localStorage.setItem('mynotes_notes', JSON.stringify(notes));
-                    showTempMessage('تم حفظ الملاحظة محلياً.', false);
                 }
-                
                 // Clear form and refresh
                 if (document.getElementById('myNoteTitle')) document.getElementById('myNoteTitle').value='';
                 if (document.getElementById('myNoteBody')) document.getElementById('myNoteBody').value='';
@@ -354,36 +304,6 @@
         
         .main-visible {
             display: block !important;
-        }
-        
-        /* Typing Indicator styles for help panel */
-        .typing-indicator {
-            background-color: #3b82f6;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            opacity: 0;
-            animation: bounce 1.4s infinite ease-in-out;
-        }
-
-        .typing-indicator:nth-child(1) {
-            animation-delay: -0.32s;
-        }
-
-        .typing-indicator:nth-child(2) {
-            animation-delay: -0.16s;
-        }
-
-        @keyframes bounce {
-            0%, 80%, 100% {
-                transform: scale(0);
-                opacity: 0;
-            }
-            40% {
-                transform: scale(1.0);
-                opacity: 1;
-            }
         }
     </style>
 </head>
@@ -677,17 +597,16 @@
         </div>
 
     </main>
-    
+
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Supabase Configuration (تنبيه: هذا الملف مفقود، ويجب توفيره ليعمل الجزء المتعلق بـ Supabase) -->
+    <!-- Supabase Configuration -->
     <script src="./js/supabase-config.js"></script>
 
     <script>
         // Gemini API key (same as used in ai-assistant.html)
         window.GEMINI_API_KEY = window.GEMINI_API_KEY || 'AIzaSyB8p4Vh8TmQplHOMrKaGwProWRLn5Dn2uc';
-        
         // Help panel toggle with animation
         function toggleHelp(force) {
             const panel = document.getElementById('helpPanel');
@@ -719,7 +638,6 @@
             const messages = document.getElementById('helpMessages');
             fab && fab.addEventListener('click', () => toggleHelp());
             close && close.addEventListener('click', () => toggleHelp(false));
-            
             // Send handlers
             function appendUser(msg){
                 const wrap = document.createElement('div');
@@ -780,7 +698,6 @@
 
             send && send.addEventListener('click', handleSend);
             input && input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleSend(); }});
-            
             // Click outside to close
             document.addEventListener('click', (e) => {
                 const panel = document.getElementById('helpPanel');
@@ -803,8 +720,6 @@
                 if (window.initializeSupabase) {
                     await window.initializeSupabase();
                     console.log('✅ Supabase initialized');
-                } else {
-                    console.warn('⚠️ Supabase configuration file not loaded. Authentication will fail.');
                 }
                 
                 // Always hide loading screen after 3 seconds maximum
@@ -860,7 +775,6 @@
                 loadingScreen.style.opacity = '0';
                 setTimeout(() => {
                     loadingScreen.style.display = 'none';
-                    document.querySelector('main').classList.add('main-visible');
                 }, 300);
             }
         }
@@ -869,6 +783,13 @@
         async function loadDashboardData() {
             try {
                 console.log('📊 Loading dashboard data...');
+                
+                // Show the main content
+                const mainElement = document.querySelector('main');
+                if (mainElement) {
+                    mainElement.classList.add('main-visible');
+                    mainElement.style.display = 'block';
+                }
                 
                 // Update user welcome message if available
                 if (currentUser) {
@@ -889,6 +810,10 @@
             } catch (error) {
                 console.error('❌ Error loading dashboard:', error);
                 // Still show main content even if there's an error
+                const mainElement = document.querySelector('main');
+                if (mainElement) {
+                    mainElement.style.display = 'block';
+                }
                 hideLoadingScreen();
             }
         }
@@ -899,9 +824,7 @@
                 console.log('🔐 Checking authentication...');
                 
                 if (!window.supabaseAuth) {
-                    // Fallback for missing config (assuming anonymous use if auth check fails)
-                    console.warn('⚠️ Supabase Auth client is not available.');
-                    return false;
+                    throw new Error('Supabase authentication not available. Please check your configuration.');
                 }
 
                 // Check for OAuth redirect first
@@ -970,12 +893,16 @@
                 let userData = null;
 
                 if (window.supabaseDB) {
-                    // Placeholder for actual Supabase DB fetching logic
-                    userData = createDefaultUserData(); 
-                    console.warn('⚠️ Using default user data as Supabase DB client is not fully available in this scope or configuration is missing.');
+                    const { data, error } = await window.supabaseDB.users.get(currentUser.id);
+                        
+                    if (error || !data) {
+                        console.warn('⚠️ Could not load user data from Supabase, using default data');
+                        userData = createDefaultUserData();
+                    } else {
+                        userData = data;
+                    }
                 } else {
-                    // Use default data if Supabase DB is unavailable
-                    userData = createDefaultUserData();
+                    throw new Error('Supabase database not available. Please check your configuration.');
                 }
 
                 // Update statistics in UI
@@ -1009,13 +936,16 @@
         // Load recent activities - Real Supabase only
         async function loadRecentActivities() {
             try {
-                const activitiesContainer = document.getElementById('recentActivity');
+                const activitiesContainer = document.getElementById('recentActivities');
                 if (!activitiesContainer) return;
 
                 let activities = [];
 
                 if (window.supabaseDB && currentUser) {
-                    // Placeholder for actual Supabase DB fetching logic
+                    const { data, error } = await window.supabaseDB.activities.getByUser(currentUser.id, 5);
+                    if (!error && data && data.length > 0) {
+                        activities = data;
+                    }
                 }
 
                 // If no activities from database, show welcome message
@@ -1045,11 +975,6 @@
                         </div>
                     `;
                 }).join('');
-                
-                // If there are activities, remove the initial fallback center message
-                if (activities.length > 0) {
-                    activitiesContainer.classList.remove('text-center', 'py-12', 'text-gray-500');
-                }
 
                 console.log('✅ Recent activities loaded');
                 
@@ -1102,6 +1027,9 @@
             
             console.log('📊 UI updated with user stats:', userData);
         }
+
+        // Make logout function globally available
+        window.handleLogout = logout;
 
         // Initialize page when DOM is loaded
         document.addEventListener('DOMContentLoaded', initializePage);
