@@ -361,9 +361,13 @@
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">الوقت</label>
-                        <input type="time" id="taskTime" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">الوقت (من - إلى)</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="time" id="taskTime" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="من">
+                            <input type="time" id="taskEndTime" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="إلى">
+                        </div>
                     </div>
                 </div>
                 
@@ -524,31 +528,61 @@
             const description = document.getElementById('taskDescription').value;
             const date = document.getElementById('taskDate').value;
             const time = document.getElementById('taskTime').value;
+            const endTime = document.getElementById('taskEndTime') ? document.getElementById('taskEndTime').value : '';
             const priority = document.getElementById('taskPriority').value;
             const subject = document.getElementById('taskSubject').value;
             
-            const task = {
-                id: Date.now().toString(),
-                title,
-                description,
-                date,
-                time,
-                priority,
-                subject,
-                completed: false,
-                created_at: new Date().toISOString()
-            };
+            const desc = (time && endTime) ? `من ${formatTime12(time)} إلى ${formatTime12(endTime)}` : description;
             
-            tasks.push(task);
-            await saveTasks();
-            await loadTasks();
-            updateCalendar();
-            closeModal();
+            try {
+                if (window.supabaseDB && currentUser) {
+                    const payload = {
+                        user_id: currentUser.id,
+                        title,
+                        description: desc,
+                        due_date: date,
+                        time: time || null,
+                        start_time: time || null,
+                        end_time: endTime || null,
+                        priority,
+                        subject_id: subject || null,
+                        status: 'pending',
+                        completed: false,
+                        type: 'manual'
+                    };
+                    const result = await window.supabaseDB.tasks.create(payload);
+                    if (result?.error) throw result.error;
+                } else {
+                    const task = {
+                        id: Date.now().toString(),
+                        title,
+                        description: desc,
+                        date,
+                        time,
+                        start_time: time || null,
+                        end_time: endTime || null,
+                        priority,
+                        subject,
+                        completed: false,
+                        created_at: new Date().toISOString()
+                    };
+                    tasks.push(task);
+                    await saveTasks();
+                }
+                await loadTasks();
+                updateCalendar();
+                closeModal();
+                showNotification('تمت إضافة المهمة بنجاح', 'success');
+            } catch (e) {
+                console.error('Error adding task:', e);
+                showNotification('تعذر إضافة المهمة. حاول مرة أخرى', 'error');
+            }
             
             // Reset form
             document.getElementById('taskTitle').value = '';
             document.getElementById('taskDescription').value = '';
             document.getElementById('taskTime').value = '';
+            if (document.getElementById('taskEndTime')) { document.getElementById('taskEndTime').value = ''; }
             document.getElementById('taskPriority').value = 'medium';
             document.getElementById('taskSubject').value = '';
         }
@@ -655,13 +689,13 @@
                                    onchange="toggleTask('${task.id}')" class="ml-3">
                             <div class="flex-1">
                                 <h4 class="font-semibold ${task.completed ? 'line-through text-gray-500' : ''}">${task.title}</h4>
-                                ${task.description ? `<p class="text-sm text-gray-600 mt-1">${task.description}</p>` : ''}
+                                ${ task.description ? `<p class="text-sm text-gray-600 mt-1">${task.description}</p>` : '' }
                                 <div class="flex items-center mt-2 text-xs text-gray-500">
                                     <i class="fas fa-calendar ml-1"></i>
-                                    <span class="ml-3">${formatArabicDate(task.date || task.due_date)}</span>
-                                    ${ (task.start_time && task.end_time)
-                                        ? `<i class="fas fa-clock ml-1"></i><span class="ml-3">${formatTime12(task.start_time)} - ${formatTime12(task.end_time)}</span>`
-                                        : (task.time ? `<i class="fas fa-clock ml-1"></i><span class="ml-3">${formatTime12(task.time)}</span>` : '') }
+                                    <span class="ml-3">
+                                        ${formatArabicDate(task.date || task.due_date)}
+                                        ${getTaskTimeLabel(task) ? ' — ' + getTaskTimeLabel(task) : ''}
+                                    </span>
                                     ${task.subject || task.subject_id ? `<i class="fas fa-book ml-1"></i><span>${task.subject || ''}</span>` : ''}
                                 </div>
                             </div>
@@ -688,6 +722,17 @@
             const hour = ((h % 12) || 12);
             const suffix = h < 12 ? 'AM' : 'PM';
             return `${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${suffix}`;
+        }
+
+        // Build task time label from available fields
+        function getTaskTimeLabel(task) {
+            if (!task) return '';
+            const start = task.start_time;
+            const end = task.end_time;
+            const single = task.time || task.start_time;
+            if (start && end) return `${formatTime12(start)} - ${formatTime12(end)}`;
+            if (single) return `${formatTime12(single)}`;
+            return '';
         }
 
         // Update statistics
@@ -1238,7 +1283,7 @@
                         const taskData = {
                             user_id: currentUser.id,
                             title: `دراسة ${session.subject_name} - ${session.lecture_title}`,
-                            description: `جلسة دراسية لمدة ${session.duration} ساعة`,
+                            description: `من ${formatTime12(session.start_time)} إلى ${formatTime12(session.end_time)}`,
                             due_date: day.date,
                             time: session.start_time,
                             priority: session.priority,
