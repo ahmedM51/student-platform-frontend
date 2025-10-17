@@ -622,8 +622,14 @@
         function renderTasks() {
             const today = new Date().toISOString().split('T')[0];
             
-            const todayTasks = tasks.filter(t => t.date === today && !t.completed);
-            const upcomingTasks = tasks.filter(t => t.date > today && !t.completed);
+            const todayTasks = tasks.filter(t => {
+                const d = (t.date || t.due_date);
+                return d === today && !t.completed;
+            });
+            const upcomingTasks = tasks.filter(t => {
+                const d = (t.date || t.due_date);
+                return d && d > today && !t.completed;
+            });
             const completedTasks = tasks.filter(t => t.completed);
             
             renderTaskList('todayTasksList', todayTasks);
@@ -652,9 +658,11 @@
                                 ${task.description ? `<p class="text-sm text-gray-600 mt-1">${task.description}</p>` : ''}
                                 <div class="flex items-center mt-2 text-xs text-gray-500">
                                     <i class="fas fa-calendar ml-1"></i>
-                                    <span class="ml-3">${task.date}</span>
-                                    ${task.time ? `<i class="fas fa-clock ml-1"></i><span class="ml-3">${task.time}</span>` : ''}
-                                    ${task.subject ? `<i class="fas fa-book ml-1"></i><span>${task.subject}</span>` : ''}
+                                    <span class="ml-3">${formatArabicDate(task.date || task.due_date)}</span>
+                                    ${ (task.start_time && task.end_time)
+                                        ? `<i class="fas fa-clock ml-1"></i><span class="ml-3">${formatTime12(task.start_time)} - ${formatTime12(task.end_time)}</span>`
+                                        : (task.time ? `<i class="fas fa-clock ml-1"></i><span class="ml-3">${formatTime12(task.time)}</span>` : '') }
+                                    ${task.subject || task.subject_id ? `<i class="fas fa-book ml-1"></i><span>${task.subject || ''}</span>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -664,6 +672,22 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Format Gregorian date with Arabic weekday
+        function formatArabicDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('ar', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        // Format HH:mm to 12-hour with AM/PM
+        function formatTime12(timeStr) {
+            if (!timeStr) return '';
+            const [h, m] = timeStr.split(':').map(Number);
+            const hour = ((h % 12) || 12);
+            const suffix = h < 12 ? 'AM' : 'PM';
+            return `${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${suffix}`;
         }
 
         // Update statistics
