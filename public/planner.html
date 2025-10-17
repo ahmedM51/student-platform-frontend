@@ -68,7 +68,7 @@
         }
         
         .calendar-day {
-            min-height: 120px;
+            min-height: 150px;
             border: 1px solid #e5e7eb;
             padding: 8px;
             cursor: pointer;
@@ -86,6 +86,13 @@
         
         .calendar-day.has-tasks {
             background: #fef3c7;
+        }
+
+        /* Scrollable tasks area inside calendar cell */
+        .day-tasks {
+            max-height: 90px;
+            overflow-y: auto;
+            margin-top: 4px;
         }
         
         .priority-high { border-left-color: #ef4444; }
@@ -730,11 +737,13 @@
                 
                 dayElement.innerHTML = `
                     <div class="font-semibold">${date.getDate()}</div>
-                    ${dayTasks.map(task => `
-                        <div class="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded mt-1 truncate">
-                            ${task.title}
-                        </div>
-                    `).join('')}
+                    <div class="day-tasks">
+                        ${dayTasks.map(task => `
+                            <div class="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded mt-1 truncate">
+                                ${task.title}
+                            </div>
+                        `).join('')}
+                    </div>
                 `;
                 
                 grid.appendChild(dayElement);
