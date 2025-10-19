@@ -4,6 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>موقت المذاكرة - منصة الطالب الذكي</title>
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="موقت المذاكرة - منصة الطالب الذكي">
+    <meta property="og:description" content="إدارة جلسات الدراسة بنظام بومودورو مع إحصائيات يومية.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://student-platform-frontend.vercel.app/study-timer.html">
+    <meta property="og:image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    <meta property="og:image:alt" content="منصة الطالب الذكي - صورة تعريفية">
+    <meta property="og:site_name" content="منصة الطالب الذكي">
+    <meta property="og:locale" content="ar_SA">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="موقت المذاكرة - منصة الطالب الذكي">
+    <meta name="twitter:description" content="إدارة جلسات الدراسة بنظام بومودورو مع إحصائيات يومية.">
+    <meta name="twitter:image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    <meta itemprop="image" content="https://student-platform-frontend.vercel.app/images/jojo.jpg">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://student-platform-frontend.vercel.app/study-timer.html">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -221,10 +241,7 @@
         </div>
     </div>
 
-    <!-- Audio Elements -->
-    <audio id="timerSound" preload="auto">
-        <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" type="audio/wav">
-    </audio>
+    <!-- Audio element removed to avoid external network errors; WebAudio beep is used instead -->
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -271,17 +288,9 @@
         // Initialize page
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                // Load Supabase configuration first
-                if (!window.supabaseClient) {
-                    await new Promise((resolve) => {
-                        const script = document.createElement('script');
-                        script.src = 'js/supabase-config.js';
-                        script.onload = resolve;
-                        document.head.appendChild(script);
-                    });
-                    
-                    // Wait for initialization
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                // Initialize Supabase (avoid loading the config twice)
+                if (window.initializeSupabase) {
+                    await window.initializeSupabase();
                 }
 
                 if (!window.supabaseAuth) {
@@ -804,5 +813,15 @@
 
         console.log('✅ Study timer script loaded');
     </script>
+    <!-- Site Footer -->
+    <footer class="mt-10 border-t bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div>© <span id="footerYear"></span> منصة الطالب الذكي</div>
+        <div class="space-x-4 space-x-reverse">
+          <a href="/privacy-policy.html" class="hover:underline">سياسة الخصوصية</a>
+        </div>
+      </div>
+    </footer>
+    <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
 </body>
 </html>
