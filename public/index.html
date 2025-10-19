@@ -352,6 +352,9 @@
                             <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                 <i class="fas fa-headset ml-1"></i>تواصل معانا
                             </button>
+                            <button onclick="window.location.href='privacy-policy.html'" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-shield-alt ml-1"></i>سياسة الخصوصية
+                            </button>
                         </div>
                         <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                             <i class="fas fa-sign-out-alt ml-2"></i>تسجيل الخروج
@@ -387,6 +390,9 @@
                     </button>
                     <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
                         <i class="fas fa-headset ml-2"></i> تواصل معانا
+                    </button>
+                    <button onclick="window.location.href='privacy-policy.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                        <i class="fas fa-shield-alt ml-2"></i> سياسة الخصوصية
                     </button>
                     <button onclick="logout()" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg text-sm text-right">
                         <i class="fas fa-sign-out-alt ml-2"></i> تسجيل الخروج
@@ -1048,6 +1054,15 @@
             }
         })();
     </script>
-</body>
-</html>
-
+    <!-- Site Footer -->
+    <footer class="mt-10 border-t bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div>© <span id="footerYear"></span> منصة الطالب الذكي</div>
+        <div class="space-x-4 space-x-reverse">
+          
+        </div>
+      </div>
+    </footer>
+    <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
+    </body>
+    </html>
