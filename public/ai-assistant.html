@@ -311,7 +311,7 @@
                 const loadingTask = pdfjsLib.getDocument({ url, withCredentials: false });
                 const pdf = await loadingTask.promise;
                 let fullText = '';
-                const maxPages = Math.min(pdf.numPages, 20);
+                const maxPages = Math.min(pdf.numPages, 30);
                 for (let p = 1; p <= maxPages; p++) {
                     const page = await pdf.getPage(p);
                     const content = await page.getTextContent();
@@ -330,7 +330,7 @@
                 const loadingTask = pdfjsLib.getDocument({ data: buffer });
                 const pdf = await loadingTask.promise;
                 let fullText = '';
-                const maxPages = Math.min(pdf.numPages, 20);
+                const maxPages = Math.min(pdf.numPages, 30);
                 for (let p = 1; p <= maxPages; p++) {
                     const page = await pdf.getPage(p);
                     const content = await page.getTextContent();
@@ -549,8 +549,9 @@
                     return;
                 }
 
-                // Merge into uploaded quiz text
-                uploadedQuizText = parts.join('\n\n');
+                // Merge into uploaded quiz text (append to existing content if present)
+                const newChunk = parts.join('\n\n');
+                uploadedQuizText = uploadedQuizText ? (uploadedQuizText + '\n\n' + newChunk) : newChunk;
 
                 // Ensure uploaded option exists and select it
                 let opt = sel.querySelector('option[value="__uploaded__"]');
