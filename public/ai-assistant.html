@@ -125,6 +125,11 @@
                     <select id="qaLectureSelect" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" onchange="enableQA()">
                         <option value="">-- اختر محاضرة --</option>
                     </select>
+                    <div class="mt-2">
+                        <button type="button" onclick="addCurrentLectureToQaUploads()" class="px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                            إضافة هذه المحاضرة إلى "الملفات المرفوعة" للمحادثة
+                        </button>
+                    </div>
                     <div class="mt-3 grid grid-cols-1 gap-3">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">أو ارفع ملفات (PDF, TXT, MD)</label>
@@ -180,6 +185,11 @@
                             <select id="quizLectureSelect" multiple class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent h-32">
                             </select>
                             <p class="text-xs text-gray-500 mt-1">يمكنك اختيار عدة محاضرات بالضغط مع Ctrl</p>
+                            <div class="mt-2">
+                                <button type="button" onclick="addSelectedLecturesToQuizUploads()" class="px-3 py-2 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200">
+                                    إضافة المحاضرات المحددة إلى "الملفات المرفوعة" للاختبار
+                                </button>
+                            </div>
                         </div>
 
                         <div>
@@ -333,13 +343,8 @@
 
         // Handlers to read uploaded files and build concatenated text content
         async function handleQaFilesChange(fileList) {
-            uploadedQaText = '';
             if (!fileList || fileList.length === 0) {
-                // Disable the uploaded option if no files now
-                const sel = document.getElementById('qaLectureSelect');
-                const opt = sel?.querySelector('option[value="__uploaded__"]');
-                if (opt) { opt.disabled = true; if (sel.value === '__uploaded__') sel.value = ''; }
-                enableQA();
+                // Do not clear previous uploads; simply return
                 return;
             }
             showNotification('جاري معالجة الملفات للمحادثة...', 'info');
@@ -355,7 +360,8 @@
                     showNotification(`صيغة غير مدعومة: ${name}`, 'error');
                 }
             }
-            uploadedQaText = parts.join('\n\n');
+            const newChunk = parts.join('\n\n');
+            uploadedQaText = uploadedQaText ? (uploadedQaText + '\n\n' + newChunk) : newChunk;
             if (uploadedQaText && uploadedQaText.length > 50) {
                 showNotification('تم تجهيز محتوى الملفات للمحادثة', 'success');
             }
@@ -371,15 +377,14 @@
             opt.disabled = false;
             sel.value = '__uploaded__';
             enableQA();
+            // Allow selecting the same files again by clearing the input value
+            try { const qaInput = document.getElementById('qaFiles'); if (qaInput) qaInput.value = ''; } catch(_) {}
         }
 
         async function handleQuizFilesChange(fileList) {
-            uploadedQuizText = '';
             const sel = document.getElementById('quizLectureSelect');
             if (!fileList || fileList.length === 0) {
-                // Disable uploaded option if exists
-                const opt = sel?.querySelector('option[value="__uploaded__"]');
-                if (opt) { opt.disabled = true; if (sel.value === '__uploaded__') sel.value = ''; }
+                // Do not clear previous uploads; simply return
                 return;
             }
             showNotification('جاري معالجة الملفات للاختبار...', 'info');
@@ -395,7 +400,8 @@
                     showNotification(`صيغة غير مدعومة: ${name}`, 'error');
                 }
             }
-            uploadedQuizText = parts.join('\n\n');
+            const newChunk = parts.join('\n\n');
+            uploadedQuizText = uploadedQuizText ? (uploadedQuizText + '\n\n' + newChunk) : newChunk;
             if (uploadedQuizText && uploadedQuizText.length > 50) {
                 showNotification('تم تجهيز محتوى الملفات للاختبار', 'success');
             }
@@ -409,6 +415,8 @@
             }
             opt.disabled = false;
             sel.value = '__uploaded__';
+            // Allow selecting the same files again by clearing the input value
+            try { const quizInput = document.getElementById('quizFiles'); if (quizInput) quizInput.value = ''; } catch(_) {}
         }
 
         // Use direct URL as Q&A source (PDF/TXT/MD)
@@ -463,6 +471,107 @@
             }
         }
 
+        // Aggregate selected lectures into the uploaded pools
+        async function addCurrentLectureToQaUploads() {
+            try {
+                const sel = document.getElementById('qaLectureSelect');
+                const val = sel?.value || '';
+                if (!val || val === '__uploaded__' || val === '__platform__') {
+                    showNotification('يرجى اختيار محاضرة فعلية لإضافتها', 'warning');
+                    return;
+                }
+
+                const lectureResult = await window.supabaseDB.lectures.getWithContent(val);
+                const lecture = lectureResult?.data;
+                if (!lecture) { showNotification('تعذر العثور على المحاضرة', 'error'); return; }
+
+                // Enrich/collect content
+                let content = '';
+                try {
+                    content = await buildLectureContentFallback(lecture);
+                } catch(_) {}
+                if (!content || content.trim().length < 20) {
+                    showNotification('لا يوجد محتوى كافٍ في هذه المحاضرة', 'warning');
+                    return;
+                }
+
+                const title = lecture.title || 'محاضرة';
+                const chunk = `-- ${title} --\n${content}`;
+                uploadedQaText = uploadedQaText ? (uploadedQaText + "\n\n" + chunk) : chunk;
+
+                // Ensure uploaded option exists and select it
+                let opt = sel.querySelector('option[value="__uploaded__"]');
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = '__uploaded__';
+                    opt.textContent = 'الملفات المرفوعة';
+                    sel.insertBefore(opt, sel.firstChild?.nextSibling);
+                }
+                opt.disabled = false;
+                sel.value = '__uploaded__';
+                enableQA();
+                showNotification('تمت إضافة المحاضرة إلى الملفات المرفوعة للمحادثة', 'success');
+            } catch (e) {
+                console.warn('addCurrentLectureToQaUploads error:', e);
+                showNotification('حدث خطأ أثناء إضافة المحاضرة', 'error');
+            }
+        }
+
+        async function addSelectedLecturesToQuizUploads() {
+            try {
+                const sel = document.getElementById('quizLectureSelect');
+                const ids = Array.from(sel?.selectedOptions || [])
+                    .map(o => o.value)
+                    .filter(v => v && v !== '__uploaded__');
+                if (!ids.length) {
+                    showNotification('يرجى اختيار محاضرة أو أكثر لإضافتها', 'warning');
+                    return;
+                }
+
+                showNotification('جاري جمع محتوى المحاضرات المختارة...', 'info');
+                const parts = [];
+                for (const id of ids) {
+                    try {
+                        const lectureResult = await window.supabaseDB.lectures.getWithContent(id);
+                        const lecture = lectureResult?.data;
+                        if (!lecture) continue;
+                        let content = '';
+                        try { content = await buildLectureContentFallback(lecture); } catch(_) {}
+                        if (content && content.trim().length >= 20) {
+                            const title = lecture.title || 'محاضرة';
+                            parts.push(`-- ${title} --\n${content}`);
+                        }
+                    } catch(_) {}
+                }
+
+                if (!parts.length) {
+                    showNotification('لم يتم العثور على محتوى كافٍ في المحاضرات المختارة', 'warning');
+                    return;
+                }
+
+                // Merge into uploaded quiz text
+                uploadedQuizText = parts.join('\n\n');
+
+                // Ensure uploaded option exists and select it
+                let opt = sel.querySelector('option[value="__uploaded__"]');
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = '__uploaded__';
+                    opt.textContent = 'الملفات المرفوعة';
+                    sel.insertBefore(opt, sel.firstChild);
+                }
+                opt.disabled = false;
+                sel.value = '__uploaded__';
+
+                const btn = document.getElementById('generateQuizBtn');
+                if (btn) btn.disabled = false;
+
+                showNotification('تم جمع المحاضرات في الملفات المرفوعة للاختبار', 'success');
+            } catch (e) {
+                console.warn('addSelectedLecturesToQuizUploads error:', e);
+                showNotification('حدث خطأ أثناء جمع المحاضرات', 'error');
+            }
+        }
         // Use direct URL as quiz source (PDF/TXT/MD)
         async function handleQuizUrl() {
             try {
