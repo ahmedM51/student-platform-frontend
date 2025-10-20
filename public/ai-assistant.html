@@ -213,11 +213,13 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">عدد الأسئلة</label>
                                 <select id="questionCount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
                                     <option value="5">5 أسئلة</option>
-                                    <option value="10" selected>10 أسئلة</option>
+                                    <option value="10">10 أسئلة</option>
                                     <option value="15">15 سؤال</option>
                                     <option value="20">20 سؤال</option>
                                     <option value="25">25 سؤال</option>
                                     <option value="30">30 سؤال</option>
+                                    <option value="40">40 سؤال</option>
+                                    <option value="50" selected>50 سؤال</option>
                                 </select>
                             </div>
                         </div>
@@ -1540,5 +1542,15 @@ ${lectureContent}
             }
         }
     </script>
+    <!-- Site Footer -->
+    <footer class="mt-10 border-t bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div>© <span id="footerYear"></span> منصة الطالب الذكي</div>
+        <div class="space-x-4 space-x-reverse">
+          <a href="/privacy-policy.html" class="hover:underline">سياسة الخصوصية</a>
+        </div>
+      </div>
+    </footer>
+    <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
 </body>
 </html>
