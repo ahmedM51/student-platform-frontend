@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>صديق الدراسة الذكي - النسخة الصوتية</title>
+  <meta name="description" content="صديق الدراسة الذكي (Voice-First): محاكاة جلسة دراسية مباشرة مع مرشد ودود. تفاعل صوتي بالعربية مع دعم للنص والصوت." />
+  <style>
+    :root {
+      --bg: #f7f7fb;
+      --card: #ffffff;
+      --ink: #0f172a;
+      --muted: #475569;
+      --primary: #2563eb;
+      --accent: #16a34a;
+      --danger: #ef4444;
+      --ring: rgba(37, 99, 235, 0.15);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Cairo, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    header {
+      background: var(--card);
+      border-bottom: 1px solid #e5e7eb;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 992px) { .row { grid-template-columns: 1.1fr 0.9fr; } }
+    .card { background: var(--card); border: 1px solid #eef2f7; border-radius: 14px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.03); }
+    .card-body { padding: 16px; }
+    .title { margin: 0; font-size: 20px; font-weight: 800; }
+    .sub { color: var(--muted); font-size: 14px; margin-top: 6px; }
+    .stack-v { display: flex; flex-direction: column; gap: 12px; }
+    .stack-h { display: flex; gap: 8px; align-items: center; }
+    .pill { background: #f1f5f9; color: #0f172a; padding: 8px 12px; border-radius: 999px; font-size: 13px; }
+    .btn {
+      border: 0; border-radius: 12px; padding: 12px 14px; font-weight: 700; cursor: pointer; transition: transform .05s ease-in-out, background .2s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-ghost { background: #f1f5f9; color: #0f172a; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .input, textarea {
+      width: 100%; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; font-size: 15px; outline: none;
+    }
+    .input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); border-color: var(--primary); }
+    textarea { min-height: 160px; resize: vertical; }
+    .chat { height: 420px; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 8px; border: 1px solid #eef2f7; border-radius: 12px; background: #fafafa; }
+    .msg { display: flex; gap: 10px; align-items: flex-start; }
+    .msg .bubble {
+      padding: 10px 12px; border-radius: 14px; max-width: 85%; line-height: 1.6; font-size: 15px; word-wrap: break-word;
+    }
+    .from-user .bubble { background: var(--primary); color: #fff; border-top-left-radius: 4px; margin-left: 32px; }
+    .from-ai .bubble { background: #eef2f7; color: #0f172a; border-top-right-radius: 4px; margin-right: 32px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #0f172a; font-size: 12px; }
+    .footer { padding-top: 8px; }
+    .screen-box { border:1px dashed #cbd5e1; border-radius:12px; padding:10px; background:#f8fafc }
+    video#screenPreview { width:100%; max-height:220px; background:#000; border-radius:10px }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="container stack-h" style="justify-content: space-between;">
+      <div class="stack-h">
+        <button class="btn btn-ghost" onclick="window.location.href='index.html'" title="الرجوع">
+          ← رجوع
+        </button>
+        <div>
+          <h1 class="title">صديق الدراسة الذكي — النسخة الصوتية</h1>
+          <div class="sub">تجربة محادثة صوتية مباشرة مع "المرشد" — عربية، سريعة، ودافئة</div>
+        </div>
+      </div>
+      <span class="badge">وضع صوت أولاً</span>
+    </div>
+  </header>
+
+  <main class="container" style="margin-top: 16px;">
+    <div class="row">
+      <section class="card">
+        <div class="card-body stack-v">
+          <div>
+            <div class="title" style="font-size:18px">جلسة مباشرة</div>
+            <div class="sub">"أهلاً بيك يا بطل! أنا جاهز أذاكر معاك المادة دي. إيه أول جزء حابب نركز عليه؟"</div>
+          </div>
+
+          <div class="stack-h" style="flex-wrap: wrap; gap: 8px 8px;">
+            <button id="micBtn" class="btn btn-primary" onclick="toggleMic()">تشغيل الميكروفون 🎙️</button>
+            <button id="speakBtn" class="btn btn-accent" onclick="ttsPlayLast()" disabled>إعادة تشغيل الصوت 🔊</button>
+            <button class="btn btn-ghost" onclick="clearChat()">مسح المحادثة</button>
+            <button id="modeBtn" class="btn btn-ghost" onclick="toggleDirectMode()" title="وضع إجابة مباشرة">وضع إجابة مباشرة: مفعل</button>
+          </div>
+
+          <div id="chat" class="chat">
+            <div class="msg from-ai">
+              <div class="bubble">
+                حسب اللي مكتوب في المحاضرة بتاعتنا... تمام، يلا بينا نركز. أهلاً بيك يا بطل! أنا المرشد وجاهز نذاكر سوا. شاركني نص المحاضرة في الصندوق اللي على اليمين، أو اسألني أول سؤال تحب تبدأ بيه.
+              </div>
+            </div>
+          </div>
+
+          <div class="footer stack-h">
+            <input id="textInput" class="input" placeholder="اكتب أو الصق سؤالك هنا... ثم اضغط Enter" onkeypress="if(event.key==='Enter'){submitText()}" />
+            <button class="btn btn-primary" onclick="submitText()">إرسال</button>
+          </div>
+          <div class="muted">تلميح: بعد كل إجابة، هسألك: "ها، كده تمام؟ تحب نشرحها بتفصيل أكتر أو نجيب مثال؟" مع انتظار ثانية لمحاكاة الحوار الطبيعي.</div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="card-body stack-v">
+          <div>
+            <div class="title" style="font-size:18px">مصدر المحاضرة</div>
+            <div class="sub">ألصق نص المحاضرة هنا. سيتم التعامل معه كمصدر الحقيقة أثناء الجلسة.</div>
+          </div>
+          <textarea id="lectureInput" placeholder="الصق هنا نص المحاضرة ..."></textarea>
+
+          <div class="stack-v">
+            <div class="title" style="font-size:16px">ملفات للمذاكرة</div>
+            <div class="sub">ارفع ملفات PDF/TXT/MD وسيتم استخراج النص وإضافته للمصدر</div>
+            <div class="stack-h" style="flex-wrap:wrap">
+              <input id="pdfFiles" type="file" multiple accept=".pdf,.txt,.md" class="input" style="padding:10px" />
+              <button class="btn btn-primary" onclick="uploadSelectedFiles()">رفع الملفات</button>
+              <button class="btn btn-accent" onclick="startAutoExplain()">ابدأ الشرح الآن</button>
+            </div>
+            <div id="uploadsList" class="muted"></div>
+          </div>
+
+          <div class="stack-v">
+            <div class="title" style="font-size:16px">مشاركة الشاشة (تجريبي)</div>
+            <div class="sub">شارك شاشة المحاضرة، التقط لقطة، واستخرج النص تلقائياً لإضافته للمصدر.</div>
+            <div class="screen-box stack-v">
+              <video id="screenPreview" autoplay muted playsinline></video>
+              <div class="stack-h" style="flex-wrap:wrap;margin-top:8px">
+                <button id="shareBtn" class="btn btn-primary" onclick="startScreenShare()">بدء مشاركة الشاشة</button>
+                <button id="stopShareBtn" class="btn btn-danger" onclick="stopScreenShare()" disabled>إيقاف</button>
+                <button id="snapOcrBtn" class="btn btn-accent" onclick="captureAndOCR()" disabled>التقاط واستخراج نص</button>
+              </div>
+              <div id="ocrStatus" class="muted"></div>
+            </div>
+          </div>
+
+          <div class="stack-h" style="justify-content: space-between; flex-wrap: wrap;">
+            <span class="pill" id="recStatus">الحالة: الميكروفون متوقف</span>
+            <div class="stack-h">
+              <button class="btn btn-ghost" onclick="loadSample()">ملء مثال</button>
+              <button class="btn btn-danger" onclick="resetLecture()">مسح المصدر</button>
+              <button class="btn btn-primary" onclick="summarizeLecture()">تلخيص المحاضرة</button>
+              <button class="btn btn-accent" onclick="explainLecture()">اشرح المحاضرة</button>
+            </div>
+          </div>
+
+          <div class="stack-v">
+            <div class="title" style="font-size:16px">اختبار سريع مُتكيف</div>
+            <div class="sub">إنشاء سؤال من آخر جزء تمت مناقشته</div>
+            <div class="stack-h">
+              <button class="btn btn-accent" onclick="makeAdaptiveQuestion()">سؤال سريع</button>
+              <button class="btn btn-ghost" onclick="toggleTougher()">زيادة الصعوبة</button>
+            </div>
+            <div id="quizSlot" class="muted"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    // --------------- State ---------------
+    const state = {
+      recognizing: false,
+      lastUtterance: '',
+      history: [], // {role: 'user'|'ai', text}
+      tougher: false,
+      questionsSinceBreak: 0,
+      uploads: [],
+      token: null,
+      directAnswer: true,
+      live: false,
+      speaking: false,
+      screenStream: null,
+    };
+
+    // Persona & phrases
+    const persona = {
+      prefix: 'حسب اللي مكتوب في المحاضرة بتاعتنا...',
+      warmups: [
+        'تمام، يلا بينا نركز',
+        'يا بطل، أنت ماشي صح',
+        'فهمت قصدك',
+        'خليني أبسّطهالك في نقطتين',
+        'برافو!'
+      ],
+      follow: 'ها، كده تمام؟ تحب نشرحها بتفصيل أكتر أو نجيب مثال؟',
+    };
+
+    const chat = document.getElementById('chat');
+    const textInput = document.getElementById('textInput');
+    const lectureInput = document.getElementById('lectureInput');
+    const recStatus = document.getElementById('recStatus');
+    const micBtn = document.getElementById('micBtn');
+    const speakBtn = document.getElementById('speakBtn');
+    const quizSlot = document.getElementById('quizSlot');
+    const uploadsList = document.getElementById('uploadsList');
+    const pdfFiles = document.getElementById('pdfFiles');
+    const screenPreview = document.getElementById('screenPreview');
+    const ocrStatus = document.getElementById('ocrStatus');
+
+    // --------------- Helpers ---------------
+    function appendMsg(role, text) {
+      const wrap = document.createElement('div');
+      wrap.className = `msg ${role==='user'?'from-user':'from-ai'}`;
+      const b = document.createElement('div');
+      b.className = 'bubble';
+      b.textContent = text;
+      wrap.appendChild(b);
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+      state.history.push({ role, text });
+    }
+
+    function pickWarmup(){
+      const arr = persona.warmups;
+      return arr[Math.floor(Math.random()*arr.length)];
+    }
+
+    function clean(text){ return (text||'').replace(/\s+/g,' ').trim(); }
+
+    function splitSentences(t){
+      return (t||'').split(/[.!؟\n]+/).map(s=>clean(s)).filter(Boolean);
+    }
+
+    function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+    // --------------- TTS (speechSynthesis) ---------------
+    function getArabicVoice(){
+      const voices = speechSynthesis.getVoices();
+      const arVoices = voices.filter(v=>/ar|Arabic/i.test(v.lang||v.name));
+      return arVoices[0] || voices.find(v=>/ar|Arabic/i.test(v.name)) || voices[0] || null;
+    }
+
+    function speak(text){
+      if(!('speechSynthesis' in window)) return;
+      const u = new SpeechSynthesisUtterance(text);
+      const v = getArabicVoice();
+      if(v) u.voice = v;
+      u.lang = (v && v.lang) || 'ar-SA';
+      u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+      try{ window.speechSynthesis.cancel(); }catch(_){ }
+      u.onstart = ()=>{
+        state.speaking = true;
+        // Pause recognition while speaking to avoid echo
+        try{ if(recog && state.recognizing) recog.stop(); }catch(_){ }
+      };
+      u.onend = ()=>{
+        state.speaking = false;
+        // Auto-resume listening in live mode
+        if(state.live && recog && !state.recognizing){
+          try{ recog.start(); }catch(_){ }
+        }
+      };
+      window.speechSynthesis.speak(u);
+      state.lastUtterance = text;
+      speakBtn.disabled = false;
+    }
+
+    function ttsPlayLast(){ if(state.lastUtterance) speak(state.lastUtterance); }
+
+    // --------------- STT (SpeechRecognition) ---------------
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recog = null;
+    if(SR){
+      recog = new SR();
+      recog.lang = 'ar-SA';
+      recog.continuous = true; // live loop
+      recog.interimResults = false;
+      recog.maxAlternatives = 1;
+
+      recog.onstart = ()=>{ state.recognizing = true; recStatus.textContent = 'الحالة: جاري الاستماع...'; micBtn.textContent = 'إيقاف الميكروفون ⏹️'; };
+      recog.onend = ()=>{
+        state.recognizing = false; 
+        recStatus.textContent = 'الحالة: الميكروفون متوقف'; 
+        micBtn.textContent = 'تشغيل الميكروفون 🎙️';
+        // If in live mode and not speaking, restart listening
+        if(state.live && !state.speaking){
+          try{ recog.start(); }catch(_){ }
+        }
+      };
+      recog.onerror = ()=>{ state.recognizing = false; recStatus.textContent = 'الحالة: خطأ في الاستماع'; };
+      recog.onresult = (e)=>{
+        const t = e.results[0][0].transcript || '';
+        if(t){ appendMsg('user', t); handleUserQuery(t); }
+      };
+    }
+
+    function toggleMic(){
+      if(!recog){ alert('خاصية التعرّف على الصوت غير مدعومة في هذا المتصفح. يُفضّل استخدام Chrome.'); return; }
+      // Toggle live conversation mode similar to Gemini Live
+      if(state.live || state.recognizing){
+        state.live = false;
+        try{ recog.stop(); }catch(_){ }
+        return;
+      }
+      state.live = true;
+      try{ recog.start(); }catch(_){ }
+    }
+
+    // --------------- Core Logic ---------------
+    const API_BASE = '';
+    async function ensureSession(){
+      try{
+        if(!window.supabaseClient) window.initializeSupabase();
+        const { data } = await window.supabaseAuth.getSession();
+        const tok = data?.session?.access_token;
+        if(tok) state.token = tok;
+        return tok;
+      }catch(_){ return null; }
+    }
+
+    async function uploadFile(file){
+      try{
+        const tok = await ensureSession();
+        if(!tok){ alert('يلزم تسجيل الدخول لاستخدام الرفع والذكاء الاصطناعي'); return null; }
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch(`${API_BASE}/api/upload`, { method:'POST', headers:{ 'Authorization': `Bearer ${tok}` }, body: fd });
+        if(!res.ok) return null;
+        const json = await res.json();
+        return json;
+      }catch(_){ return null; }
+    }
+
+    function renderUploads(){
+      if(!state.uploads.length){ uploadsList.textContent = ''; return; }
+      uploadsList.innerHTML = state.uploads.map(u=>`✔️ ${u.name || 'ملف'} — ${Math.round((u.size||0)/1024)}KB`).join('<br/>');
+    }
+
+    async function uploadSelectedFiles(){
+      const files = (pdfFiles && pdfFiles.files) ? Array.from(pdfFiles.files) : [];
+      if(!files.length){ alert('اختر ملفات أولاً'); return; }
+      for(const f of files){
+        // For TXT/MD, extract locally as immediate fallback
+        try{
+          if(/\.(txt|md)$/i.test(f.name)){
+            const localText = await f.text();
+            if(localText && localText.trim()){
+              lectureInput.value = (lectureInput.value ? (lectureInput.value + "\n\n") : '') + localText;
+            }
+          }
+        }catch(_){}
+
+        const r = await uploadFile(f);
+        if(r){
+          state.uploads.push(r);
+          if(r.extractedText && r.extractedText.trim()){
+            lectureInput.value = (lectureInput.value ? (lectureInput.value + "\n\n") : '') + r.extractedText;
+          }
+        }
+        renderUploads();
+      }
+      if(pdfFiles) pdfFiles.value = '';
+      // بعد رفع الملفات ودمج النص، ابدأ الشرح تلقائياً
+      try { 
+        if(!getLecture() || getLecture().length < 30){
+          appendMsg('ai', `${persona.prefix} الملف اترفع، بس محتاج نص عشان أشرح. لو PDF ممكن يتأخر استخراج النص من الخادم، جرّب تسألني بعد لحظات أو ارفع TXT/MD لقراءة فورية.`);
+          speak(`${persona.prefix} محتاج نص من المحاضرة عشان أبدأ أشرح.`);
+        } else {
+          await startAutoExplain(); 
+        }
+      } catch(_){ }
+    }
+
+    async function askGemini(question){
+      try{
+        const tok = await ensureSession();
+        if(!tok) return null;
+        const ctx = getLecture();
+        const res = await fetch(`${API_BASE}/api/ai/ask`, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${tok}` }, body: JSON.stringify({ question, context: ctx }) });
+        if(!res.ok) return null;
+        const json = await res.json();
+        return json?.response || null;
+      }catch(_){ return null; }
+    }
+
+    async function summarizeLecture(){
+      const content = getLecture();
+      if(!content || content.length < 30){
+        appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة عشان أقدر أعمل تلخيص دقيق.`);
+        speak('محتاج نص المحاضرة عشان أقدر أعمل تلخيص دقيق.');
+        return;
+      }
+      const prompt = `أنت مساعد دراسي عربي. لديك نص المحاضرة بين يديك. لخّص المحتوى في نقاط واضحة ومختصرة جداً (3-6 نقاط كحد أقصى)، بدون حشو، وبالعربية الفصحى المبسطة. لا تضف مقدمات أو ختام.`;
+      let replyText = await askGemini(prompt);
+      if(!replyText){
+        const sents = splitSentences(content).slice(0,6);
+        replyText = `• ${sents.slice(0,4).join('\n• ')}`;
+      }
+      replyText = `${persona.prefix} \n${replyText}`;
+      appendMsg('ai', replyText);
+      speak(replyText);
+    }
+
+    async function explainLecture(){
+      const content = getLecture();
+      if(!content || content.length < 30){
+        appendMsg('ai', `${persona.prefix} محتاج نص كفاية من المحاضرة عشان أشرح.`);
+        speak('محتاج نص كفاية من المحاضرة عشان أشرح.');
+        return;
+      }
+      const prompt = `اشرح المحاضرة التالية بشكل مبسّط وبالعربية، ركّز على الفكرة الأساسية أولاً ثم نقطتين أو ثلاث من أهم المفاهيم مع مثال عملي صغير لكل نقطة، بدون أسئلة متابعة.`;
+      let replyText = await askGemini(prompt);
+      if(!replyText){
+        const sents = splitSentences(content);
+        const take = sents.slice(0,3).join(' ');
+        replyText = `الخلاصة: ${take}`;
+      }
+      replyText = `${persona.prefix} ${replyText}`;
+      appendMsg('ai', replyText);
+      speak(replyText);
+    }
+
+    async function startAutoExplain(){
+      const content = getLecture();
+      if(!content || content.length < 30){
+        appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة الأول عشان أبدأ أشرح. ارفع PDF أو الصق النص.`);
+        speak(`${persona.prefix} محتاج نص المحاضرة الأول عشان أبدأ أشرح.`);
+        return;
+      }
+      const prompt = `اقرأ نص المحاضرة المرفق وقدّم شرحًا موجزًا ومنظمًا بالعربية:
+- جملتان تلخّصان الفكرة الأساسية.
+- نقطتان أو ثلاث نقاط رئيسية مختصرة.
+- مثال صغير واحد مرتبط بالمحتوى.
+لا تضف أسئلة متابعة.`;
+      const aiResp = await askGemini(prompt);
+      const fallback = (()=>{
+        const sents = splitSentences(content);
+        const head = sents.slice(0,2).join(' ');
+        const bullets = sents.slice(2,5).map(s=>`• ${s}`).join('\n');
+        return `${head}\n${bullets}`;
+      })();
+      const replyText = aiResp ? `${persona.prefix} ${aiResp}` : `${persona.prefix} ${fallback}`;
+      appendMsg('ai', replyText);
+      speak(replyText);
+    }
+    function getLecture(){ return clean(lectureInput.value); }
+
+    function answerFromLecture(question){
+      const lecture = getLecture();
+      const q = clean(question).toLowerCase();
+      if(!lecture){
+        const msg = `${persona.prefix} النقطة دي مش مذكورة بالتفصيل في المحاضرة اللي رفعتها. لكن عشان تستفيد، بشكل عام: للإجابة لازم تحط نص المحاضرة هنا الأول.`;
+        return { text: msg, fromLecture: false };
+      }
+      // Naive extractive approach: pick sentences containing key tokens
+      const sents = splitSentences(lecture);
+      const tokens = q.split(/\s+/).filter(x=>x.length>2);
+      let scored = sents.map(s=>({ s, score: tokens.reduce((acc,t)=>acc+(s.includes(t)?1:0),0) }));
+      scored.sort((a,b)=>b.score-a.score);
+      const top = scored.slice(0, 2).map(x=>x.s).filter(Boolean);
+      if(top.length===0){
+        const fallback = `${persona.prefix} النقطة دي مش مذكورة بالتفصيل في المحاضرة اللي رفعتها. لكن بشكل عام ممكن نقول: حاول تربط السؤال بالعنوان أو الكلمات المفتاحية الواضحة في النص.`;
+        return { text: fallback, fromLecture: false };
+      }
+      const concise = `${persona.prefix} ${top[0]}${top[1]? ' — '+top[1] : ''}. ${pickWarmup()}!`;
+      return { text: concise, fromLecture: true, context: top.join(' | ') };
+    }
+
+    async function handleUserQuery(text){
+      const q = (text||'').toLowerCase();
+      if(/(تلخيص|لخص|خلاصة)/.test(q)){
+        await summarizeLecture();
+        return;
+      }
+      if(/(اشرح|شرح)/.test(q)){
+        await explainLecture();
+        return;
+      }
+      let replyText = null;
+      const aiResp = await askGemini(text);
+      if(aiResp){
+        replyText = `${persona.prefix} ${aiResp}`;
+      } else {
+        const { text: localReply } = answerFromLecture(text);
+        replyText = localReply;
+      }
+      appendMsg('ai', replyText);
+      speak(replyText);
+      state.questionsSinceBreak++;
+
+      if(!state.directAnswer){
+        // Human-like small pause then follow-up
+        await delay(1000);
+        const follow = persona.follow;
+        appendMsg('ai', follow);
+        speak(follow);
+
+        // Break hint every 5 Qs
+        if(state.questionsSinceBreak % 5 === 0){
+          const br = 'بصراحة تركيزك عالي جدًا! خمس دقايق بريك وارجع، ولا تحب نخلص النقطة دي ونقوم؟';
+          appendMsg('ai', br);
+          speak(br);
+        }
+      }
+    }
+
+    function submitText(){
+      const t = clean(textInput.value);
+      if(!t) return;
+      textInput.value='';
+      appendMsg('user', t);
+      handleUserQuery(t);
+    }
+
+    function clearChat(){
+      chat.innerHTML = '';
+      state.history = [];
+      appendMsg('ai', `${persona.prefix} تمام، يلا بينا نركز. نبدأ منين؟`);
+    }
+
+    function loadSample(){
+      lectureInput.value = `العنوان: البراكين وحركة الصفائح التكتونية
+
+علاقة البراكين بحركة الصفائح: تنشأ معظم البراكين على حدود الصفائح التكتونية، وخاصة عند مناطق الاندساس حيث تنغمس صفيحة محيطية أسفل صفيحة قارية مما يؤدي إلى انصهار الصخور وارتفاع الصهارة. كذلك تظهر براكين عند تباعد الصفائح (الحيد الوسط محيطية) حيث تصعد الصهارة لملء الفراغ.
+
+العوامل المؤثرة على شدة البركان: لزوجة الصهارة، كمية الغاز الذائب، وتركيب الصهارة. كلما زادت اللزوجة وازداد الغاز ارتفع الضغط وازدادت الانفجارات.
+
+الآثار: تؤثر البراكين على المناخ مؤقتًا عبر انبعاث الرماد والكبريتات التي تعكس أشعة الشمس، وقد تُخصّب التربة بالمعادن.
+`;
+    }
+
+    function resetLecture(){ lectureInput.value=''; }
+
+    // --------------- Adaptive Quiz (very light) ---------------
+    function makeAdaptiveQuestion(){
+      const lecture = getLecture();
+      const sents = splitSentences(lecture);
+      if(!sents.length){ quizSlot.textContent = 'أضف نص المحاضرة أولاً.'; return; }
+      // Pick a sentence and mask a term
+      const base = state.tougher ? sents.slice(0, Math.max(2, Math.floor(sents.length/2))) : sents;
+      const s = base[Math.floor(Math.random()*base.length)];
+      const words = s.split(/\s+/).filter(w=>w.length>3);
+      if(words.length<3){ quizSlot.textContent = 'النص قصير لاستخراج سؤال.'; return; }
+      const idx = Math.floor(Math.random()*words.length);
+      const answer = words[idx];
+      const question = s.replace(answer, '_____');
+      quizSlot.innerHTML = `<div><strong>سؤال:</strong> أكمل الفراغ: ${question}</div><div style="margin-top:6px"><input id="quizAns" class="input" placeholder="إجابتك"/><button class=\"btn btn-primary\" style=\"margin-top:8px\" onclick=\"gradeAdaptive('${encodeURIComponent(answer)}')\">تحقق</button></div>`;
+    }
+
+    function gradeAdaptive(correctEnc){
+      const correct = decodeURIComponent(correctEnc);
+      const inp = document.getElementById('quizAns');
+      const got = clean(inp.value||'');
+      if(!got){ return; }
+      if(got === correct){
+        quizSlot.innerHTML = '<span style="color:var(--accent);font-weight:700">برافو! الإجابة صحيحة.</span>';
+        speak('برافو!');
+      } else {
+        quizSlot.innerHTML = `<span style="color:var(--danger);font-weight:700">تقريبًا. الإجابة الصحيحة: ${correct}</span>`;
+        speak('محاولة كويسة!');
+      }
+    }
+
+    function toggleTougher(){ state.tougher = !state.tougher; alert(state.tougher? 'تم تفعيل صعوبة أعلى' : 'تم إلغاء الصعوبة العالية'); }
+
+    // Toggle direct answer vs. conversational follow-ups
+    function toggleDirectMode(){
+      state.directAnswer = !state.directAnswer;
+      const btn = document.getElementById('modeBtn');
+      if(btn){
+        btn.textContent = `وضع إجابة مباشرة: ${state.directAnswer ? 'مفعل' : 'متوقف'}`;
+      }
+    }
+
+    // --------------- Screen Share + OCR ---------------
+    async function startScreenShare(){
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
+        alert('مشاركة الشاشة غير مدعومة في هذا المتصفح.');
+        return;
+      }
+      try{
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false });
+        state.screenStream = stream;
+        screenPreview.srcObject = stream;
+        document.getElementById('shareBtn').disabled = true;
+        document.getElementById('stopShareBtn').disabled = false;
+        document.getElementById('snapOcrBtn').disabled = false;
+        stream.getVideoTracks()[0].addEventListener('ended', ()=>{
+          stopScreenShare();
+        });
+      }catch(err){
+        console.error(err);
+        alert('تعذّر بدء مشاركة الشاشة.');
+      }
+    }
+
+    function stopScreenShare(){
+      try{
+        if(state.screenStream){
+          state.screenStream.getTracks().forEach(t=>t.stop());
+        }
+      }catch(_){ }
+      state.screenStream = null;
+      if(screenPreview){ screenPreview.srcObject = null; }
+      document.getElementById('shareBtn').disabled = false;
+      document.getElementById('stopShareBtn').disabled = true;
+      document.getElementById('snapOcrBtn').disabled = true;
+    }
+
+    async function captureAndOCR(){
+      if(!state.screenStream){ alert('ابدأ مشاركة الشاشة أولاً.'); return; }
+      const track = state.screenStream.getVideoTracks()[0];
+      const imageCapture = ('ImageCapture' in window) ? new ImageCapture(track) : null;
+      try{
+        ocrStatus.textContent = 'جاري التقاط الصورة ومعالجتها...';
+        let bitmap;
+        if(imageCapture && imageCapture.grabFrame){
+          bitmap = await imageCapture.grabFrame();
+        } else {
+          // Fallback: draw current frame from video
+          await new Promise(r=>setTimeout(r, 100));
+          const v = screenPreview;
+          const c = document.createElement('canvas');
+          c.width = v.videoWidth || 1280; c.height = v.videoHeight || 720;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(v, 0, 0, c.width, c.height);
+          const dataUrl = c.toDataURL('image/png');
+          const img = new Image();
+          await new Promise(res=>{ img.onload=()=>res(); img.src=dataUrl; });
+          const c2 = document.createElement('canvas');
+          c2.width = img.width; c2.height = img.height;
+          c2.getContext('2d').drawImage(img,0,0);
+          bitmap = await createImageBitmap(img);
+        }
+
+        // Draw bitmap to canvas for OCR
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width; canvas.height = bitmap.height;
+        const ctx2 = canvas.getContext('2d');
+        ctx2.drawImage(bitmap, 0, 0);
+
+        // Run OCR via Tesseract.js (Arabic + English)
+        const worker = await Tesseract.createWorker('ara+eng');
+        const { data } = await worker.recognize(canvas);
+        await worker.terminate();
+
+        const extracted = (data && data.text) ? data.text.trim() : '';
+        if(extracted){
+          lectureInput.value = (lectureInput.value ? lectureInput.value + '\n\n' : '') + extracted;
+          appendMsg('ai', `${persona.prefix} تم استخراج نص من الشاشة وإضافته للمصدر.`);
+          speak('تم استخراج النص من الشاشة وإضافته.');
+          ocrStatus.textContent = `تمت الإضافة (${extracted.length} حرف).`;
+        } else {
+          ocrStatus.textContent = 'لم يتم العثور على نص واضح. جرّب تكبير الصفحة أو صورة أوضح.';
+        }
+      }catch(err){
+        console.error(err);
+        ocrStatus.textContent = 'حدث خطأ أثناء الاستخراج.';
+      }
+    }
+
+    // Initial gentle voice greeting (non-blocking)
+    window.addEventListener('load', ()=>{
+      try { speak('أهلاً بيك يا بطل! أنا جاهز أذاكر معاك المادة دي. إيه أول جزء حابب نركز عليه؟'); } catch(_) {}
+      if(typeof speechSynthesis !== 'undefined'){
+        // Ensure voices are loaded
+        speechSynthesis.onvoiceschanged = ()=>{};
+      }
+      try{ ensureSession(); }catch(_){}
+    });
+  </script>
+</body>
+</html>
