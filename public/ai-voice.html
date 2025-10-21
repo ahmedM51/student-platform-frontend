@@ -703,7 +703,15 @@
         return;
       }
       try{
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false });
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            frameRate: 15,
+            // Hint browsers to capture current tab on mobile-supported environments
+            preferCurrentTab: true,
+            displaySurface: 'browser'
+          },
+          audio: false
+        });
         state.screenStream = stream;
         screenPreview.srcObject = stream;
         document.getElementById('shareBtn').disabled = true;
@@ -714,7 +722,7 @@
         });
       }catch(err){
         console.error(err);
-        alert('تعذّر بدء مشاركة الشاشة.');
+        alert('تعذّر بدء مشاركة الشاشة. تأكد من استخدام HTTPS والمتصفح يدعم مشاركة التبويب (Chrome على أندرويد) أو استخدم وضع الكاميرا/رفع صورة.');
       }
     }
 
@@ -796,7 +804,7 @@
       if(!hasShare){
         const btn = document.getElementById('shareBtn'); if(btn) btn.disabled = true;
         const snap = document.getElementById('snapOcrBtn'); if(snap) snap.disabled = true;
-        if(ocrStatus){ ocrStatus.textContent = 'مشاركة الشاشة غير متاحة هنا. استخدم وضع الكاميرا أو رفع صورة.'; }
+        if(ocrStatus){ ocrStatus.textContent = 'مشاركة الشاشة غير متاحة على هذا الجهاز/المتصفح. على أندرويد: جرّب Chrome ثم اختر "مشاركة هذا التبويب". على iOS: استخدم الكاميرا أو رفع صورة.'; }
       }
       const hasCam = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
       if(!hasCam){
