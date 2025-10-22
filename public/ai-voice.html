@@ -104,6 +104,7 @@
 
           <div class="stack-h" style="flex-wrap: wrap; gap: 8px 8px;">
             <button id="micBtn" class="btn btn-primary" onclick="toggleMic()">تشغيل الميكروفون 🎙️</button>
+            <button id="audioEnableBtn" class="btn btn-accent" onclick="enableAudioOnMobile()" style="display:none">تفعيل الصوت 🔊</button>
             <button id="speakBtn" class="btn btn-accent" onclick="ttsPlayLast()" disabled>إعادة تشغيل الصوت 🔊</button>
             <button class="btn btn-ghost" onclick="clearChat()">مسح المحادثة</button>
             <button id="modeBtn" class="btn btn-ghost" onclick="toggleDirectMode()" title="وضع إجابة مباشرة">وضع إجابة مباشرة: مفعل</button>
@@ -198,6 +199,7 @@
       live: false,
       speaking: false,
       screenStream: null,
+      audioEnabled: false,
       
     };
 
@@ -225,6 +227,7 @@
     const pdfFiles = document.getElementById('pdfFiles');
     const screenPreview = document.getElementById('screenPreview');
     const ocrStatus = document.getElementById('ocrStatus');
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || '');
     
 
     // --------------- Helpers ---------------
@@ -262,6 +265,8 @@
 
     function speak(text){
       if(!('speechSynthesis' in window)) return;
+      // On mobile, require explicit enable due to autoplay policy
+      if (isMobile && !state.audioEnabled) return;
       const u = new SpeechSynthesisUtterance(text);
       const v = getArabicVoice();
       if(v) u.voice = v;
@@ -732,7 +737,13 @@
 
     // Initial gentle voice greeting (non-blocking)
     window.addEventListener('load', ()=>{
-      try { speak('أهلاً بيك يا بطل! أنا جاهز أذاكر معاك المادة دي. إيه أول جزء حابب نركز عليه؟'); } catch(_) {}
+      // On mobile, do not auto-speak; show enable button instead
+      if (isMobile) {
+        const btn = document.getElementById('audioEnableBtn');
+        if (btn) btn.style.display = 'inline-block';
+      } else {
+        try { speak('أهلاً بيك يا بطل! أنا جاهز أذاكر معاك المادة دي. إيه أول جزء حابب نركز عليه؟'); } catch(_) {}
+      }
       if(typeof speechSynthesis !== 'undefined'){
         // Ensure voices are loaded
         speechSynthesis.onvoiceschanged = ()=>{};
