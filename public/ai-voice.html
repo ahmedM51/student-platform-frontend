@@ -871,28 +871,7 @@
       // Update stats if prefilled
       updateLectureStats();
     });
-    async function handleUserQuery(text) {
-      const response = await getResponse(text);
-      if (response) {
-        const chunks = chunkResponse(response);
-        for (const chunk of chunks) {
-          appendMsg('ai', chunk);
-          speak(chunk);
-          await delay(1000);
-        }
-      } else {
-        appendMsg('ai', 'لم أستطع العثور على إجابة.');
-        speak('لم أستطع العثور على إجابة.');
-      }
-    }
-    function chunkResponse(response) {
-      const chunks = [];
-      const chunkSize = 100;
-      for (let i = 0; i < response.length; i += chunkSize) {
-        chunks.push(response.slice(i, i + chunkSize));
-      }
-      return chunks;
-    }
+    
   </script>
 </body>
 </html>
