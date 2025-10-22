@@ -17,92 +17,6 @@
       --ring: rgba(37, 99, 235, 0.15);
     }
 
-    // Camera scan (mobile/tablet friendly)
-    async function startCamera(){
-      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-        alert('الكاميرا غير مدعومة في هذا المتصفح.');
-        return;
-      }
-      try{
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-        state.cameraStream = stream;
-        cameraPreview.srcObject = stream;
-        document.getElementById('cameraStartBtn').disabled = true;
-        document.getElementById('cameraStopBtn').disabled = false;
-        document.getElementById('cameraSnapBtn').disabled = false;
-      }catch(err){
-        console.error(err);
-        alert('تعذّر فتح الكاميرا.');
-      }
-    }
-
-    function stopCamera(){
-      try{ if(state.cameraStream){ state.cameraStream.getTracks().forEach(t=>t.stop()); } }catch(_){ }
-      state.cameraStream = null;
-      if(cameraPreview){ cameraPreview.srcObject = null; }
-      document.getElementById('cameraStartBtn').disabled = false;
-      document.getElementById('cameraStopBtn').disabled = true;
-      document.getElementById('cameraSnapBtn').disabled = true;
-    }
-
-    async function captureFromCamera(){
-      if(!state.cameraStream){ alert('افتح الكاميرا أولاً.'); return; }
-      try{
-        cameraStatus.textContent = 'جاري الالتقاط والاستخراج...';
-        const v = cameraPreview;
-        const c = document.createElement('canvas');
-        c.width = v.videoWidth || 1280; c.height = v.videoHeight || 720;
-        c.getContext('2d').drawImage(v,0,0,c.width,c.height);
-        const worker = await Tesseract.createWorker('ara+eng');
-        const { data } = await worker.recognize(c);
-        await worker.terminate();
-        const extracted = (data && data.text) ? data.text.trim() : '';
-        if(extracted){
-          lectureInput.value = (lectureInput.value ? lectureInput.value + '\n\n' : '') + extracted;
-          appendMsg('ai', `${persona.prefix} تم إضافة نص من الكاميرا للمصدر.`);
-          speak('تم استخراج النص من الكاميرا وإضافته.');
-          cameraStatus.textContent = `تمت الإضافة (${extracted.length} حرف).`;
-        } else {
-          cameraStatus.textContent = 'لم يتم العثور على نص واضح. حاول الاقتراب أو تحسين الإضاءة.';
-        }
-      }catch(err){
-        console.error(err);
-        cameraStatus.textContent = 'حدث خطأ أثناء الاستخراج.';
-      }
-    }
-
-    // OCR for uploaded image
-    async function ocrImageFile(){
-      const f = imgUpload && imgUpload.files && imgUpload.files[0];
-      if(!f){ alert('اختر صورة أولاً.'); return; }
-      try{
-        imgOcrStatus.textContent = 'جاري قراءة الصورة...';
-        const img = new Image();
-        const buf = await f.arrayBuffer();
-        const blob = new Blob([buf]);
-        const url = URL.createObjectURL(blob);
-        await new Promise(res=>{ img.onload=()=>res(); img.src=url; });
-        const c = document.createElement('canvas');
-        c.width = img.width; c.height = img.height;
-        c.getContext('2d').drawImage(img,0,0);
-        const worker = await Tesseract.createWorker('ara+eng');
-        const { data } = await worker.recognize(c);
-        await worker.terminate();
-        URL.revokeObjectURL(url);
-        const extracted = (data && data.text) ? data.text.trim() : '';
-        if(extracted){
-          lectureInput.value = (lectureInput.value ? lectureInput.value + '\n\n' : '') + extracted;
-          appendMsg('ai', `${persona.prefix} تم استخراج نص من الصورة وإضافته للمصدر.`);
-          speak('تم استخراج النص من الصورة وإضافته.');
-          imgOcrStatus.textContent = `تمت الإضافة (${extracted.length} حرف).`;
-        } else {
-          imgOcrStatus.textContent = 'لم يتم العثور على نص واضح في الصورة.';
-        }
-      }catch(err){
-        console.error(err);
-        imgOcrStatus.textContent = 'حدث خطأ أثناء قراءة الصورة.';
-      }
-    }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -150,7 +64,7 @@
     .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #0f172a; font-size: 12px; }
     .footer { padding-top: 8px; }
     .screen-box { border:1px dashed #cbd5e1; border-radius:12px; padding:10px; background:#f8fafc }
-    video#screenPreview, video#cameraPreview { width:100%; max-height:220px; background:#000; border-radius:10px }
+    video#screenPreview { width:100%; max-height:220px; background:#000; border-radius:10px }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>
@@ -237,29 +151,7 @@
             </div>
           </div>
 
-          <div class="stack-v">
-            <div class="title" style="font-size:16px">تصوير بالكاميرا (يدعم الجوال/التابلت)</div>
-            <div class="sub">افتح الكاميرا، وجّهها نحو السبورة/الشاشة، التقط صورة وسيتم استخراج النص وإضافته للمصدر.</div>
-            <div class="screen-box stack-v">
-              <video id="cameraPreview" autoplay playsinline muted></video>
-              <div class="stack-h" style="flex-wrap:wrap;margin-top:8px">
-                <button id="cameraStartBtn" class="btn btn-primary" onclick="startCamera()">فتح الكاميرا</button>
-                <button id="cameraStopBtn" class="btn btn-danger" onclick="stopCamera()" disabled>إيقاف</button>
-                <button id="cameraSnapBtn" class="btn btn-accent" onclick="captureFromCamera()" disabled>التقاط واستخراج نص</button>
-              </div>
-              <div id="cameraStatus" class="muted"></div>
-            </div>
-          </div>
-
-          <div class="stack-v">
-            <div class="title" style="font-size:16px">رفع صورة أو لقطة شاشة</div>
-            <div class="sub">اختر صورة للمحاضرة (PNG/JPG) لاستخراج النص منها وإضافته للمصدر. مفيد على الجوال.</div>
-            <div class="stack-h" style="flex-wrap:wrap">
-              <input id="imgUpload" type="file" accept="image/png,image/jpeg" class="input" style="padding:10px" />
-              <button class="btn btn-primary" onclick="ocrImageFile()">استخراج نص من الصورة</button>
-            </div>
-            <div id="imgOcrStatus" class="muted"></div>
-          </div>
+          
 
           <div class="stack-h" style="justify-content: space-between; flex-wrap: wrap;">
             <span class="pill" id="recStatus">الحالة: الميكروفون متوقف</span>
@@ -299,7 +191,7 @@
       live: false,
       speaking: false,
       screenStream: null,
-      cameraStream: null,
+      
     };
 
     // Persona & phrases
@@ -326,10 +218,7 @@
     const pdfFiles = document.getElementById('pdfFiles');
     const screenPreview = document.getElementById('screenPreview');
     const ocrStatus = document.getElementById('ocrStatus');
-    const cameraPreview = document.getElementById('cameraPreview');
-    const cameraStatus = document.getElementById('cameraStatus');
-    const imgUpload = document.getElementById('imgUpload');
-    const imgOcrStatus = document.getElementById('imgOcrStatus');
+    
 
     // --------------- Helpers ---------------
     function appendMsg(role, text) {
@@ -497,10 +386,11 @@
 
     async function askGemini(question){
       try{
-        const tok = await ensureSession();
-        if(!tok) return null;
+        const tok = await ensureSession().catch(()=>null);
         const ctx = getLecture();
-        const res = await fetch(`${API_BASE}/api/ai/ask`, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${tok}` }, body: JSON.stringify({ question, context: ctx }) });
+        const headers = { 'Content-Type':'application/json' };
+        if (tok) headers['Authorization'] = `Bearer ${tok}`;
+        const res = await fetch(`${API_BASE}/api/ai/ask`, { method:'POST', headers, body: JSON.stringify({ question, context: ctx }) });
         if(!res.ok) return null;
         const json = await res.json();
         return json?.response || null;
@@ -601,12 +491,17 @@
         return;
       }
       let replyText = null;
+      // Conversational first: try AI with context; fallback to lecture extractor; else friendly default
       const aiResp = await askGemini(text);
       if(aiResp){
         replyText = `${persona.prefix} ${aiResp}`;
       } else {
-        const { text: localReply } = answerFromLecture(text);
-        replyText = localReply;
+        const local = answerFromLecture(text);
+        if(local && (local.fromLecture || local.text)){
+          replyText = local.text;
+        } else {
+          replyText = `${persona.prefix} ${pickWarmup()}! قل لي: ماذا تريد أن أشرح أو أسهّل؟`;
+        }
       }
       appendMsg('ai', replyText);
       speak(replyText);
@@ -806,12 +701,7 @@
         const snap = document.getElementById('snapOcrBtn'); if(snap) snap.disabled = true;
         if(ocrStatus){ ocrStatus.textContent = 'مشاركة الشاشة غير متاحة على هذا الجهاز/المتصفح. على أندرويد: جرّب Chrome ثم اختر "مشاركة هذا التبويب". على iOS: استخدم الكاميرا أو رفع صورة.'; }
       }
-      const hasCam = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-      if(!hasCam){
-        const cb = document.getElementById('cameraStartBtn'); if(cb) cb.disabled = true;
-        const cs = document.getElementById('cameraSnapBtn'); if(cs) cs.disabled = true;
-        if(cameraStatus){ cameraStatus.textContent = 'الكاميرا غير متاحة في هذا الجهاز/المتصفح.'; }
-      }
+      
     });
   </script>
 </body>
