@@ -69,6 +69,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- PDF.js for client-side PDF text extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    if (window['pdfjsLib']) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    }
+  </script>
 </head>
 <body>
   <header>
@@ -334,7 +341,7 @@
     async function uploadFile(file){
       try{
         const tok = await ensureSession();
-        if(!tok){ alert('يلزم تسجيل الدخول لاستخدام الرفع والذكاء الاصطناعي'); return null; }
+        if(!tok){ return null; }
         const fd = new FormData();
         fd.append('file', file);
         const res = await fetch(`${API_BASE}/api/upload`, { method:'POST', headers:{ 'Authorization': `Bearer ${tok}` }, body: fd });
@@ -357,26 +364,63 @@
         try{
           if(/\.(txt|md)$/i.test(f.name)){
             const localText = await f.text();
-            if(localText && localText.trim()){
+            if (localText && localText.trim()) {
               lectureInput.value = (lectureInput.value ? (lectureInput.value + "\n\n") : '') + localText;
             }
           }
-        }catch(_){}
+        } catch (_) {}
+      }
 
-        const r = await uploadFile(f);
-        if(r){
-          state.uploads.push(r);
-          if(r.extractedText && r.extractedText.trim()){
-            lectureInput.value = (lectureInput.value ? (lectureInput.value + "\n\n") : '') + r.extractedText;
+      // For PDFs, extract text on the client using PDF.js for immediate availability
+      try {
+        if (window['pdfjsLib']) {
+          for (const f of files) {
+            if(/\.(pdf)$/i.test(f.name)){
+              try {
+                const buf = await f.arrayBuffer();
+                const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+                let fullText = '';
+                for (let i = 1; i <= doc.numPages; i++) {
+                  const page = await doc.getPage(i);
+                  const content = await page.getTextContent();
+                  const pageText = content.items.map(it => (it.str || '')).join(' ');
+                  fullText += pageText + '\n';
+                }
+                const cleaned = (fullText || '').replace(/\s+/g, ' ').trim();
+                if (cleaned) {
+                  lectureInput.value = (lectureInput.value ? (lectureInput.value + '\n\n') : '') + cleaned;
+                  state.uploads.push({ name: f.name, size: f.size });
+                  renderUploads();
+                }
+              } catch(_) {}
+            }
           }
         }
-        renderUploads();
-      }
+      } catch(_) {}
+
+      // Optional server upload (only if logged in)
+      try{
+        const tokCheck = await ensureSession();
+        if (tokCheck) {
+          for(const f of files){
+            try{
+              const r = await uploadFile(f);
+              if(r){
+                state.uploads.push(r);
+                if(r.extractedText && r.extractedText.trim()){
+                  lectureInput.value = (lectureInput.value ? (lectureInput.value + "\n\n") : '') + r.extractedText;
+                }
+              }
+              renderUploads();
+            }catch(_){ }
+          }
+        }
+      }catch(_){ }
       if(pdfFiles) pdfFiles.value = '';
       // بعد رفع الملفات ودمج النص، ابدأ الشرح تلقائياً
       try { 
         if(!getLecture() || getLecture().length < 30){
-          appendMsg('ai', `${persona.prefix} الملف اترفع، بس محتاج نص عشان أشرح. لو PDF ممكن يتأخر استخراج النص من الخادم، جرّب تسألني بعد لحظات أو ارفع TXT/MD لقراءة فورية.`);
+          appendMsg('ai', `${persona.prefix} محتاج نص واضح من المحاضرة عشان أشرح. جرّب رفع PDF أو TXT/MD وسيتم استخراج النص مباشرة.`);
           speak(`${persona.prefix} محتاج نص من المحاضرة عشان أبدأ أشرح.`);
         } else {
           await startAutoExplain(); 
