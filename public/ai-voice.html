@@ -52,7 +52,7 @@
       width: 100%; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; font-size: 15px; outline: none;
     }
     .input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); border-color: var(--primary); }
-    textarea { min-height: 160px; resize: vertical; }
+    textarea { min-height: 500px; resize: vertical; }
     .chat { height: 420px; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 8px; border: 1px solid #eef2f7; border-radius: 12px; background: #fafafa; }
     .msg { display: flex; gap: 10px; align-items: flex-start; }
     .msg .bubble {
@@ -105,6 +105,7 @@
           <div class="stack-h" style="flex-wrap: wrap; gap: 8px 8px;">
             <button id="micBtn" class="btn btn-primary" onclick="toggleMic()">تشغيل الميكروفون 🎙️</button>
             <button id="audioEnableBtn" class="btn btn-accent" onclick="enableAudioOnMobile()" style="display:none">تفعيل الصوت 🔊</button>
+            <button id="pttBtn" class="btn btn-primary" onclick="togglePTT()" style="display:none">اضغط وتكلم 🎤</button>
             <button id="speakBtn" class="btn btn-accent" onclick="ttsPlayLast()" disabled>إعادة تشغيل الصوت 🔊</button>
             <button class="btn btn-ghost" onclick="clearChat()">مسح المحادثة</button>
             <button id="modeBtn" class="btn btn-ghost" onclick="toggleDirectMode()" title="وضع إجابة مباشرة">وضع إجابة مباشرة: مفعل</button>
@@ -132,7 +133,8 @@
             <div class="title" style="font-size:18px">مصدر المحاضرة</div>
             <div class="sub">ألصق نص المحاضرة هنا. سيتم التعامل معه كمصدر الحقيقة أثناء الجلسة.</div>
           </div>
-          <textarea id="lectureInput" placeholder="الصق هنا نص المحاضرة ..."></textarea>
+          <textarea id="lectureInput" placeholder="الصق هنا نص المحاضرة ..." oninput="updateLectureStats()"></textarea>
+          <div class="muted" id="lectureStats"></div>
 
           <div class="stack-v">
             <div class="title" style="font-size:16px">ملفات للمذاكرة</div>
@@ -224,10 +226,14 @@
     const speakBtn = document.getElementById('speakBtn');
     const quizSlot = document.getElementById('quizSlot');
     const uploadsList = document.getElementById('uploadsList');
+    const lectureStats = document.getElementById('lectureStats');
     const pdfFiles = document.getElementById('pdfFiles');
     const screenPreview = document.getElementById('screenPreview');
     const ocrStatus = document.getElementById('ocrStatus');
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || '');
+    let mediaStream = null;
+    let mediaRecorder = null;
+    let recordChunks = [];
     
 
     // --------------- Helpers ---------------
@@ -255,6 +261,34 @@
     }
 
     function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+    function updateLectureStats(){
+      try{
+        const len = (lectureInput?.value||'').length;
+        if (lectureStats) lectureStats.textContent = `حجم النص: ${len.toLocaleString()} حرف`;
+      }catch(_){ }
+    }
+
+    // --------------- Smart Context Chunking ---------------
+    function selectContextFor(question){
+      const text = getLecture();
+      if(!text) return '';
+      const chunkSize = 6000; // chars
+      const maxSend = 12000; // total chars to send
+      const chunks = [];
+      for(let i=0;i<text.length;i+=chunkSize){ chunks.push(text.slice(i, i+chunkSize)); }
+      const qTokens = (clean(question).toLowerCase().split(/\s+/).filter(t=>t.length>2));
+      const scored = chunks.map((c,idx)=>{
+        const score = qTokens.reduce((acc,t)=> acc + (c.toLowerCase().includes(t)?1:0), 0);
+        return { idx, c, score };
+      });
+      scored.sort((a,b)=> b.score - a.score);
+      let picked = '';
+      for(const s of scored.slice(0,2)){
+        if((picked.length + s.c.length) <= maxSend){ picked += (picked?"\n\n":"") + s.c; }
+      }
+      return picked || text.slice(0, maxSend);
+    }
 
     // --------------- TTS (speechSynthesis) ---------------
     function waitForVoices(timeoutMs = 1500){
@@ -390,7 +424,7 @@
         } catch (_) {}
       }
 
-      // For PDFs, extract text on the client using PDF.js for immediate availability
+      // For PDFs, extract full text on the client using PDF.js with live progress
       try {
         if (window['pdfjsLib']) {
           for (const f of files) {
@@ -398,19 +432,20 @@
               try {
                 const buf = await f.arrayBuffer();
                 const doc = await pdfjsLib.getDocument({ data: buf }).promise;
-                let fullText = '';
                 for (let i = 1; i <= doc.numPages; i++) {
                   const page = await doc.getPage(i);
                   const content = await page.getTextContent();
                   const pageText = content.items.map(it => (it.str || '')).join(' ');
-                  fullText += pageText + '\n';
+                  // Append per-page to avoid huge in-memory strings
+                  lectureInput.value = (lectureInput.value ? (lectureInput.value + '\n\n') : '') + pageText;
+                  updateLectureStats();
+                  // Lightweight yield to keep UI responsive
+                  await new Promise(r=>setTimeout(r,0));
+                  // Show progress
+                  if (uploadsList) uploadsList.textContent = `جارٍ استخراج: ${f.name} — صفحة ${i}/${doc.numPages}`;
                 }
-                const cleaned = (fullText || '').replace(/\s+/g, ' ').trim();
-                if (cleaned) {
-                  lectureInput.value = (lectureInput.value ? (lectureInput.value + '\n\n') : '') + cleaned;
-                  state.uploads.push({ name: f.name, size: f.size });
-                  renderUploads();
-                }
+                state.uploads.push({ name: f.name, size: f.size });
+                renderUploads();
               } catch(_) {}
             }
           }
@@ -450,7 +485,7 @@
     async function askGemini(question){
       try{
         const tok = await ensureSession().catch(()=>null);
-        const ctx = getLecture();
+        const ctx = selectContextFor(question);
         const headers = { 'Content-Type':'application/json' };
         if (tok) headers['Authorization'] = `Bearer ${tok}`;
         const res = await fetch(`${API_BASE}/api/ai/ask`, { method:'POST', headers, body: JSON.stringify({ question, context: ctx }) });
@@ -458,6 +493,33 @@
         const json = await res.json();
         return json?.response || null;
       }catch(_){ return null; }
+    }
+
+    // Streaming via SSE (fetch + manual SSE parse)
+    async function askGeminiStream(question, onDelta){
+      const tok = await ensureSession().catch(()=>null);
+      const ctx = selectContextFor(question);
+      const headers = { 'Content-Type':'application/json' };
+      if (tok) headers['Authorization'] = `Bearer ${tok}`;
+      const res = await fetch(`${API_BASE}/api/ai/stream`, { method:'POST', headers, body: JSON.stringify({ question, context: ctx }) });
+      if(!res.ok || !res.body) throw new Error('no-stream');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while(true){
+        const {done, value} = await reader.read(); if(done) break;
+        buffer += decoder.decode(value, { stream:true });
+        const parts = buffer.split(/\n\n/);
+        buffer = parts.pop() || '';
+        for(const evt of parts){
+          const line = evt.split("\n").find(l=>l.startsWith('data: '));
+          if(!line) continue;
+          try{
+            const payload = JSON.parse(line.slice(6));
+            if(payload && payload.text){ onDelta(payload.text); }
+          }catch(_){ }
+        }
+      }
     }
 
     async function summarizeLecture(){
@@ -569,21 +631,42 @@
         await startAutoExplain();
         return;
       }
-      let replyText = null;
-      // Conversational first: try AI with context; fallback to lecture extractor; else friendly default
-      const aiResp = await askGemini(text);
-      if(aiResp){
-        replyText = `${persona.prefix} ${aiResp}`;
-      } else {
-        const local = answerFromLecture(text);
-        if(local && (local.fromLecture || local.text)){
-          replyText = local.text;
-        } else {
-          replyText = `${persona.prefix} ${pickWarmup()}! قل لي: ماذا تريد أن أشرح أو أسهّل؟`;
+      // Try streaming first
+      let bubbleWrap = document.createElement('div');
+      bubbleWrap.className = 'msg from-ai';
+      let bubble = document.createElement('div'); bubble.className = 'bubble'; bubble.textContent = persona.prefix + ' ';
+      bubbleWrap.appendChild(bubble); chat.appendChild(bubbleWrap); chat.scrollTop = chat.scrollHeight;
+
+      let collected = '';
+      let speakBuffer = '';
+      const flushSpeak = ()=>{
+        const sentences = splitSentences(speakBuffer);
+        if(sentences.length){ speak(sentences.join('. ')); speakBuffer=''; }
+      };
+      try{
+        await askGeminiStream(text, (delta)=>{
+          collected += delta;
+          bubble.textContent = `${persona.prefix} ${collected}`;
+          // accumulate until sentence end for TTS
+          speakBuffer += delta;
+          if(/[.!؟]\s*$/.test(delta)){
+            const toSpeak = speakBuffer; speakBuffer=''; speak(toSpeak);
+          }
+        });
+        // speak any remainder
+        if(speakBuffer.trim()){ flushSpeak(); }
+      }catch(_){
+        // Fallback non-stream
+        let replyText = null;
+        const aiResp = await askGemini(text);
+        if(aiResp){ replyText = `${persona.prefix} ${aiResp}`; }
+        else {
+          const local = answerFromLecture(text);
+          if(local && (local.fromLecture || local.text)) replyText = local.text; else replyText = `${persona.prefix} ${pickWarmup()}! قل لي: ماذا تريد أن أشرح أو أسهّل؟`;
         }
+        bubble.textContent = replyText;
+        speak(replyText);
       }
-      appendMsg('ai', replyText);
-      speak(replyText);
       state.questionsSinceBreak++;
 
       if(!state.directAnswer){
@@ -784,10 +867,32 @@
       if(!hasShare){
         const btn = document.getElementById('shareBtn'); if(btn) btn.disabled = true;
         const snap = document.getElementById('snapOcrBtn'); if(snap) snap.disabled = true;
-        if(ocrStatus){ ocrStatus.textContent = 'مشاركة الشاشة غير متاحة على هذا الجهاز/المتصفح. على أندرويد: جرّب Chrome ثم اختر "مشاركة هذا التبويب". على iOS: استخدم الكاميرا أو رفع صورة.'; }
       }
-      
+      // Update stats if prefilled
+      updateLectureStats();
     });
+    async function handleUserQuery(text) {
+      const response = await getResponse(text);
+      if (response) {
+        const chunks = chunkResponse(response);
+        for (const chunk of chunks) {
+          appendMsg('ai', chunk);
+          speak(chunk);
+          await delay(1000);
+        }
+      } else {
+        appendMsg('ai', 'لم أستطع العثور على إجابة.');
+        speak('لم أستطع العثور على إجابة.');
+      }
+    }
+    function chunkResponse(response) {
+      const chunks = [];
+      const chunkSize = 100;
+      for (let i = 0; i < response.length; i += chunkSize) {
+        chunks.push(response.slice(i, i + chunkSize));
+      }
+      return chunks;
+    }
   </script>
 </body>
 </html>
