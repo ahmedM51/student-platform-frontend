@@ -257,16 +257,30 @@
     function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
     // --------------- TTS (speechSynthesis) ---------------
+    function waitForVoices(timeoutMs = 1500){
+      return new Promise((resolve)=>{
+        try{
+          const have = speechSynthesis.getVoices();
+          if(have && have.length){ resolve(true); return; }
+          let done = false;
+          const onv = ()=>{ if(!done){ done=true; resolve(true); speechSynthesis.onvoiceschanged=null; } };
+          speechSynthesis.onvoiceschanged = onv;
+          setTimeout(()=>{ if(!done){ done=true; resolve(true); speechSynthesis.onvoiceschanged=null; } }, timeoutMs);
+        }catch(_){ resolve(true); }
+      });
+    }
     function getArabicVoice(){
       const voices = speechSynthesis.getVoices();
       const arVoices = voices.filter(v=>/ar|Arabic/i.test(v.lang||v.name));
       return arVoices[0] || voices.find(v=>/ar|Arabic/i.test(v.name)) || voices[0] || null;
     }
 
-    function speak(text){
+    async function speak(text){
       if(!('speechSynthesis' in window)) return;
       // On mobile, require explicit enable due to autoplay policy
       if (isMobile && !state.audioEnabled) return;
+      try{ await waitForVoices(1500); }catch(_){ }
+      try{ if (speechSynthesis.paused) speechSynthesis.resume(); }catch(_){ }
       const u = new SpeechSynthesisUtterance(text);
       const v = getArabicVoice();
       if(v) u.voice = v;
