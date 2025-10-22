@@ -553,6 +553,22 @@
         await explainLecture();
         return;
       }
+      if (/(اسئلة|أسئلة|سؤال|اختبار|كويز)/.test(q)){
+        try{ makeAdaptiveQuestion(); }catch(_){ }
+        appendMsg('ai', `${persona.prefix} عملت لك سؤال سريع من المحاضرة. جرّب تجاوبه!`);
+        speak('عملت لك سؤال سريع من المحاضرة.');
+        return;
+      }
+      if (/(اصعب|أصعب|صعب|زود الصعوبة|زود|أعلى صعوبة)/.test(q)){
+        try{ toggleTougher(); }catch(_){ }
+        appendMsg('ai', `${persona.prefix} تمام، زوّدنا الصعوبة خطوة.`);
+        speak('زوّدنا الصعوبة خطوة.');
+        return;
+      }
+      if (/(ابدأ الشرح|ابدأ|ابدا الشرح|ابدا)/.test(q)){
+        await startAutoExplain();
+        return;
+      }
       let replyText = null;
       // Conversational first: try AI with context; fallback to lecture extractor; else friendly default
       const aiResp = await askGemini(text);
