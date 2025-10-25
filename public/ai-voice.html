@@ -278,9 +278,9 @@
     function selectContextFor(question){
       const text = getLecture();
       if(!text) return '';
-      // Increased limits to include more of the lecture in answers
-      const chunkSize = 12000; // chars per chunk
-      const maxSend = 36000; // total chars to send
+      // Further increased limits to include more of the lecture in answers
+      const chunkSize = 20000; // chars per chunk
+      const maxSend = 60000; // total chars to send
       const chunks = [];
       for(let i=0;i<text.length;i+=chunkSize){ chunks.push(text.slice(i, i+chunkSize)); }
       const qTokens = (clean(question).toLowerCase().split(/\s+/).filter(t=>t.length>2));
@@ -291,7 +291,7 @@
       scored.sort((a,b)=> b.score - a.score);
       let picked = '';
       // pick more top chunks within the new maxSend limit
-      for(const s of scored.slice(0,3)){
+      for(const s of scored.slice(0,4)){
         if((picked.length + s.c.length) <= maxSend){ picked += (picked?"\n\n":"") + s.c; }
       }
       return picked || text.slice(0, maxSend);
@@ -311,9 +311,21 @@
       });
     }
     function getArabicVoice(){
-      const voices = speechSynthesis.getVoices();
-      const arVoices = voices.filter(v=>/ar|Arabic/i.test(v.lang||v.name));
-      return arVoices[0] || voices.find(v=>/ar|Arabic/i.test(v.name)) || voices[0] || null;
+      const voices = speechSynthesis.getVoices() || [];
+      // Prefer high-quality Arabic voices if available
+      const prefs = [
+        /Google.*Arabic/i,
+        /Microsoft.*Arabic/i,
+        /ar-SA/i,
+        /ar-XA/i,
+        /Arabic/i,
+        /ar/i
+      ];
+      for (const re of prefs){
+        const v = voices.find(v => re.test(`${v.name} ${v.lang}`));
+        if (v) return v;
+      }
+      return voices[0] || null;
     }
 
     async function speak(text){
@@ -326,7 +338,10 @@
       const v = getArabicVoice();
       if(v) u.voice = v;
       u.lang = (v && v.lang) || 'ar-SA';
-      u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+      // Slightly slower, clearer rate for mobile; normal for desktop
+      u.rate = isMobile ? 0.9 : 1.0; 
+      u.pitch = 1.02; 
+      u.volume = 1.0;
       try{ window.speechSynthesis.cancel(); }catch(_){ }
       u.onstart = ()=>{
         state.speaking = true;
@@ -349,14 +364,16 @@
 
     // Long-form reading of the lecture in chunks
     function splitLectureForReading(text){
-      const maxChunk = 900; // ~ short paragraph per utterance
+      const maxChunk = 1600; // longer paragraph per utterance for fewer breaks
       const parts = [];
       let i = 0;
       while(i < text.length){
         let end = Math.min(i + maxChunk, text.length);
-        // try to cut at sentence boundary
+        // try to cut at sentence/phrase boundary for Arabic
         const slice = text.slice(i, end);
-        const lastStop = Math.max(slice.lastIndexOf('.'), slice.lastIndexOf('!'), slice.lastIndexOf('؟'));
+        const stops = ['.','!','؟','…','\n','،'];
+        let lastStop = -1;
+        for(const s of stops){ const p = slice.lastIndexOf(s); if(p > lastStop) lastStop = p; }
         if(lastStop > 200){ end = i + lastStop + 1; }
         parts.push(text.slice(i, end).trim());
         i = end;
