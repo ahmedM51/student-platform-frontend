@@ -233,6 +233,7 @@
     const screenPreview = document.getElementById('screenPreview');
     const ocrStatus = document.getElementById('ocrStatus');
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || '');
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
     let mediaStream = null;
     let mediaRecorder = null;
     let recordChunks = [];
@@ -440,7 +441,8 @@
     if(SR){
       recog = new SR();
       recog.lang = 'ar-SA';
-      recog.continuous = true; // live loop
+      // iOS Safari is more stable with non-continuous mode
+      recog.continuous = isIOS ? false : true; // live loop on Android/Desktop
       recog.interimResults = false;
       recog.maxAlternatives = 1;
 
@@ -954,6 +956,10 @@
       if (isMobile) {
         const btn = document.getElementById('audioEnableBtn');
         if (btn) btn.style.display = 'inline-block';
+        // Auto-enable audio on first user interaction (one-time) to satisfy autoplay policies
+        const first = ()=>{ try{ enableAudioOnMobile(); }catch(_){}; document.removeEventListener('touchend', first); document.removeEventListener('click', first); };
+        document.addEventListener('touchend', first, { once: true });
+        document.addEventListener('click', first, { once: true });
       } else {
         try { speak('أهلاً بيك يا بطل! أنا جاهز أذاكر معاك المادة دي. إيه أول جزء حابب نركز عليه؟'); } catch(_) {}
       }
