@@ -52,11 +52,11 @@
       width: 100%; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; font-size: 15px; outline: none;
     }
     .input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); border-color: var(--primary); }
-    textarea { min-height: 500px; resize: vertical; }
-    .chat { height: 420px; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 8px; border: 1px solid #eef2f7; border-radius: 12px; background: #fafafa; }
+    textarea { min-height: 650px; resize: vertical; }
+    .chat { height: 560px; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 8px; border: 1px solid #eef2f7; border-radius: 12px; background: #fafafa; }
     .msg { display: flex; gap: 10px; align-items: flex-start; }
     .msg .bubble {
-      padding: 10px 12px; border-radius: 14px; max-width: 85%; line-height: 1.6; font-size: 15px; word-wrap: break-word;
+      padding: 10px 12px; border-radius: 14px; max-width: 95%; line-height: 1.7; font-size: 16px; word-wrap: break-word;
     }
     .from-user .bubble { background: var(--primary); color: #fff; border-top-left-radius: 4px; margin-left: 32px; }
     .from-ai .bubble { background: #eef2f7; color: #0f172a; border-top-right-radius: 4px; margin-right: 32px; }
@@ -143,6 +143,8 @@
               <input id="pdfFiles" type="file" multiple accept=".pdf,.txt,.md" class="input" style="padding:10px" />
               <button class="btn btn-primary" onclick="uploadSelectedFiles()">رفع الملفات</button>
               <button class="btn btn-accent" onclick="startAutoExplain()">ابدأ الشرح الآن</button>
+              <button class="btn btn-ghost" onclick="readLectureAloud()">قراءة المحاضرة بصوت</button>
+              <button class="btn btn-danger" onclick="stopReading()">إيقاف القراءة</button>
             </div>
             <div id="uploadsList" class="muted"></div>
           </div>
@@ -234,6 +236,9 @@
     let mediaStream = null;
     let mediaRecorder = null;
     let recordChunks = [];
+    let readingQueue = [];
+    let readingIndex = 0;
+    let readingActive = false;
     
 
     // --------------- Helpers ---------------
@@ -273,8 +278,9 @@
     function selectContextFor(question){
       const text = getLecture();
       if(!text) return '';
-      const chunkSize = 6000; // chars
-      const maxSend = 12000; // total chars to send
+      // Increased limits to include more of the lecture in answers
+      const chunkSize = 12000; // chars per chunk
+      const maxSend = 36000; // total chars to send
       const chunks = [];
       for(let i=0;i<text.length;i+=chunkSize){ chunks.push(text.slice(i, i+chunkSize)); }
       const qTokens = (clean(question).toLowerCase().split(/\s+/).filter(t=>t.length>2));
@@ -284,7 +290,8 @@
       });
       scored.sort((a,b)=> b.score - a.score);
       let picked = '';
-      for(const s of scored.slice(0,2)){
+      // pick more top chunks within the new maxSend limit
+      for(const s of scored.slice(0,3)){
         if((picked.length + s.c.length) <= maxSend){ picked += (picked?"\n\n":"") + s.c; }
       }
       return picked || text.slice(0, maxSend);
@@ -339,6 +346,76 @@
     }
 
     function ttsPlayLast(){ if(state.lastUtterance) speak(state.lastUtterance); }
+
+    // Long-form reading of the lecture in chunks
+    function splitLectureForReading(text){
+      const maxChunk = 900; // ~ short paragraph per utterance
+      const parts = [];
+      let i = 0;
+      while(i < text.length){
+        let end = Math.min(i + maxChunk, text.length);
+        // try to cut at sentence boundary
+        const slice = text.slice(i, end);
+        const lastStop = Math.max(slice.lastIndexOf('.'), slice.lastIndexOf('!'), slice.lastIndexOf('؟'));
+        if(lastStop > 200){ end = i + lastStop + 1; }
+        parts.push(text.slice(i, end).trim());
+        i = end;
+      }
+      return parts.filter(Boolean);
+    }
+
+    function stopReading(){
+      readingActive = false;
+      try{ window.speechSynthesis.cancel(); }catch(_){ }
+      appendMsg('ai', 'تم إيقاف القراءة.');
+    }
+
+    async function readLectureAloud(){
+      const lecture = getLecture();
+      if(!lecture || lecture.length < 30){
+        appendMsg('ai', 'محتاج نص من المحاضرة الأول عشان أقرأه.');
+        return;
+      }
+      if(isMobile && !state.audioEnabled){
+        appendMsg('ai', 'قبل ما أقرأ، اضغط "تفعيل الصوت 🔊" علشان الصوت يشتغل على جهازك.');
+        return;
+      }
+      if(readingActive){ appendMsg('ai', 'أنا بالفعل بقرأ. تقدر تضغط "إيقاف القراءة" لإيقافها.'); return; }
+      readingQueue = splitLectureForReading(lecture);
+      if(!readingQueue.length){ appendMsg('ai', 'لم أجد فقرات مناسبة للقراءة.'); return; }
+      readingIndex = 0;
+      readingActive = true;
+      appendMsg('ai', 'حاضر، هاقرأ لك المحاضرة فقرة فقرة. تقدر توقف في أي وقت.');
+      const speakNext = ()=>{
+        if(!readingActive) return;
+        if(readingIndex >= readingQueue.length){ readingActive = false; appendMsg('ai', 'انتهيت من قراءة المحاضرة.'); return; }
+        const chunk = readingQueue[readingIndex++];
+        const u = new SpeechSynthesisUtterance(chunk);
+        const v = getArabicVoice(); if(v) u.voice = v; u.lang = (v && v.lang) || 'ar-SA';
+        u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+        u.onend = ()=>{ if(readingActive){ setTimeout(speakNext, 250); } };
+        try{ window.speechSynthesis.speak(u); }catch(_){ readingActive = false; }
+      };
+      speakNext();
+    }
+
+    // Mobile audio unlock (required for TTS on iOS/Android)
+    function enableAudioOnMobile(){
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) {
+          const ctx = new AC();
+          const buffer = ctx.createBuffer(1, 1, 22050);
+          const src = ctx.createBufferSource();
+          src.buffer = buffer; src.connect(ctx.destination); src.start(0);
+        }
+      } catch(_){ }
+      state.audioEnabled = true;
+      const btn = document.getElementById('audioEnableBtn');
+      if (btn) btn.style.display = 'none';
+      try { if (state.lastUtterance) speakBtn.disabled = false; } catch(_){ }
+      appendMsg('ai', 'تم تفعيل الصوت على جهازك. اسألني وسوف أجيبك بصوت.');
+    }
 
     // --------------- STT (SpeechRecognition) ---------------
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -471,13 +548,19 @@
         }
       }catch(_){ }
       if(pdfFiles) pdfFiles.value = '';
-      // بعد رفع الملفات ودمج النص، ابدأ الشرح تلقائياً
+      // بعد رفع الملفات ودمج النص
       try { 
-        if(!getLecture() || getLecture().length < 30){
+        const lectureText = getLecture();
+        if(!lectureText || lectureText.length < 30){
           appendMsg('ai', `${persona.prefix} محتاج نص واضح من المحاضرة عشان أشرح. جرّب رفع PDF أو TXT/MD وسيتم استخراج النص مباشرة.`);
           speak(`${persona.prefix} محتاج نص من المحاضرة عشان أبدأ أشرح.`);
         } else {
-          await startAutoExplain(); 
+          // على الجوال: اطلب تفعيل الصوت قبل التحدث
+          if (isMobile && !state.audioEnabled) {
+            appendMsg('ai', 'قبل ما أتكلم، اضغط زر "تفعيل الصوت 🔊" فوق علشان أقدر أتكلم بصوت على جوالك. بعد كده اسألني وأنا هجاوبك بصوت.');
+          } else {
+            await startAutoExplain(); 
+          }
         }
       } catch(_){ }
     }
