@@ -106,7 +106,7 @@
     <div id="loadingOverlay" class="loading-overlay">
         <div class="text-center">
             <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
-            <p class="text-gray-600">جاري التحميل...</p>
+            <p class="text-gray-600" data-i18n="loading.text">جاري التحميل...</p>
         </div>
     </div>
 
@@ -345,14 +345,14 @@
         };
 
         // Preview lecture inside a modal using Google Drive viewer
-        window.previewLecture = function(url, title = 'محاضرة') {
+        window.previewLecture = function(url, title = t('subjects.preview.default_lecture')) {
             if (!url) return;
             const content = `
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <div class="text-gray-700 text-sm">${title}</div>
                         <a href="${url}" target="_blank" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
-                            <i class=\"fas fa-external-link-alt ml-2\"></i>فتح في تبويب جديد
+                            <i class=\"fas fa-external-link-alt ml-2\"></i>${t('subjects.preview.open_new_tab')}
                         </a>
                     </div>
                     <div class="w-full h-[70vh]">
@@ -360,7 +360,7 @@
                     </div>
                 </div>
             `;
-            window.createModal('معاينة المحاضرة', content);
+            window.createModal(t('subjects.preview.modal_title'), content);
         };
 
         // Compute best viewing URL for any lecture link
@@ -421,22 +421,22 @@
                 <form id="addSubjectForm" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">اسم المادة</label>
-                            <input type="text" id="subjectName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="مثال: الرياضيات" required>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">${t('subjects.form.name')}</label>
+                            <input type="text" id="subjectName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="${t('subjects.form.name_placeholder')}" required>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">كود المادة</label>
-                            <input type="text" id="subjectCode" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="مثال: MATH101" required>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">${t('subjects.form.code')}</label>
+                            <input type="text" id="subjectCode" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="${t('subjects.form.code_placeholder')}" required>
                         </div>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">وصف المادة</label>
-                        <textarea id="subjectDescription" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="وصف مختصر للمادة..."></textarea>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('subjects.form.description')}</label>
+                        <textarea id="subjectDescription" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="${t('subjects.form.description_placeholder')}"></textarea>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">لون المادة</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('subjects.form.color')}</label>
                         <div class="flex space-x-2 space-x-reverse">
                             <button type="button" onclick="selectColor('blue')" class="w-8 h-8 bg-blue-500 rounded-full border-2 border-transparent hover:border-gray-400 transition-colors" data-color="blue"></button>
                             <button type="button" onclick="selectColor('green')" class="w-8 h-8 bg-green-500 rounded-full border-2 border-transparent hover:border-gray-400 transition-colors" data-color="green"></button>
@@ -450,17 +450,17 @@
 
                     <!-- File Upload Section -->
                     <div class="border-t pt-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-3">إضافة ملفات للمادة</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">${t('subjects.files.section')}</label>
                         
                         <!-- Upload Type Selection -->
                         <div class="flex space-x-4 space-x-reverse mb-4">
                             <label class="flex items-center">
                                 <input type="radio" name="uploadType" value="file" class="ml-2" checked onchange="toggleUploadType()">
-                                <span class="text-sm">رفع من الجهاز</span>
+                                <span class="text-sm">${t('subjects.files.upload_from_device')}</span>
                             </label>
                             <label class="flex items-center">
                                 <input type="radio" name="uploadType" value="url" class="ml-2" onchange="toggleUploadType()">
-                                <span class="text-sm">رابط URL</span>
+                                <span class="text-sm">${t('subjects.files.url')}</span>
                             </label>
                         </div>
 
@@ -470,7 +470,7 @@
                                 <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.txt,.ppt,.pptx" class="hidden" onchange="handleFileSelect(event)">
                                 <button type="button" onclick="document.getElementById('fileInput').click()" class="text-blue-600 hover:text-blue-800">
                                     <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
-                                    <p class="text-sm font-medium">انقر لاختيار الملفات</p>
+                                    <p class="text-sm font-medium">${t('subjects.files.click_to_choose')}</p>
                                     <p class="text-xs text-gray-500">PDF, DOC, DOCX, TXT, PPT, PPTX</p>
                                 </button>
                             </div>
@@ -480,7 +480,7 @@
                         <!-- URL Upload -->
                         <div id="urlUploadSection" class="hidden space-y-3">
                             <div class="flex space-x-2 space-x-reverse">
-                                <input type="url" id="fileUrl" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="https://example.com/file.pdf">
+                                <input type="url" id="fileUrl" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="${t('subjects.files.url_placeholder')}">
                                 <button type="button" onclick="addUrlFile()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg">
                                     <i class="fas fa-plus"></i>
                                 </button>
@@ -492,17 +492,17 @@
                     <div class="flex justify-end space-x-3 space-x-reverse pt-4">
                         <button type="button" onclick="closeModal()" 
                                 class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                            إلغاء
+                            ${t('subjects.actions.cancel')}
                         </button>
                         <button type="submit" 
                                 class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                            <i class="fas fa-plus ml-2"></i>إضافة المادة
+                            <i class="fas fa-plus ml-2"></i>${t('subjects.actions.add_subject')}
                         </button>
                     </div>
                 </form>
             `;
             
-            createModal('إضافة مادة جديدة', content);
+            createModal(t('subjects.modal.title_add'), content);
             
             // Handle form submission
             document.getElementById('addSubjectForm').addEventListener('submit', async function(e) {
@@ -519,7 +519,7 @@
             const color = document.getElementById('selectedColor').value;
             
             if (!name.trim()) {
-                showNotification('يرجى إدخال اسم المادة', 'error');
+                showNotification(t('subjects.msg.enter_name'), 'error');
                 return;
             }
             
@@ -542,13 +542,13 @@
                 const result = await window.supabaseDB.subjects.create(subjectData);
                 if (result.error) throw result.error;
                 
-                showNotification('تم إضافة المادة بنجاح!', 'success');
+                showNotification(t('subjects.msg.add_success'), 'success');
                 closeModal();
                 loadSubjects();
                 
             } catch (error) {
                 console.error('Error adding subject:', error);
-                showNotification('خطأ في إضافة المادة', 'error');
+                showNotification(t('subjects.msg.add_error'), 'error');
             } finally {
                 hideLoading();
             }
@@ -575,7 +575,7 @@
                 }
             } catch (error) {
                 console.error('Error loading subjects:', error);
-                showNotification('خطأ في تحميل المواد', 'error');
+                showNotification(t('subjects.msg.load_error'), 'error');
             }
         }
 
@@ -600,10 +600,10 @@
                 container.innerHTML = `
                     <div class="col-span-full text-center py-12">
                         <i class="fas fa-book text-6xl text-gray-300 mb-4"></i>
-                        <h3 class="text-xl font-semibold text-gray-600 mb-2">لا توجد مواد بعد</h3>
-                        <p class="text-gray-500 mb-6">ابدأ بإضافة مادة جديدة لتنظيم دراستك</p>
+                        <h3 class="text-xl font-semibold text-gray-600 mb-2">${t('subjects.empty.title')}</h3>
+                        <p class="text-gray-500 mb-6">${t('subjects.empty.desc')}</p>
                         <button onclick="showAddSubject()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
-                            <i class="fas fa-plus ml-2"></i>إضافة مادة جديدة
+                            <i class="fas fa-plus ml-2"></i>${t('subjects.empty.add_btn')}
                         </button>
                     </div>
                 `;
@@ -628,16 +628,16 @@
                         </div>
                         
                         <h3 class="text-xl font-bold text-gray-800 mb-2">${subject.name}</h3>
-                        <p class="text-gray-600 text-sm mb-4">${subject.description || 'لا يوجد وصف'}</p>
+                        <p class="text-gray-600 text-sm mb-4">${subject.description || t('subjects.card.no_description')}</p>
                         
                         <div class="flex justify-between items-center text-sm text-gray-500 mb-4">
-                            <span><i class="fas fa-graduation-cap ml-1"></i>${subject.total_lectures || 0} محاضرة</span>
-                            <span><i class="fas fa-file ml-1"></i>${subject.file_count || 0} ملف</span>
+                            <span><i class="fas fa-graduation-cap ml-1"></i>${subject.total_lectures || 0} ${t('subjects.card.lectures_label')}</span>
+                            <span><i class="fas fa-file ml-1"></i>${subject.file_count || 0} ${t('subjects.card.files_label')}</span>
                         </div>
                         
                         <div class="mb-4">
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-sm text-gray-600">التقدم</span>
+                                <span class="text-sm text-gray-600">${t('subjects.card.progress')}</span>
                                 <span class="text-sm font-medium text-blue-600">${subject.progress || 0}%</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2">
@@ -647,10 +647,10 @@
                         
                         <div class="flex space-x-2 space-x-reverse">
                             <button onclick="viewSubject('${subject.id}')" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-                                <i class="fas fa-eye ml-1"></i>عرض
+                                <i class="fas fa-eye ml-1"></i>${t('subjects.card.view')}
                             </button>
                             <button onclick="addLecture('${subject.id}')" class="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
-                                <i class="fas fa-plus ml-1"></i>محاضرة
+                                <i class="fas fa-plus ml-1"></i>${t('subjects.card.add_lecture')}
                             </button>
                         </div>
                     </div>
@@ -660,7 +660,7 @@
 
         // Delete Subject
         window.deleteSubject = async function(subjectId, subjectName) {
-            if (!confirm(`هل أنت متأكد من حذف مادة "${subjectName}"؟\nسيتم حذف جميع المحاضرات والملفات المرتبطة بها.`)) {
+            if (!confirm(t('subjects.delete.confirm').replace('{name}', subjectName))) {
                 return;
             }
             
@@ -670,12 +670,12 @@
                 const result = await window.supabaseDB.subjects.delete(subjectId);
                 if (result.error) throw result.error;
                 
-                showNotification('تم حذف المادة بنجاح', 'success');
+                showNotification(t('subjects.delete.success'), 'success');
                 loadSubjects();
                 
             } catch (error) {
                 console.error('Error deleting subject:', error);
-                showNotification('خطأ في حذف المادة', 'error');
+                showNotification(t('subjects.delete.error'), 'error');
             } finally {
                 hideLoading();
             }
@@ -686,7 +686,7 @@
             try {
                 showLoading();
                 // Load subject info (optional)
-                let subjectName = 'المادة';
+                let subjectName = t('subjects.title');
                 if (window.supabaseDB && window.supabaseDB.subjects && window.supabaseDB.subjects.get) {
                     try {
                         const subject = await window.supabaseDB.subjects.get(subjectId);
@@ -710,9 +710,9 @@
                     content.innerHTML = `
                         <div class="text-center text-gray-600 py-8">
                             <i class="fas fa-file text-4xl mb-3 text-gray-400"></i>
-                            <div class="mb-4">لا توجد محاضرات بعد لهذه المادة</div>
+                            <div class="mb-4">${t('subjects.view.empty')}</div>
                             <button onclick="addLecture('${subjectId}')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                                <i class="fas fa-plus ml-2"></i>إضافة محاضرة
+                                <i class="fas fa-plus ml-2"></i>${t('subjects.view.add_lecture_btn')}
                             </button>
                         </div>
                     `;
@@ -732,17 +732,17 @@
                                     <i class="fas fa-file-alt"></i>
                                 </div>
                                 <div>
-                                    <div class="font-semibold text-gray-900">${lec.title || 'محاضرة بدون عنوان'}</div>
+                                    <div class="font-semibold text-gray-900">${lec.title || t('subjects.preview.default_lecture')}</div>
                                     ${lec.description ? `<div class=\"text-sm text-gray-600 mt-1\">${lec.description}</div>` : ''}
                                     ${fileName ? `<div class=\"text-xs text-gray-500 mt-1\">${fileName}</div>` : ''}
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2 space-x-reverse">
-                                ${`<button type="button" ${url ? `onclick=\"event.stopPropagation(); previewLecture(${JSON.stringify(driveUrl)}, ${JSON.stringify(lec.title || '')})\"` : 'disabled aria-disabled="true"'} class="px-3 py-2 rounded-md text-sm ${url ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}"><i class=\"fas fa-external-link-alt ml-2\"></i>عرض</button>`}
-                                ${url ? `<a href="${url}" download onclick="event.stopPropagation()" class="px-3 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 text-sm"><i class=\"fas fa-download ml-2\"></i>تحميل</a>` : `<button type="button" disabled aria-disabled="true" class="px-3 py-2 bg-gray-200 text-gray-400 rounded-md text-sm cursor-not-allowed"><i class=\"fas fa-download ml-2\"></i>تحميل</button>`}
-                                <button type="button" onclick="event.stopPropagation(); confirmDeleteLecture('${lec.id}', '${subjectId}')" class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"><i class="fas fa-trash ml-2"></i>حذف</button>
+                                ${`<button type="button" ${url ? `onclick=\"event.stopPropagation(); previewLecture(${JSON.stringify(driveUrl)}, ${JSON.stringify(lec.title || '')})\"` : 'disabled aria-disabled="true"'} class="px-3 py-2 rounded-md text-sm ${url ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}"><i class=\"fas fa-external-link-alt ml-2\"></i>${t('subjects.view.preview')}</button>`}
+                                ${url ? `<a href="${url}" download onclick="event.stopPropagation()" class="px-3 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 text-sm"><i class=\"fas fa-download ml-2\"></i>${t('subjects.view.download')}</a>` : `<button type="button" disabled aria-disabled="true" class="px-3 py-2 bg-gray-200 text-gray-400 rounded-md text-sm cursor-not-allowed"><i class=\"fas fa-download ml-2\"></i>${t('subjects.view.download')}</button>`}
+                                <button type="button" onclick="event.stopPropagation(); confirmDeleteLecture('${lec.id}', '${subjectId}')" class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"><i class="fas fa-trash ml-2"></i>${t('subjects.view.delete')}</button>
                             </div>
-                            ${!url ? `<div class=\"text-xs text-gray-400 mt-1\">لا يوجد رابط متاح لهذه المحاضرة</div>` : ''}
+                            ${!url ? `<div class=\"text-xs text-gray-400 mt-1\">${t('subjects.view.no_url')}</div>` : ''}
                         `;
                         if (url) {
                             card.classList.add('cursor-pointer');
@@ -754,11 +754,11 @@
                     content.appendChild(list);
                 }
 
-                const modal = window.createModal(`محاضرات مادة: ${subjectName}`, content.outerHTML);
+                const modal = window.createModal(`${t('subjects.view.title_prefix')}${subjectName}`, content.outerHTML);
                 return modal;
             } catch (error) {
                 console.error('Error opening subject view:', error);
-                showNotification('حدث خطأ في عرض المحاضرات', 'error');
+                showNotification(t('subjects.view.error'), 'error');
             } finally {
                 hideLoading();
             }
@@ -766,7 +766,7 @@
 
         // Delete a lecture (only the lecture, not the subject)
         window.confirmDeleteLecture = function(lectureId, subjectId) {
-            if (confirm('هل أنت متأكد من حذف هذه المحاضرة؟')) {
+            if (confirm(t('subjects.lec.delete.confirm'))) {
                 window.deleteLecture(lectureId, subjectId);
             }
         };
@@ -775,12 +775,12 @@
             try {
                 showLoading();
                 if (!window.supabaseDB || !window.supabaseDB.lectures || !window.supabaseDB.lectures.delete) {
-                    throw new Error('العمليات غير متاحة حالياً');
+                    throw new Error(t('subjects.ops.unavailable'));
                 }
                 const res = await window.supabaseDB.lectures.delete(lectureId);
                 if (res && res.error) throw res.error;
 
-                showNotification('تم حذف المحاضرة بنجاح', 'success');
+                showNotification(t('subjects.lec.delete.success'), 'success');
                 // Refresh modal content and subjects counters
                 closeModal();
                 await window.viewSubject(subjectId);
@@ -789,7 +789,7 @@
                 }
             } catch (err) {
                 console.error('Error deleting lecture:', err);
-                showNotification('خطأ في حذف المحاضرة', 'error');
+                showNotification(t('subjects.lec.delete.error'), 'error');
             } finally {
                 hideLoading();
             }
@@ -806,65 +806,65 @@
             const content = `
                 <form id="addLectureForm" class="space-y-6">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">عنوان المحاضرة</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('subjects.lec.form.title')}</label>
                         <input type="text" id="lectureTitle" required 
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                               placeholder="أدخل عنوان المحاضرة">
+                               placeholder="${t('subjects.lec.form.title_placeholder')}">
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">وصف المحاضرة</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('subjects.lec.form.desc')}</label>
                         <textarea id="lectureDescription" rows="3" 
                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                  placeholder="وصف مختصر للمحاضرة"></textarea>
+                                  placeholder="${t('subjects.lec.form.desc_placeholder')}"></textarea>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">نوع المحتوى</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('subjects.lec.form.type')}</label>
                         <div class="flex space-x-4 space-x-reverse">
                             <label class="flex items-center">
                                 <input type="radio" name="contentType" value="file" checked class="ml-2">
-                                <span>رفع ملف</span>
+                                <span>${t('subjects.lec.form.type_file')}</span>
                             </label>
                             <label class="flex items-center">
                                 <input type="radio" name="contentType" value="url" class="ml-2">
-                                <span>رابط خارجي</span>
+                                <span>${t('subjects.lec.form.type_url')}</span>
                             </label>
                         </div>
                     </div>
                     
                     <div id="fileUploadSection">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">رفع ملف</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('subjects.lec.form.upload_label')}</label>
                         <div class="file-upload-area border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
                             <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                            <p class="text-gray-600">اضغط لاختيار ملف أو اسحب الملف هنا</p>
-                            <p class="text-sm text-gray-500 mt-1">PDF, DOC, DOCX, PPT, PPTX (حد أقصى 50MB)</p>
+                            <p class="text-gray-600">${t('subjects.lec.form.upload_hint')}</p>
+                            <p class="text-sm text-gray-500 mt-1">${t('subjects.lec.form.upload_types')}</p>
                         </div>
                         <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.ppt,.pptx" class="hidden">
                         <div id="fileInfo" class="mt-2 text-sm text-gray-600"></div>
                     </div>
                     
                     <div id="urlSection" class="hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">الرابط</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('subjects.lec.form.url_label')}</label>
                         <input type="url" id="contentUrl" 
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                               placeholder="https://example.com">
+                               placeholder="${t('subjects.lec.form.url_placeholder')}">
                     </div>
                     
                     <div class="flex justify-end space-x-3 space-x-reverse pt-4">
                         <button type="button" onclick="closeModal()" 
                                 class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                            إلغاء
+                            ${t('subjects.lec.actions.cancel')}
                         </button>
                         <button type="submit" 
                                 class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                            <i class="fas fa-plus ml-2"></i>إضافة المحاضرة
+                            <i class="fas fa-plus ml-2"></i>${t('subjects.lec.actions.add')}
                         </button>
                     </div>
                 </form>
             `;
             
-            createModal('إضافة محاضرة جديدة', content);
+            createModal(t('subjects.view.add_lecture_btn'), content);
             
             // Handle content type change
             document.querySelectorAll('input[name="contentType"]').forEach(radio => {
@@ -931,14 +931,13 @@
             if (!signErr && signed && signed.signedUrl) return signed.signedUrl;
             return null;
         }
-
         async function addLectureToSubject(subjectId) {
             const title = document.getElementById('lectureTitle').value;
             const description = document.getElementById('lectureDescription').value;
             const contentType = document.querySelector('input[name="contentType"]:checked').value;
             
             if (!title.trim()) {
-                showNotification('يرجى إدخال عنوان المحاضرة', 'error');
+                showNotification(t('subjects.lec.msg.enter_title'), 'error');
                 return;
             }
             
@@ -967,7 +966,7 @@
                             }
                         } catch (e) {
                             console.error('Upload error:', e);
-                            showNotification('تعذر رفع الملف. يرجى المحاولة لاحقاً أو استخدام رابط خارجي.', 'error');
+                            showNotification(t('subjects.lec.msg.upload_failed'), 'error');
                         }
                     }
                 } else {
@@ -980,13 +979,13 @@
                 const result = await window.supabaseDB.lectures.create(lectureData);
                 if (result.error) throw result.error;
                 
-                showNotification('تم إضافة المحاضرة بنجاح!', 'success');
+                showNotification(t('subjects.lec.msg.add_success'), 'success');
                 closeModal();
                 loadSubjects(); // Refresh to update lecture counts
                 
             } catch (error) {
                 console.error('Error adding lecture:', error);
-                showNotification('خطأ في إضافة المحاضرة', 'error');
+                showNotification(t('subjects.lec.msg.add_error'), 'error');
             } finally {
                 hideLoading();
             }
@@ -1079,16 +1078,16 @@
             const url = urlInput.value.trim();
             
             if (!url) {
-                showNotification('يرجى إدخال رابط صحيح', 'error');
+                showNotification(t('subjects.url.msg.enter_valid'), 'error');
                 return;
             }
             
             if (!isValidUrl(url)) {
-                showNotification('الرابط غير صحيح', 'error');
+                showNotification(t('subjects.url.msg.invalid'), 'error');
                 return;
             }
             
-            const fileName = url.split('/').pop() || 'ملف من الرابط';
+            const fileName = url.split('/').pop() || t('subjects.url.default_filename');
             urlFiles.push({ url, name: fileName });
             urlInput.value = '';
             displayUrlFiles();
@@ -1187,7 +1186,7 @@
                 console.log('✅ Files uploaded successfully');
             } catch (error) {
                 console.error('❌ Error uploading files:', error);
-                showNotification('حدث خطأ في رفع بعض الملفات', 'error');
+                showNotification(t('subjects.files.upload_some_failed'), 'error');
             }
         }
     </script>
