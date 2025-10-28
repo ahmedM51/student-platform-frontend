@@ -552,12 +552,12 @@
             const categorySelect = document.getElementById('category-select');
             
             categoriesContainer.innerHTML = '';
-            categorySelect.innerHTML = '<option value="" disabled selected>اختر فئة</option>';
+            categorySelect.innerHTML = `<option value="" disabled selected>${t('mynote.form.choose_category')}</option>`;
             
             // إضافة زر "عرض الكل"
             categoriesContainer.innerHTML += `
                 <button onclick="setSelectedCategoryFilter('all')" class="p-2 w-full text-right text-sm rounded-lg transition duration-200 ${selectedCategoryFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-gray-100'}">
-                    <span class="ml-2">📂</span> كل الملاحظات
+                    <span class="ml-2">📂</span> ${t('mynote.sidebar.all')}
                 </button>
             `;
 
@@ -602,8 +602,8 @@
 
             if (filteredNotes.length === 0) {
                 notesContainer.innerHTML = `
-                    <div class="p-6 text-center text-gray-500 bg-white rounded-xl shadow-md">
-                        لا توجد ملاحظات في هذه الفئة. ابدأ بإضافة واحدة!
+                    <div class="p-6 text-center text-gray-500 bg-white rounded-xl shadow-md" data-i18n="mynote.empty">
+                        ${t('mynote.empty')}
                     </div>
                 `;
                 return;
@@ -644,7 +644,7 @@
                         <!-- النص المحوّل -->
                         <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                             <p class="font-semibold text-sm text-gray-700 mb-1 flex items-center">
-                                <span class="ml-1 text-xl">📝</span> النص الأصلي المحوّل:
+                                <span class="ml-1 text-xl">📝</span> ${t('mynote.note.transcription')}
                             </p>
                             <p class="text-sm text-gray-600">${note.transcription || 'جاري معالجة النص بواسطة الذكاء الاصطناعي...'}</p>
                         </div>
@@ -652,7 +652,7 @@
                         <!-- الترجمة العربية -->
                         <div class="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
                             <p class="font-semibold text-sm text-indigo-800 mb-1 flex items-center">
-                                <span class="ml-1 text-xl">🌐</span> الترجمة العربية:
+                                <span class="ml-1 text-xl">🌐</span> ${t('mynote.note.translation')}
                             </p>
                             <p class="text-sm text-indigo-700">${note.translation || 'جاري معالجة الترجمة...'}</p>
                         </div>
@@ -713,13 +713,13 @@
 
     <!-- الشريط الجانبي للفئات -->
     <div class="hidden md:block fixed right-0 top-0 h-full w-64 bg-white border-l shadow-xl p-4 overflow-y-auto">
-        <h2 class="text-xl font-extrabold text-indigo-700 mb-6 border-b pb-2">📂 الفئات</h2>
+        <h2 class="text-xl font-extrabold text-indigo-700 mb-6 border-b pb-2" data-i18n="mynote.sidebar.categories">📂 الفئات</h2>
         
         <!-- إضافة فئة جديدة -->
         <div class="mb-6 p-3 bg-gray-50 rounded-lg shadow-inner">
-            <input type="text" id="new-category-name" placeholder="اسم فئة جديدة..." class="w-full p-2 text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+            <input type="text" id="new-category-name" data-i18n-attr="placeholder:mynote.form.new_category_placeholder" placeholder="اسم فئة جديدة..." class="w-full p-2 text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
             <button id="add-category-btn" class="mt-2 w-full bg-indigo-500 text-white p-2 text-sm font-semibold rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md">
-                + إضافة فئة
+                + <span data-i18n="mynote.btn.add_category">إضافة فئة</span>
             </button>
         </div>
 
@@ -729,26 +729,26 @@
         </div>
         
         <div class="mt-8 pt-4 border-t text-xs text-gray-400">
-             <p>المستخدم: <span id="user-id-display" class="font-mono text-gray-500 text-sm break-all">جاري التحميل...</span></p>
+             <p><span data-i18n="mynote.user.label">المستخدم:</span> <span id="user-id-display" class="font-mono text-gray-500 text-sm break-all" data-i18n="mynote.user.loading">جاري التحميل...</span></p>
         </div>
     </div>
 
     <!-- المحتوى الرئيسي للملاحظات -->
     <main class="flex-grow p-4 md:mr-64 transition-all duration-300" id="main-content">
         <header class="mb-8 p-4 bg-white rounded-xl shadow-lg flex justify-between items-center">
-            <h1 class="text-3xl font-extrabold text-gray-800">ملاحظاتي 🎧</h1>
+            <h1 class="text-3xl font-extrabold text-gray-800" data-i18n="mynote.title">ملاحظاتي 🎧</h1>
             <button id="add-note-btn" class="flex items-center bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition duration-150 transform hover:scale-105">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                ملاحظة صوتية جديدة
+                <span data-i18n="mynote.btn.add_note">ملاحظة صوتية جديدة</span>
             </button>
         </header>
 
         <!-- قائمة الملاحظات -->
         <div id="notes-list" class="space-y-6">
             <!-- سيتم ملؤها بواسطة renderNotes() -->
-            <div class="p-6 text-center text-gray-500 bg-white rounded-xl shadow-md">
+            <div class="p-6 text-center text-gray-500 bg-white rounded-xl shadow-md" data-i18n="mynote.loading_notes">
                 جاري تحميل الملاحظات...
             </div>
         </div>
@@ -770,7 +770,7 @@
         <div class="bg-white w-full max-w-md mx-auto rounded-xl shadow-2xl p-6 transform transition-all duration-300">
             
             <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 class="text-xl font-bold text-indigo-700">إضافة ملاحظة صوتية</h3>
+                <h3 class="text-xl font-bold text-indigo-700" data-i18n="mynote.modal.title">إضافة ملاحظة صوتية</h3>
                 <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -782,7 +782,7 @@
                 
                 <!-- اختيار الفئة -->
                 <div>
-                    <label for="category-select" class="block text-sm font-medium text-gray-700 mb-1">اختر فئة الملاحظة:</label>
+                    <label for="category-select" class="block text-sm font-medium text-gray-700 mb-1" data-i18n="mynote.form.category_label">اختر فئة الملاحظة:</label>
                     <select id="category-select" name="category-select" required 
                             class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                         <!-- الخيارات يتم ملؤها بواسطة JS -->
@@ -791,32 +791,32 @@
                 
                 <!-- خيار التسجيل المباشر -->
                 <div class="border-t pt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">التسجيل المباشر:</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="mynote.form.live_recording">التسجيل المباشر:</label>
                     <div class="flex items-center justify-between space-x-2 rtl:space-x-reverse mb-2 p-2 bg-gray-50 rounded-lg">
-                        <span id="record-status" class="text-sm font-semibold text-gray-600">جاهز للتسجيل</span>
-                        <span id="recording-time" class="text-lg font-mono text-gray-800">0 ثانية</span>
+                        <span id="record-status" class="text-sm font-semibold text-gray-600" data-i18n="mynote.form.status.ready">جاهز للتسجيل</span>
+                        <span id="recording-time" class="text-lg font-mono text-gray-800" data-i18n="mynote.form.time_zero">0 ثانية</span>
                     </div>
                     
                     <button type="button" id="record-toggle-btn"
                             class="w-full flex items-center justify-center bg-red-500 text-white p-3 rounded-lg font-semibold hover:bg-red-600 transition duration-150 shadow-md">
                         <span class="ml-1">🎤</span> بدء التسجيل
                     </button>
-                    <p class="text-xs text-gray-500 mt-2 text-center">انقر للبدء، ثم انقر مجدداً للإيقاف.</p>
+                    <p class="text-xs text-gray-500 mt-2 text-center" data-i18n="mynote.form.record_hint">انقر للبدء، ثم انقر مجدداً للإيقاف.</p>
                 </div>
 
                 <div class="border-t pt-4">
                      <!-- خيار التحميل (يتم تعطيله أثناء التسجيل) -->
-                    <label for="audio-upload" class="block text-sm font-medium text-gray-700 mb-1">أو تحميل ملف صوتي (إذا لم تسجل):</label>
+                    <label for="audio-upload" class="block text-sm font-medium text-gray-700 mb-1" data-i18n="mynote.form.upload_audio">أو تحميل ملف صوتي</label>
                     <input type="file" id="audio-upload" name="audio-upload" accept="audio/*"
                            class="w-full p-3 border border-gray-300 rounded-lg shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                    <p id="audio-file-name" class="text-xs text-green-600 mt-1 hidden font-medium">تم تسجيل ملف صوتي.</p>
+                    <p id="audio-file-name" class="text-xs text-green-600 mt-1 hidden font-medium" data-i18n="mynote.form.uploaded_audio">تم تسجيل ملف صوتي.</p>
                 </div>
 
                 <!-- زر الإرسال وحالة التحميل -->
                 <button type="submit" id="submit-note-btn"
                         class="w-full flex items-center justify-center bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition duration-150 shadow-lg disabled:bg-gray-400">
-                    <span id="loading-spinner" class="hidden animate-spin h-5 w-5 ml-2 border-2 border-white border-t-transparent rounded-full"></span>
-                    تحويل وحفظ الملاحظة
+                <span id="loading-spinner" class="hidden animate-spin h-5 w-5 ml-2 border-2 border-white border-t-transparent rounded-full"></span>
+                    <span data-i18n="mynote.form.submit">${t('mynote.form.submit')}</span>
                 </button>
             </form>
 
