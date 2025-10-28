@@ -119,6 +119,7 @@
             max-width: 500px;
         }
     </style>
+    <script src="js/i18n.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -130,17 +131,23 @@
                         <i class="fas fa-arrow-right"></i>
                     </a>
                     <i class="fas fa-calendar-alt text-2xl text-blue-600 ml-3"></i>
-                    <h1 class="text-xl font-bold text-gray-900">المخطط الدراسي</h1>
+                    <h1 class="text-xl font-bold text-gray-900" data-i18n="nav.planner">المخطط الدراسي</h1>
                 </div>
                 <div class="flex items-center space-x-4 space-x-reverse">
+                    <select id="langSelect" onchange="setLanguage(this.value)" class="bg-gray-100 text-gray-800 px-2 py-2 rounded-lg text-sm">
+                        <option value="ar">العربية</option>
+                        <option value="en">English</option>
+                    </select>
                     <button onclick="showAddTaskModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                        <i class="fas fa-plus ml-2"></i>إضافة مهمة
+                        <i class="fas fa-plus ml-2"></i><span data-i18n="planner.add">إضافة مهمة</span>
                     </button>
                     <span class="text-sm text-gray-600" id="currentUser">مرحباً، طالب</span>
                 </div>
             </div>
         </div>
     </nav>
+
+    
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -150,38 +157,38 @@
             <div class="dashboard-card text-center">
                 <i class="fas fa-tasks text-3xl text-blue-600 mb-2"></i>
                 <div class="text-2xl font-bold text-gray-900" id="totalTasks">0</div>
-                <div class="text-sm text-gray-600">إجمالي المهام</div>
+                <div class="text-sm text-gray-600" data-i18n="planner.stats.total">إجمالي المهام</div>
             </div>
             <div class="dashboard-card text-center">
                 <i class="fas fa-check-circle text-3xl text-green-600 mb-2"></i>
                 <div class="text-2xl font-bold text-gray-900" id="completedTasks">0</div>
-                <div class="text-sm text-gray-600">المهام المكتملة</div>
+                <div class="text-sm text-gray-600" data-i18n="planner.stats.completed">المهام المكتملة</div>
             </div>
             <div class="dashboard-card text-center">
                 <i class="fas fa-clock text-3xl text-orange-600 mb-2"></i>
                 <div class="text-2xl font-bold text-gray-900" id="pendingTasks">0</div>
-                <div class="text-sm text-gray-600">المهام المعلقة</div>
+                <div class="text-sm text-gray-600" data-i18n="planner.stats.pending">المهام المعلقة</div>
             </div>
             <div class="dashboard-card text-center">
                 <i class="fas fa-exclamation-triangle text-3xl text-red-600 mb-2"></i>
                 <div class="text-2xl font-bold text-gray-900" id="urgentTasks">0</div>
-                <div class="text-sm text-gray-600">المهام العاجلة</div>
+                <div class="text-sm text-gray-600" data-i18n="planner.stats.urgent">المهام العاجلة</div>
             </div>
         </div>
 
         <!-- View Toggle -->
         <div class="dashboard-card mb-6">
             <div class="flex justify-between items-center">
-                <h3 class="text-lg font-semibold text-gray-900">عرض المخطط</h3>
+                <h3 class="text-lg font-semibold text-gray-900" data-i18n="planner.view.title">عرض المخطط</h3>
                 <div class="flex bg-gray-100 rounded-lg p-1">
                     <button onclick="showView('list')" id="listViewBtn" class="px-4 py-2 rounded-md bg-white shadow-sm font-medium text-blue-600">
-                        <i class="fas fa-list ml-2"></i>قائمة
+                        <i class="fas fa-list ml-2"></i><span data-i18n="planner.view.list">قائمة</span>
                     </button>
                     <button onclick="showView('calendar')" id="calendarViewBtn" class="px-4 py-2 rounded-md font-medium text-gray-600">
-                        <i class="fas fa-calendar ml-2"></i>تقويم
+                        <i class="fas fa-calendar ml-2"></i><span data-i18n="planner.view.calendar">تقويم</span>
                     </button>
                     <button onclick="showView('ai-planner')" id="aiPlannerBtn" class="px-4 py-2 rounded-md font-medium text-gray-600">
-                        <i class="fas fa-brain ml-2"></i>مخطط ذكي
+                        <i class="fas fa-brain ml-2"></i><span data-i18n="planner.view.ai">مخطط ذكي</span>
                     </button>
                 </div>
             </div>
@@ -191,7 +198,7 @@
         <div id="listView" class="space-y-6">
             <!-- Today's Tasks -->
             <div class="dashboard-card">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">مهام اليوم</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="planner.list.today">مهام اليوم</h3>
                 <div id="todayTasksList" class="space-y-3">
                     <!-- Tasks will be loaded here -->
                 </div>
@@ -199,7 +206,7 @@
 
             <!-- Upcoming Tasks -->
             <div class="dashboard-card">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">المهام القادمة</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="planner.list.upcoming">المهام القادمة</h3>
                 <div id="upcomingTasksList" class="space-y-3">
                     <!-- Tasks will be loaded here -->
                 </div>
@@ -207,7 +214,7 @@
 
             <!-- All Tasks List -->
             <div class="dashboard-card">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">جميع المهام</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="planner.list.all">جميع المهام</h3>
                 <div id="tasksList" class="space-y-3">
                     <!-- All tasks will be loaded here -->
                 </div>
@@ -215,7 +222,7 @@
 
             <!-- Completed Tasks -->
             <div class="dashboard-card">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">المهام المكتملة</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="planner.list.done">المهام المكتملة</h3>
                 <div id="completedTasksList" class="space-y-3">
                     <!-- Tasks will be loaded here -->
                 </div>
@@ -238,13 +245,13 @@
             </div>
             
             <div class="grid grid-cols-7 gap-1 mb-4">
-                <div class="text-center font-semibold text-gray-700 p-2">الأحد</div>
-                <div class="text-center font-semibold text-gray-700 p-2">الاثنين</div>
-                <div class="text-center font-semibold text-gray-700 p-2">الثلاثاء</div>
-                <div class="text-center font-semibold text-gray-700 p-2">الأربعاء</div>
-                <div class="text-center font-semibold text-gray-700 p-2">الخميس</div>
-                <div class="text-center font-semibold text-gray-700 p-2">الجمعة</div>
-                <div class="text-center font-semibold text-gray-700 p-2">السبت</div>
+                <div class="text-center font-semibold text-gray-700 p-2" data-i18n="planner.calendar.sun">الأحد</div>
+                <div class="text-center font-semibold text-gray-700 p-2" data-i18n="planner.calendar.mon">الاثنين</div>
+                <div class="text-center font-semibold text-gray-700 p-2" data-i18n="planner.calendar.tue">الثلاثاء</div>
+                <div class="text-center font-semibold text-gray-700 p-2" data-i18n="planner.calendar.wed">الأربعاء</div>
+                <div class="text-center font-semibold text-gray-700 p-2" data-i18n="planner.calendar.thu">الخميس</div>
+                <div class="text-center font-semibold text-gray-700 p-2" data-i18n="planner.calendar.fri">الجمعة</div>
+                <div class="text-center font-semibold text-gray-700 p-2" data-i18n="planner.calendar.sat">السبت</div>
             </div>
             
             <div id="calendarGrid" class="grid grid-cols-7 gap-1">
@@ -418,6 +425,20 @@
         let tasks = [];
         let subjects = [];
         
+        // Lightweight activity logger for dashboard KPIs (no-op if table missing)
+        async function logActivity(type, description, icon='star'){
+            try{
+                if (!window.supabaseDB || !window.supabaseDB.activities || !window.supabaseDB.activities.create || !currentUser) return;
+                await window.supabaseDB.activities.create({
+                    user_id: currentUser.id,
+                    type,
+                    description,
+                    icon,
+                    created_at: new Date().toISOString()
+                });
+            }catch(_){ }
+        }
+        
         // Initialize page
         document.addEventListener('DOMContentLoaded', async function() {
             try {
@@ -573,6 +594,7 @@
                 updateCalendar();
                 closeModal();
                 showNotification('تمت إضافة المهمة بنجاح', 'success');
+                try{ logActivity('task_created', `تم إنشاء مهمة: ${title}`, 'tasks'); }catch(_){ }
             } catch (e) {
                 console.error('Error adding task:', e);
                 showNotification('تعذر إضافة المهمة. حاول مرة أخرى', 'error');
@@ -595,6 +617,13 @@
                 await saveTasks();
                 await loadTasks();
                 updateCalendar();
+                try{ 
+                    if (task.completed) {
+                        logActivity('task_completed', `تم إكمال مهمة: ${task.title}`, 'check');
+                    } else {
+                        logActivity('task_uncompleted', `تم إلغاء إكمال مهمة: ${task.title}`, 'undo');
+                    }
+                }catch(_){ }
             }
         }
 
@@ -605,6 +634,7 @@
                 await saveTasks();
                 await loadTasks();
                 updateCalendar();
+                try{ logActivity('task_deleted', 'تم حذف مهمة', 'trash'); }catch(_){ }
             }
         }
 
@@ -1427,6 +1457,15 @@
             }
         });
     </script>
+    <!-- Site Footer -->
+    <footer class="mt-10 border-t bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div>© <span id="footerYear"></span> منصة الطالب الذكي</div>
+        <div class="space-x-4 space-x-reverse">
+        </div>
+      </div>
+    </footer>
+    <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
 </body>
 
 </html>
