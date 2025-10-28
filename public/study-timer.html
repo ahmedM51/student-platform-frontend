@@ -77,6 +77,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
     </style>
+    <script src="js/i18n.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->
@@ -87,12 +88,16 @@
                     <button onclick="window.location.href='index.html'" class="text-gray-600 hover:text-gray-900 ml-4">
                         <i class="fas fa-arrow-right text-xl"></i>
                     </button>
-                    <h1 class="text-xl font-bold text-gray-900 mr-4">موقت المذاكرة</h1>
+                    <h1 class="text-xl font-bold text-gray-900 mr-4" data-i18n="timer.title">موقت المذاكرة</h1>
                 </div>
                 <div class="flex items-center space-x-4 space-x-reverse">
+                    <select id="langSelect" onchange="setLanguage(this.value)" class="bg-gray-100 text-gray-800 px-2 py-2 rounded-lg text-sm">
+                        <option value="ar">العربية</option>
+                        <option value="en">English</option>
+                    </select>
                     <span id="userEmail" class="text-sm text-gray-600"></span>
                     <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-sign-out-alt ml-2"></i>تسجيل الخروج
+                        <i class="fas fa-sign-out-alt ml-2"></i><span data-i18n="nav.logout">تسجيل الخروج</span>
                     </button>
                 </div>
             </div>
@@ -111,12 +116,10 @@
                         <div class="flex justify-between items-center">
                             <h2 class="text-xl font-bold text-white flex items-center">
                                 <i class="fas fa-clock ml-3"></i>
-                                <span id="timerTitle">جلسة دراسة</span>
+                                <span id="timerTitle" data-i18n="timer.session_title">جلسة دراسة</span>
                             </h2>
                             <div class="flex items-center space-x-2 space-x-reverse">
-                                <span id="sessionCounter" class="bg-white bg-opacity-20 text-white px-3 py-1 rounded-full text-sm">
-                                    الجلسة 1
-                                </span>
+                                <span id="sessionCounter" class="bg-white bg-opacity-20 text-white px-3 py-1 rounded-full text-sm">الجلسة 1</span>
                             </div>
                         </div>
                     </div>
@@ -126,7 +129,7 @@
                         <!-- Subject Selection -->
                         <div class="mb-6">
                             <select id="subjectSelect" class="w-full max-w-md mx-auto p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-                                <option value="">اختر المادة للدراسة...</option>
+                                <option value="" data-i18n="timer.select_subject">اختر المادة للدراسة...</option>
                             </select>
                         </div>
 
@@ -134,35 +137,35 @@
                         <div class="timer-circle mx-auto mb-6" id="timerCircle">
                             <div class="timer-inner">
                                 <div id="timeDisplay" class="text-4xl font-bold text-gray-800 mb-2">25:00</div>
-                                <div id="sessionType" class="text-sm text-gray-600">وقت الدراسة</div>
+                                <div id="sessionType" class="text-sm text-gray-600" data-i18n="timer.study_time">وقت الدراسة</div>
                             </div>
                         </div>
 
                         <!-- Control Buttons -->
                         <div class="flex justify-center space-x-4 space-x-reverse mb-6">
                             <button id="startBtn" onclick="startTimer()" class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-medium">
-                                <i class="fas fa-play ml-2"></i>ابدأ
+                                <i class="fas fa-play ml-2"></i><span data-i18n="timer.start">ابدأ</span>
                             </button>
                             <button id="pauseBtn" onclick="pauseTimer()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-lg font-medium hidden">
-                                <i class="fas fa-pause ml-2"></i>توقف
+                                <i class="fas fa-pause ml-2"></i><span data-i18n="timer.pause">توقف</span>
                             </button>
                             <button id="resetBtn" onclick="resetTimer()" class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-medium">
-                                <i class="fas fa-redo ml-2"></i>إعادة تعيين
+                                <i class="fas fa-redo ml-2"></i><span data-i18n="timer.reset">إعادة تعيين</span>
                             </button>
                         </div>
 
                         <!-- Progress Info -->
                         <div class="text-center text-gray-600">
-                            <p id="progressText">اختر مادة وابدأ جلسة الدراسة</p>
+                            <p id="progressText" data-i18n="timer.progress.start">اختر مادة وابدأ جلسة الدراسة</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Session History -->
                 <div class="bg-white rounded-xl shadow-lg mt-6 p-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">جلسات اليوم</h3>
+                    <h3 class="text-lg font-bold text-gray-900 mb-4" data-i18n="timer.today_sessions">جلسات اليوم</h3>
                     <div id="sessionHistory" class="space-y-3">
-                        <p class="text-gray-500 text-center">لم تبدأ أي جلسة بعد</p>
+                        <p class="text-gray-500 text-center" data-i18n="timer.no_sessions">لم تبدأ أي جلسة بعد</p>
                     </div>
                 </div>
             </div>
@@ -171,45 +174,45 @@
             <div class="space-y-6">
                 <!-- Quick Settings -->
                 <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">إعدادات سريعة</h3>
+                    <h3 class="text-lg font-bold text-gray-900 mb-4" data-i18n="timer.quick_settings">إعدادات سريعة</h3>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">وقت الدراسة (دقائق)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="timer.study_minutes">وقت الدراسة (دقائق)</label>
                             <input type="number" id="studyTime" value="25" min="5" max="60" class="w-full p-2 border border-gray-300 rounded-lg">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">وقت الراحة (دقائق)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="timer.break_minutes">وقت الراحة (دقائق)</label>
                             <input type="number" id="breakTime" value="5" min="1" max="30" class="w-full p-2 border border-gray-300 rounded-lg">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">الراحة الطويلة (دقائق)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="timer.long_break_minutes">الراحة الطويلة (دقائق)</label>
                             <input type="number" id="longBreakTime" value="15" min="5" max="60" class="w-full p-2 border border-gray-300 rounded-lg">
                         </div>
                         <div class="flex items-center">
                             <input type="checkbox" id="soundEnabled" checked class="ml-2">
-                            <label for="soundEnabled" class="text-sm text-gray-700">تفعيل الصوت</label>
+                            <label for="soundEnabled" class="text-sm text-gray-700" data-i18n="timer.sound_enabled">تفعيل الصوت</label>
                         </div>
                     </div>
                 </div>
 
                 <!-- Statistics -->
                 <div class="stats-card rounded-xl shadow-lg p-6 text-white">
-                    <h3 class="text-lg font-bold mb-4">إحصائيات اليوم</h3>
+                    <h3 class="text-lg font-bold mb-4" data-i18n="timer.stats_today">إحصائيات اليوم</h3>
                     <div class="space-y-3">
                         <div class="flex justify-between">
-                            <span>الجلسات المكتملة</span>
+                            <span data-i18n="timer.stats.completed">الجلسات المكتملة</span>
                             <span id="completedSessions" class="font-bold">0</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>إجمالي وقت الدراسة</span>
+                            <span data-i18n="timer.stats.total">إجمالي وقت الدراسة</span>
                             <span id="totalStudyTime" class="font-bold">0 دقيقة</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>المادة الأكثر دراسة</span>
+                            <span data-i18n="timer.stats.top_subject">المادة الأكثر دراسة</span>
                             <span id="topSubject" class="font-bold">-</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>معدل التركيز</span>
+                            <span data-i18n="timer.stats.focus">معدل التركيز</span>
                             <span id="focusRate" class="font-bold">-</span>
                         </div>
                     </div>
@@ -217,23 +220,23 @@
 
                 <!-- Preset Timers -->
                 <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">أوقات محددة مسبقاً</h3>
+                    <h3 class="text-lg font-bold text-gray-900 mb-4" data-i18n="timer.presets">أوقات محددة مسبقاً</h3>
                     <div class="grid grid-cols-2 gap-3">
                         <button onclick="setPreset(25, 5)" class="session-card bg-blue-100 text-blue-800 p-3 rounded-lg text-sm font-medium">
-                            بومودورو كلاسيكي<br>
-                            <span class="text-xs">25د دراسة / 5د راحة</span>
+                            <span data-i18n="timer.preset.classic">بومودورو كلاسيكي</span><br>
+                            <span class="text-xs" data-i18n="timer.preset.classic_desc">25د دراسة / 5د راحة</span>
                         </button>
                         <button onclick="setPreset(50, 10)" class="session-card bg-green-100 text-green-800 p-3 rounded-lg text-sm font-medium">
-                            جلسة مكثفة<br>
-                            <span class="text-xs">50د دراسة / 10د راحة</span>
+                            <span data-i18n="timer.preset.intense">جلسة مكثفة</span><br>
+                            <span class="text-xs" data-i18n="timer.preset.intense_desc">50د دراسة / 10د راحة</span>
                         </button>
                         <button onclick="setPreset(15, 3)" class="session-card bg-yellow-100 text-yellow-800 p-3 rounded-lg text-sm font-medium">
-                            جلسة سريعة<br>
-                            <span class="text-xs">15د دراسة / 3د راحة</span>
+                            <span data-i18n="timer.preset.quick">جلسة سريعة</span><br>
+                            <span class="text-xs" data-i18n="timer.preset.quick_desc">15د دراسة / 3د راحة</span>
                         </button>
                         <button onclick="setPreset(90, 20)" class="session-card bg-purple-100 text-purple-800 p-3 rounded-lg text-sm font-medium">
-                            جلسة عميقة<br>
-                            <span class="text-xs">90د دراسة / 20د راحة</span>
+                            <span data-i18n="timer.preset.deep">جلسة عميقة</span><br>
+                            <span class="text-xs" data-i18n="timer.preset.deep_desc">90د دراسة / 20د راحة</span>
                         </button>
                     </div>
                 </div>
@@ -384,7 +387,7 @@
             if (!isRunning) {
                 const subjectSelect = document.getElementById('subjectSelect');
                 if (!subjectSelect.value && !isBreakTime) {
-                    showNotification('يرجى اختيار مادة للدراسة أولاً', 'error');
+                    showNotification(t('timer.select_subject'), 'error');
                     return;
                 }
 
@@ -397,10 +400,10 @@
                 document.getElementById('timerCircle').classList.add('pulse');
                 
                 if (isBreakTime) {
-                    document.getElementById('progressText').textContent = 'وقت الراحة - استرخ قليلاً';
+                    document.getElementById('progressText').textContent = t('timer.progress.relax');
                 } else {
                     currentSubject = subjectSelect.value;
-                    document.getElementById('progressText').textContent = 'جلسة دراسة نشطة - ركز!';
+                    document.getElementById('progressText').textContent = t('timer.progress.active');
                 }
 
                 console.log('⏰ Timer started');
@@ -414,7 +417,7 @@
                 document.getElementById('startBtn').classList.remove('hidden');
                 document.getElementById('pauseBtn').classList.add('hidden');
                 document.getElementById('timerCircle').classList.remove('pulse');
-                document.getElementById('progressText').textContent = 'الجلسة متوقفة مؤقتاً';
+                document.getElementById('progressText').textContent = t('timer.progress.start');
                 console.log('⏸️ Timer paused');
             }
         }
@@ -435,7 +438,7 @@
             document.getElementById('startBtn').classList.remove('hidden');
             document.getElementById('pauseBtn').classList.add('hidden');
             document.getElementById('timerCircle').classList.remove('pulse');
-            document.getElementById('progressText').textContent = 'اختر مادة وابدأ جلسة الدراسة';
+            document.getElementById('progressText').textContent = t('timer.progress.start');
             
             console.log('🔄 Timer reset');
         }
@@ -459,11 +462,11 @@
                 `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
             if (isBreakTime) {
-                document.getElementById('sessionType').textContent = 'وقت الراحة';
-                document.getElementById('timerTitle').textContent = 'وقت الراحة';
+                document.getElementById('sessionType').textContent = t('timer.break_time');
+                document.getElementById('timerTitle').textContent = t('timer.break_time');
             } else {
-                document.getElementById('sessionType').textContent = 'وقت الدراسة';
-                document.getElementById('timerTitle').textContent = 'جلسة دراسة';
+                document.getElementById('sessionType').textContent = t('timer.study_time');
+                document.getElementById('timerTitle').textContent = t('timer.session_title');
             }
         }
 
@@ -504,24 +507,30 @@
                         if (result.error) console.warn('Could not save to Supabase:', result.error);
                     }
                     
-                    showNotification('🎉 تم إكمال جلسة المذاكرة!', 'success');
+                    showNotification('🎉 ' + (t('timer.msg.session_completed') || 'Session completed!'), 'success');
                     
                     // Start break
                     if (sessionCount % 4 === 0) {
                         // Long break after 4 sessions
                         currentTime = longBreakDuration * 60;
-                        showNotification('وقت الراحة الطويلة! استرخ لمدة ' + longBreakDuration + ' دقيقة', 'info');
+                        try{
+                          const unit = (window.currentLang === 'ar') ? ' دقيقة' : ' min';
+                          showNotification((t('timer.msg.long_break')||'Long break! Relax for') + ' ' + longBreakDuration + unit, 'info');
+                        }catch(_){ }
                     } else {
                         // Short break
                         currentTime = breakDuration * 60;
-                        showNotification('وقت الراحة! استرخ لمدة ' + breakDuration + ' دقيقة', 'info');
+                        try{
+                          const unit = (window.currentLang === 'ar') ? ' دقيقة' : ' min';
+                          showNotification((t('timer.msg.short_break')||'Break time! Relax for') + ' ' + breakDuration + unit, 'info');
+                        }catch(_){ }
                     }
                     
                     isBreakTime = true;
                     
                 } else {
                     // Break completed
-                    showNotification('انتهت فترة الراحة! استعد للجلسة التالية', 'info');
+                    showNotification((t('timer.msg.break_done')||'Break ended! Get ready for the next session'), 'info');
                     currentTime = studyDuration * 60;
                     isBreakTime = false;
                 }
@@ -532,7 +541,10 @@
                 document.getElementById('pauseBtn').classList.add('hidden');
                 
                 // Update session counter
-                document.getElementById('sessionCounter').textContent = `الجلسة ${sessionCount + 1}`;
+                try{
+                  const label = (t('timer.session_counter') || 'Session');
+                  document.getElementById('sessionCounter').textContent = `${label} ${sessionCount + 1}`;
+                }catch(_){ }
                 
                 // Play sound if enabled
                 if (soundEnabled) {
@@ -545,7 +557,7 @@
                 
             } catch (error) {
                 console.error('❌ Error completing session:', error);
-                showNotification('خطأ في حفظ الجلسة', 'error');
+                showNotification((t('timer.msg.save_error')||'Error saving session'), 'error');
             }
         }
 
@@ -615,7 +627,7 @@
 
                 // Update UI
                 document.getElementById('completedSessions').textContent = totalSessions;
-                document.getElementById('totalStudyTime').textContent = `${totalStudyTime} دقيقة`;
+                document.getElementById('totalStudyTime').textContent = `${totalStudyTime} ${(window.currentLang==='ar')?'دقيقة':'min'}`;
                 document.getElementById('topSubject').textContent = topSubject;
                 document.getElementById('focusRate').textContent = `${focusRate}%`;
 
@@ -647,7 +659,7 @@
                 historyContainer.innerHTML = '';
 
                 if (sessionsData.length === 0) {
-                    historyContainer.innerHTML = '<p class="text-gray-500 text-center">لم تبدأ أي جلسة بعد</p>';
+                    historyContainer.innerHTML = `<p class="text-gray-500 text-center" data-i18n="timer.no_sessions">لم تبدأ أي جلسة بعد</p>`;
                     return;
                 }
 
@@ -686,14 +698,14 @@
             } catch (error) {
                 console.error('❌ Error loading session history:', error);
                 const historyContainer = document.getElementById('sessionHistory');
-                historyContainer.innerHTML = '<p class="text-gray-500 text-center">خطأ في تحميل السجل</p>';
+                historyContainer.innerHTML = `<p class="text-gray-500 text-center">${t('timer.msg.history_error')||'Error loading history'}</p>`;
             }
         }
 
         // Preset timer functions
         function setPreset(studyMinutes, breakMinutes) {
             if (isRunning) {
-                showNotification('لا يمكن تغيير الإعدادات أثناء تشغيل المؤقت', 'error');
+                showNotification((t('timer.msg.change_while_running')||'Cannot change settings while timer is running'), 'error');
                 return;
             }
 
@@ -713,7 +725,8 @@
             updateCircleProgress();
             saveSettings();
             
-            showNotification(`تم تعيين المؤقت: ${studyMinutes}د دراسة / ${breakMinutes}د راحة`, 'success');
+            const unit = (window.currentLang==='ar')?'د':'m';
+            showNotification(`${t('timer.msg.preset_set')||'Preset set:'} ${studyMinutes}${unit} ${t('timer.study_time')||'Study time'} / ${breakMinutes}${unit} ${t('timer.break_time')||'Break time'}`, 'success');
         }
 
         // Load and save settings
@@ -818,7 +831,6 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex flex-col md:flex-row items-center justify-between gap-3">
         <div>© <span id="footerYear"></span> منصة الطالب الذكي</div>
         <div class="space-x-4 space-x-reverse">
-          <a href="/privacy-policy.html" class="hover:underline">سياسة الخصوصية</a>
         </div>
       </div>
     </footer>

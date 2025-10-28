@@ -76,6 +76,7 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     }
   </script>
+  <script src="js/i18n.js"></script>
 </head>
 <body>
   <header>
@@ -85,11 +86,17 @@
           ← رجوع
         </button>
         <div>
-          <h1 class="title">صديق الدراسة الذكي — النسخة الصوتية</h1>
-          <div class="sub">تجربة محادثة صوتية مباشرة مع "المرشد" — عربية، سريعة، ودافئة</div>
+          <h1 class="title" data-i18n="voice.title">صديق الدراسة الذكي — النسخة الصوتية</h1>
+          <div class="sub">&nbsp;</div>
         </div>
       </div>
-      <span class="badge">وضع صوت أولاً</span>
+      <div class="stack-h">
+        <select id="langSelect" onchange="setLanguage(this.value)" class="pill" style="padding:6px 10px;">
+          <option value="ar">العربية</option>
+          <option value="en">English</option>
+        </select>
+        <span class="badge" data-i18n="voice.badge">وضع صوت أولاً</span>
+      </div>
     </div>
   </header>
 
@@ -98,66 +105,66 @@
       <section class="card">
         <div class="card-body stack-v">
           <div>
-            <div class="title" style="font-size:18px">جلسة مباشرة</div>
-            <div class="sub">"أهلاً بيك يا بطل! أنا جاهز أذاكر معاك المادة دي. إيه أول جزء حابب نركز عليه؟"</div>
+            <div class="title" style="font-size:18px" data-i18n="voice.session">جلسة مباشرة</div>
+            <div class="sub">&nbsp;</div>
           </div>
 
           <div class="stack-h" style="flex-wrap: wrap; gap: 8px 8px;">
-            <button id="micBtn" class="btn btn-primary" onclick="toggleMic()">تشغيل الميكروفون 🎙️</button>
-            <button id="audioEnableBtn" class="btn btn-accent" onclick="enableAudioOnMobile()" style="display:none">تفعيل الصوت 🔊</button>
-            <button id="pttBtn" class="btn btn-primary" onclick="togglePTT()" style="display:none">اضغط وتكلم 🎤</button>
-            <button id="speakBtn" class="btn btn-accent" onclick="ttsPlayLast()" disabled>إعادة تشغيل الصوت 🔊</button>
-            <button class="btn btn-ghost" onclick="clearChat()">مسح المحادثة</button>
-            <button id="modeBtn" class="btn btn-ghost" onclick="toggleDirectMode()" title="وضع إجابة مباشرة">وضع إجابة مباشرة: مفعل</button>
+            <button id="micBtn" class="btn btn-primary" onclick="toggleMic()" data-i18n="voice.buttons.mic_on">تشغيل الميكروفون 🎙️</button>
+            <button id="audioEnableBtn" class="btn btn-accent" onclick="enableAudioOnMobile()" style="display:none" data-i18n="voice.buttons.enable_audio">تفعيل الصوت 🔊</button>
+            <button id="pttBtn" class="btn btn-primary" onclick="togglePTT()" style="display:none" data-i18n="voice.buttons.ptt">اضغط وتكلم 🎤</button>
+            <button id="speakBtn" class="btn btn-accent" onclick="ttsPlayLast()" disabled data-i18n="voice.buttons.replay">إعادة تشغيل الصوت 🔊</button>
+            <button class="btn btn-ghost" onclick="clearChat()" data-i18n="voice.buttons.clear">مسح المحادثة</button>
+            <button id="modeBtn" class="btn btn-ghost" onclick="toggleDirectMode()" title="وضع إجابة مباشرة" data-i18n="voice.buttons.direct_on">وضع إجابة مباشرة: مفعل</button>
           </div>
 
           <div id="chat" class="chat">
             <div class="msg from-ai">
               <div class="bubble">
-                حسب اللي مكتوب في المحاضرة بتاعتنا... تمام، يلا بينا نركز. أهلاً بيك يا بطل! أنا المرشد وجاهز نذاكر سوا. شاركني نص المحاضرة في الصندوق اللي على اليمين، أو اسألني أول سؤال تحب تبدأ بيه.
+                <span data-i18n="voice.greeting">مرحباً! أنا جاهز أذاكر معاك. الصق نص المحاضرة أو ابدأ بسؤالك الأول.</span>
               </div>
             </div>
           </div>
 
           <div class="footer stack-h">
-            <input id="textInput" class="input" placeholder="اكتب أو الصق سؤالك هنا... ثم اضغط Enter" onkeypress="if(event.key==='Enter'){submitText()}" />
-            <button class="btn btn-primary" onclick="submitText()">إرسال</button>
+            <input id="textInput" class="input" data-i18n-attr="placeholder:voice.input.placeholder" placeholder="اكتب أو الصق سؤالك هنا... ثم اضغط Enter" onkeypress="if(event.key==='Enter'){submitText()}" />
+            <button class="btn btn-primary" onclick="submitText()">Send</button>
           </div>
-          <div class="muted">تلميح: بعد كل إجابة، هسألك: "ها، كده تمام؟ تحب نشرحها بتفصيل أكتر أو نجيب مثال؟" مع انتظار ثانية لمحاكاة الحوار الطبيعي.</div>
+          <div class="muted" data-i18n="voice.tip">Tip: After each answer I may ask if you want more detail or an example.</div>
         </div>
       </section>
 
       <aside class="card">
         <div class="card-body stack-v">
           <div>
-            <div class="title" style="font-size:18px">مصدر المحاضرة</div>
-            <div class="sub">ألصق نص المحاضرة هنا. سيتم التعامل معه كمصدر الحقيقة أثناء الجلسة.</div>
+            <div class="title" style="font-size:18px" data-i18n="voice.source.title">مصدر المحاضرة</div>
+            <div class="sub" data-i18n="voice.source.subtitle">ألصق نص المحاضرة هنا. سيتم التعامل معه كمصدر الحقيقة أثناء الجلسة.</div>
           </div>
-          <textarea id="lectureInput" placeholder="الصق هنا نص المحاضرة ..." oninput="updateLectureStats()"></textarea>
+          <textarea id="lectureInput" data-i18n-attr="placeholder:voice.lectureInput.placeholder" placeholder="الصق هنا نص المحاضرة ..." oninput="updateLectureStats()"></textarea>
           <div class="muted" id="lectureStats"></div>
 
           <div class="stack-v">
-            <div class="title" style="font-size:16px">ملفات للمذاكرة</div>
-            <div class="sub">ارفع ملفات PDF/TXT/MD وسيتم استخراج النص وإضافته للمصدر</div>
+            <div class="title" style="font-size:16px" data-i18n="voice.files.title">ملفات للمذاكرة</div>
+            <div class="sub" data-i18n="voice.files.subtitle">ارفع ملفات PDF/TXT/MD وسيتم استخراج النص وإضافته للمصدر</div>
             <div class="stack-h" style="flex-wrap:wrap">
               <input id="pdfFiles" type="file" multiple accept=".pdf,.txt,.md" class="input" style="padding:10px" />
-              <button class="btn btn-primary" onclick="uploadSelectedFiles()">رفع الملفات</button>
-              <button class="btn btn-accent" onclick="startAutoExplain()">ابدأ الشرح الآن</button>
-              <button class="btn btn-ghost" onclick="readLectureAloud()">قراءة المحاضرة بصوت</button>
-              <button class="btn btn-danger" onclick="stopReading()">إيقاف القراءة</button>
+              <button class="btn btn-primary" onclick="uploadSelectedFiles()" data-i18n="voice.files.upload_btn">رفع الملفات</button>
+              <button class="btn btn-accent" onclick="startAutoExplain()" data-i18n="voice.buttons.auto_explain">ابدأ الشرح الآن</button>
+              <button class="btn btn-ghost" onclick="readLectureAloud()" data-i18n="voice.buttons.read_aloud">قراءة المحاضرة بصوت</button>
+              <button class="btn btn-danger" onclick="stopReading()" data-i18n="voice.buttons.stop_reading">إيقاف القراءة</button>
             </div>
             <div id="uploadsList" class="muted"></div>
           </div>
 
           <div class="stack-v">
-            <div class="title" style="font-size:16px">مشاركة الشاشة (تجريبي)</div>
-            <div class="sub">شارك شاشة المحاضرة، التقط لقطة، واستخرج النص تلقائياً لإضافته للمصدر.</div>
+            <div class="title" style="font-size:16px" data-i18n="voice.share.title">مشاركة الشاشة (تجريبي)</div>
+            <div class="sub" data-i18n="voice.share.subtitle">شارك شاشة المحاضرة، التقط لقطة، واستخرج النص تلقائياً لإضافته للمصدر.</div>
             <div class="screen-box stack-v">
               <video id="screenPreview" autoplay muted playsinline></video>
               <div class="stack-h" style="flex-wrap:wrap;margin-top:8px">
-                <button id="shareBtn" class="btn btn-primary" onclick="startScreenShare()">بدء مشاركة الشاشة</button>
-                <button id="stopShareBtn" class="btn btn-danger" onclick="stopScreenShare()" disabled>إيقاف</button>
-                <button id="snapOcrBtn" class="btn btn-accent" onclick="captureAndOCR()" disabled>التقاط واستخراج نص</button>
+                <button id="shareBtn" class="btn btn-primary" onclick="startScreenShare()" data-i18n="voice.buttons.share_screen">بدء مشاركة الشاشة</button>
+                <button id="stopShareBtn" class="btn btn-danger" onclick="stopScreenShare()" disabled data-i18n="voice.buttons.stop_share">إيقاف</button>
+                <button id="snapOcrBtn" class="btn btn-accent" onclick="captureAndOCR()" disabled data-i18n="voice.buttons.capture_ocr">التقاط واستخراج نص</button>
               </div>
               <div id="ocrStatus" class="muted"></div>
             </div>
@@ -386,6 +393,7 @@
       readingActive = false;
       try{ window.speechSynthesis.cancel(); }catch(_){ }
       appendMsg('ai', 'تم إيقاف القراءة.');
+      try{ logActivity('lecture_read_end', 'إيقاف قراءة المحاضرة بصوت', 'book'); }catch(_){ }
     }
 
     async function readLectureAloud(){
@@ -404,6 +412,7 @@
       readingIndex = 0;
       readingActive = true;
       appendMsg('ai', 'حاضر، هاقرأ لك المحاضرة فقرة فقرة. تقدر توقف في أي وقت.');
+      try{ logActivity('lecture_read_start', 'بدء قراءة المحاضرة بصوت', 'book'); }catch(_){ }
       const speakNext = ()=>{
         if(!readingActive) return;
         if(readingIndex >= readingQueue.length){ readingActive = false; appendMsg('ai', 'انتهيت من قراءة المحاضرة.'); return; }
@@ -483,8 +492,26 @@
         const { data } = await window.supabaseAuth.getSession();
         const tok = data?.session?.access_token;
         if(tok) state.token = tok;
+        try{ state.userId = data?.session?.user?.id || state.userId; }catch(_){ }
         return tok;
       }catch(_){ return null; }
+    }
+
+    // Lightweight activity logger (safe no-op if table not present)
+    async function logActivity(type, description, icon='star'){
+      try{
+        if(!window.supabaseDB || !window.supabaseDB.activities || !window.supabaseDB.activities.create) return;
+        const tok = await ensureSession().catch(()=>null);
+        const userId = state.userId || null;
+        if(!tok || !userId) return; // require auth
+        await window.supabaseDB.activities.create({
+          user_id: userId,
+          type: type,
+          description: description,
+          icon: icon,
+          created_at: new Date().toISOString()
+        });
+      }catch(_){ }
     }
 
     async function uploadFile(file){
@@ -578,7 +605,8 @@
           if (isMobile && !state.audioEnabled) {
             appendMsg('ai', 'قبل ما أتكلم، اضغط زر "تفعيل الصوت 🔊" فوق علشان أقدر أتكلم بصوت على جوالك. بعد كده اسألني وأنا هجاوبك بصوت.');
           } else {
-            await startAutoExplain(); 
+            await startAutoExplain();
+            try{ logActivity('lecture_uploaded', 'تم رفع ملفات وإضافة نص للمحاضرة', 'upload'); }catch(_){ }
           }
         }
       } catch(_){ }
@@ -640,6 +668,7 @@
       replyText = `${persona.prefix} \n${replyText}`;
       appendMsg('ai', replyText);
       speak(replyText);
+      try{ logActivity('ai_summary', 'تلخيص المحاضرة عبر النسخة الصوتية', 'star'); }catch(_){ }
     }
 
     async function explainLecture(){
@@ -721,6 +750,7 @@
         try{ makeAdaptiveQuestion(); }catch(_){ }
         appendMsg('ai', `${persona.prefix} عملت لك سؤال سريع من المحاضرة. جرّب تجاوبه!`);
         speak('عملت لك سؤال سريع من المحاضرة.');
+        try{ logActivity('ai_quiz_generated', 'تم إنشاء سؤال متكيف من المحاضرة', 'star'); }catch(_){ }
         return;
       }
       if (/(اصعب|أصعب|صعب|زود الصعوبة|زود|أعلى صعوبة)/.test(q)){

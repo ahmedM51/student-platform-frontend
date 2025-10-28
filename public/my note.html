@@ -26,13 +26,13 @@
             }
         }
     </style>
+    <script src="js/i18n.js"></script>
     <!-- إعداد Firebase Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         // استيراد دوال Firestore
-        import { getFirestore, doc, collection, onSnapshot, setDoc, query, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeFirestore, doc, collection, onSnapshot, setDoc, query, addDoc, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // إعداد مستوى سجل التصحيح لـ Firestore
         setLogLevel('Debug');
@@ -74,7 +74,7 @@
             try {
                 // 1. تهيئة التطبيق
                 window.app = initializeApp(firebaseConfig);
-                window.db = getFirestore(window.app);
+                window.db = initializeFirestore(window.app, { experimentalForceLongPolling: true, useFetchStreams: false });
                 window.auth = getAuth(window.app);
 
                 // 2. تسجيل الدخول باستخدام الرمز المميز أو كمجهول
@@ -754,6 +754,16 @@
         </div>
 
     </main>
+
+    <!-- Site Footer -->
+    <footer class="mt-10 border-t bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div>© <span id="footerYear"></span> منصة الطالب الذكي</div>
+        <div class="space-x-4 space-x-reverse">
+        </div>
+      </div>
+    </footer>
+    <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
 
     <!-- مودال إضافة ملاحظة جديدة -->
     <div id="add-note-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 hidden flex items-center justify-center p-4">

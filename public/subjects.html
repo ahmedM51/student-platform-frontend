@@ -99,6 +99,7 @@
             display: flex;
         }
     </style>
+    <script src="js/i18n.js"></script>
 </head>
 <body class="min-h-screen bg-gray-50">
     <!-- Loading Overlay -->
@@ -121,14 +122,18 @@
                         <i class="fas fa-arrow-right text-2xl"></i>
                     </a>
                     <i class="fas fa-book text-3xl"></i>
-                    <h1 class="text-2xl font-bold">إدارة المواد</h1>
+                    <h1 class="text-2xl font-bold" data-i18n="nav.subjects">إدارة المواد</h1>
                 </div>
                 <div class="flex items-center space-x-4 space-x-reverse">
+                    <select id="langSelect" onchange="setLanguage(this.value)" class="bg-white bg-opacity-90 text-gray-800 px-2 py-2 rounded-lg text-sm">
+                        <option value="ar">العربية</option>
+                        <option value="en">English</option>
+                    </select>
                     <button onclick="showAddSubject()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
-                        <i class="fas fa-plus ml-2"></i>إضافة مادة جديدة
+                        <i class="fas fa-plus ml-2"></i><span data-i18n="nav.subjects_add">إضافة مادة جديدة</span>
                     </button>
                     <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                        <i class="fas fa-sign-out-alt ml-1"></i>خروج
+                        <i class="fas fa-sign-out-alt ml-1"></i><span data-i18n="nav.logout">تسجيل الخروج</span>
                     </button>
                 </div>
             </div>
@@ -144,7 +149,7 @@
                     <i class="fas fa-book text-blue-500 text-xl"></i>
                 </div>
                 <div class="text-2xl font-bold text-blue-600" id="totalSubjectsCount">0</div>
-                <div class="text-gray-600 text-sm">إجمالي المواد</div>
+                <div class="text-gray-600 text-sm" data-i18n="subjects.stats.total">إجمالي المواد</div>
             </div>
             
             <div class="bg-white rounded-xl shadow-md p-6 text-center">
@@ -152,7 +157,7 @@
                     <i class="fas fa-graduation-cap text-green-500 text-xl"></i>
                 </div>
                 <div class="text-2xl font-bold text-green-600" id="totalLecturesCount">0</div>
-                <div class="text-gray-600 text-sm">إجمالي المحاضرات</div>
+                <div class="text-gray-600 text-sm" data-i18n="subjects.stats.lectures">إجمالي المحاضرات</div>
             </div>
             
             <div class="bg-white rounded-xl shadow-md p-6 text-center">
@@ -160,7 +165,7 @@
                     <i class="fas fa-file-pdf text-purple-500 text-xl"></i>
                 </div>
                 <div class="text-2xl font-bold text-purple-600" id="totalFilesCount">0</div>
-                <div class="text-gray-600 text-sm">الملفات المرفوعة</div>
+                <div class="text-gray-600 text-sm" data-i18n="subjects.stats.files">الملفات المرفوعة</div>
             </div>
             
             <div class="bg-white rounded-xl shadow-md p-6 text-center">
@@ -168,7 +173,7 @@
                     <i class="fas fa-chart-line text-orange-500 text-xl"></i>
                 </div>
                 <div class="text-2xl font-bold text-orange-600" id="averageProgress">0%</div>
-                <div class="text-gray-600 text-sm">متوسط التقدم</div>
+                <div class="text-gray-600 text-sm" data-i18n="subjects.stats.avg">متوسط التقدم</div>
             </div>
         </div>
 
@@ -177,17 +182,17 @@
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex-1">
                     <div class="relative">
-                        <input type="text" id="searchInput" placeholder="البحث في المواد..." 
+                        <input type="text" id="searchInput" data-i18n-attr="placeholder:subjects.search.placeholder" placeholder="البحث في المواد..." 
                                class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                     </div>
                 </div>
                 <div class="flex space-x-3 space-x-reverse">
                     <select id="sortBy" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="name">ترتيب حسب الاسم</option>
-                        <option value="date">ترتيب حسب التاريخ</option>
-                        <option value="progress">ترتيب حسب التقدم</option>
-                        <option value="lectures">ترتيب حسب المحاضرات</option>
+                        <option value="name" data-i18n="subjects.sort.name">ترتيب حسب الاسم</option>
+                        <option value="date" data-i18n="subjects.sort.date">ترتيب حسب التاريخ</option>
+                        <option value="progress" data-i18n="subjects.sort.progress">ترتيب حسب التقدم</option>
+                        <option value="lectures" data-i18n="subjects.sort.lectures">ترتيب حسب المحاضرات</option>
                     </select>
                     <button onclick="refreshSubjects()" class="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                         <i class="fas fa-sync-alt"></i>

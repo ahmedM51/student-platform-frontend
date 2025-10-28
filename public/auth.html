@@ -70,8 +70,16 @@
         .notification.error { background: #ef4444; }
         .notification.info { background: #3b82f6; }
     </style>
+    <script src="js/i18n.js"></script>
 </head>
 <body>
+    <!-- Language Selector Top Bar -->
+    <div class="w-full flex justify-end p-3">
+        <select id="langSelect" onchange="setLanguage(this.value)" class="bg-white text-gray-800 px-3 py-2 rounded-lg text-sm shadow">
+            <option value="ar">العربية</option>
+            <option value="en">English</option>
+        </select>
+    </div>
     <!-- Notification -->
     <div id="notification" class="notification"></div>
 
@@ -82,18 +90,18 @@
             <div class="text-center mb-8">
                 <div class="platform-logo text-4xl font-bold mb-2">
                     <i class="fas fa-graduation-cap"></i>
-                    منصة الطالب الذكي
+                    <span data-i18n="auth.logo">منصة الطالب الذكي</span>
                 </div>
-                <p class="text-gray-600">مرحباً بك في رحلة التعلم الذكي</p>
+                <p class="text-gray-600" data-i18n="auth.subtitle">مرحباً بك في رحلة التعلم الذكي</p>
             </div>
 
             <!-- Tab Navigation -->
             <div class="flex mb-6 bg-gray-100 rounded-xl p-1">
                 <button id="loginTab" onclick="showLogin()" class="flex-1 py-3 px-4 rounded-lg font-semibold transition-all bg-white text-blue-600 shadow-sm">
-                    تسجيل الدخول
+                    <span data-i18n="auth.tabs.login">تسجيل الدخول</span>
                 </button>
                 <button id="registerTab" onclick="showRegister()" class="flex-1 py-3 px-4 rounded-lg font-semibold transition-all text-gray-600">
-                    إنشاء حساب
+                    <span data-i18n="auth.tabs.register">إنشاء حساب</span>
                 </button>
             </div>
 
@@ -101,37 +109,37 @@
             <div id="loginForm">
                 <form onsubmit="return loginUser(event)">
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">البريد الإلكتروني</label>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" data-i18n="auth.email">البريد الإلكتروني</label>
                         <div class="relative">
-                            <input type="email" id="loginEmail" required 
-                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="أدخل بريدك الإلكتروني">
+                            <input type="email" id="loginEmail" required data-i18n-attr="placeholder:auth.placeholder.email"
+                                class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="أدخل بريدك الإلكتروني">
                             <i class="fas fa-envelope absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         </div>
                     </div>
                     
                     <div class="mb-6">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">كلمة المرور</label>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" data-i18n="auth.password">كلمة المرور</label>
                         <div class="relative">
-                            <input type="password" id="loginPassword" required 
-                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="أدخل كلمة المرور">
+                            <input type="password" id="loginPassword" required data-i18n-attr="placeholder:auth.placeholder.password"
+                                class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="أدخل كلمة المرور">
                             <i class="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         </div>
                     </div>
                     
                     <button type="submit" id="loginBtn" class="auth-button w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold text-lg">
                         <i class="fas fa-sign-in-alt ml-2"></i>
-                        تسجيل الدخول
+                        <span data-i18n="auth.btn.login">تسجيل الدخول</span>
                     </button>
                     
                     <div class="text-center my-4">
-                        <span class="text-gray-500">أو</span>
+                        <span class="text-gray-500" data-i18n="common.or">أو</span>
                     </div>
                     
                     <button type="button" onclick="signInWithGoogle(event)" class="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300 flex items-center justify-center">
                         <i class="fab fa-google mr-2"></i>
-                        تسجيل الدخول بجوجل
+                        <span data-i18n="auth.btn.google_login">تسجيل الدخول بجوجل</span>
                     </button>
                 </form>
             </div>
@@ -140,64 +148,64 @@
             <div id="registerForm" class="hidden">
                 <form onsubmit="return registerUser(event)">
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">الاسم الكامل</label>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" data-i18n="auth.name">الاسم الكامل</label>
                         <div class="relative">
-                            <input type="text" id="registerName" required 
-                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                                   placeholder="أدخل اسمك الكامل">
+                            <input type="text" id="registerName" required data-i18n-attr="placeholder:auth.placeholder.name"
+                                class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="أدخل اسمك الكامل">
                             <i class="fas fa-user absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         </div>
                     </div>
                     
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">البريد الإلكتروني</label>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" data-i18n="auth.email">البريد الإلكتروني</label>
                         <div class="relative">
-                            <input type="email" id="registerEmail" required 
-                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                                   placeholder="أدخل بريدك الإلكتروني">
+                            <input type="email" id="registerEmail" required data-i18n-attr="placeholder:auth.placeholder.email"
+                                class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="أدخل بريدك الإلكتروني">
                             <i class="fas fa-envelope absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         </div>
                     </div>
                     
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">كلمة المرور</label>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" data-i18n="auth.password">كلمة المرور</label>
                         <div class="relative">
-                            <input type="password" id="registerPassword" required 
-                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                                   placeholder="أدخل كلمة المرور">
+                            <input type="password" id="registerPassword" required data-i18n-attr="placeholder:auth.placeholder.password"
+                                class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="أدخل كلمة المرور">
                             <i class="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         </div>
                     </div>
                     
                     <div class="mb-6">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">تأكيد كلمة المرور</label>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" data-i18n="auth.confirm_password">تأكيد كلمة المرور</label>
                         <div class="relative">
-                            <input type="password" id="registerConfirmPassword" required 
-                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                                   placeholder="أعد إدخال كلمة المرور">
+                            <input type="password" id="registerConfirmPassword" required data-i18n-attr="placeholder:auth.placeholder.confirm_password"
+                                class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="أعد إدخال كلمة المرور">
                             <i class="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         </div>
                     </div>
                     
                     <button type="submit" id="registerBtn" class="auth-button w-full bg-gradient-to-r from-green-500 to-blue-600 text-white py-4 rounded-xl font-bold text-lg">
                         <i class="fas fa-user-plus ml-2"></i>
-                        إنشاء حساب جديد
+                        <span data-i18n="auth.btn.register">إنشاء حساب جديد</span>
                     </button>
                     
                     <div class="text-center my-4">
-                        <span class="text-gray-500">أو</span>
+                        <span class="text-gray-500" data-i18n="common.or">أو</span>
                     </div>
                     
                     <button type="button" onclick="signInWithGoogle(event)" class="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition duration-300 flex items-center justify-center">
                         <i class="fab fa-google mr-2"></i>
-                        التسجيل بجوجل
+                        <span data-i18n="auth.btn.google_register">التسجيل بجوجل</span>
                     </button>
                 </form>
             </div>
 
             <!-- Google Sign-in -->
             <div class="mt-6">
-                <div class="text-center text-gray-500 mb-4">أو</div>
+                <div class="text-center text-gray-500 mb-4" data-i18n="common.or">أو</div>
                 <button onclick="signInWithGoogle(event)" class="auth-button w-full flex items-center justify-center px-6 py-4 rounded-xl shadow-lg bg-white text-gray-700 hover:bg-gray-50 font-semibold text-lg border">
                     <svg class="w-6 h-6 ml-3" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -238,7 +246,7 @@
                 checkExistingLogin();
             } catch (error) {
                 console.error('❌ Failed to initialize Supabase:', error);
-                showNotification('خطأ في الاتصال بقاعدة البيانات. يرجى التحقق من الاتصال بالإنترنت.', 'error');
+                showNotification(t('auth.msg.db_error'), 'error');
             }
         });
 
@@ -276,13 +284,13 @@
             event.preventDefault();
             
             if (!isInitialized) {
-                showNotification('جاري تحميل النظام، يرجى المحاولة مرة أخرى', 'info');
+                showNotification(t('auth.msg.loading_try_again'), 'info');
                 return;
             }
 
             const googleBtn = event.target;
             const originalText = googleBtn.innerHTML;
-            googleBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>جاري تسجيل الدخول...';
+            googleBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>' + t('auth.msg.signing_in');
             googleBtn.disabled = true;
 
             try {
@@ -298,12 +306,11 @@
                 if (error) {
                     console.error('❌ Google sign-in error:', error);
                     
-                    let errorMessage = 'حدث خطأ في تسجيل الدخول بجوجل';
-                    
+                    let errorMessage = t('auth.msg.google_error');
                     if (error.message.includes('popup')) {
-                        errorMessage = 'يرجى السماح بالنوافذ المنبثقة والمحاولة مرة أخرى';
+                        errorMessage = t('auth.msg.allow_popups');
                     } else if (error.message.includes('network')) {
-                        errorMessage = 'تحقق من اتصال الإنترنت والمحاولة مرة أخرى';
+                        errorMessage = t('auth.msg.check_network');
                     }
                     
                     showNotification(errorMessage, 'error');
@@ -311,11 +318,11 @@
                 }
 
                 // OAuth will handle the redirect automatically
-                showNotification('جاري إعادة التوجيه...', 'info');
+                showNotification(t('auth.msg.redirecting'), 'info');
 
             } catch (error) {
                 console.error('❌ Unexpected Google sign-in error:', error);
-                showNotification('حدث خطأ في الاتصال مع الخادم، يرجى المحاولة مرة أخرى', 'error');
+                showNotification(t('auth.msg.unexpected_google_error'), 'error');
             } finally {
                 googleBtn.innerHTML = originalText;
                 googleBtn.disabled = false;
@@ -336,12 +343,12 @@
             const loginBtn = document.getElementById('loginBtn');
 
             if (!email || !password) {
-                showNotification('يرجى إدخال البريد الإلكتروني وكلمة المرور', 'error');
+                showNotification(t('auth.msg.enter_email_password'), 'error');
                 return;
             }
 
             const originalText = loginBtn.innerHTML;
-            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>جاري تسجيل الدخول...';
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>' + t('auth.msg.signing_in');
             loginBtn.disabled = true;
 
             try {
@@ -356,11 +363,11 @@
                 if (error) {
                     console.error('❌ Login error:', error);
                     
-                    let errorMessage = 'خطأ في تسجيل الدخول';
+                    let errorMessage = t('auth.msg.login_error');
                     if (error.message.includes('Invalid login credentials')) {
-                        errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+                        errorMessage = t('auth.msg.invalid_credentials');
                     } else if (error.message.includes('Email not confirmed')) {
-                        errorMessage = 'يرجى تأكيد البريد الإلكتروني أولاً';
+                        errorMessage = t('auth.msg.email_not_confirmed');
                     }
                     
                     showNotification(errorMessage, 'error');
@@ -369,15 +376,15 @@
 
                 if (data?.user) {
                     console.log('✅ Login successful');
-                    showNotification('تم تسجيل الدخول بنجاح!', 'success');
+                    showNotification(t('auth.msg.login_success'), 'success');
                     setTimeout(() => window.location.href = 'index.html', 1000);
                 } else {
-                    showNotification('حدث خطأ في تسجيل الدخول', 'error');
+                    showNotification(t('auth.msg.login_error'), 'error');
                 }
 
             } catch (error) {
                 console.error('❌ Unexpected login error:', error);
-                showNotification('حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى', 'error');
+                showNotification(t('auth.msg.connection_error'), 'error');
             } finally {
                 loginBtn.innerHTML = originalText;
                 loginBtn.disabled = false;
@@ -397,22 +404,22 @@
 
             // Validation
             if (!email || !password || !confirmPassword || !fullName) {
-                showNotification('يرجى ملء جميع الحقول', 'error');
+                showNotification(t('auth.msg.fill_all_fields'), 'error');
                 return;
             }
 
             if (password !== confirmPassword) {
-                showNotification('كلمات المرور غير متطابقة', 'error');
+                showNotification(t('auth.msg.passwords_not_match'), 'error');
                 return;
             }
 
             if (password.length < 6) {
-                showNotification('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error');
+                showNotification(t('auth.msg.password_too_short'), 'error');
                 return;
             }
 
             try {
-                showNotification('جاري إنشاء الحساب...', 'info');
+                showNotification(t('auth.msg.creating_account'), 'info');
 
                 // Register user
                 const registerResult = await window.supabaseAuth.signUp(email, password, {
@@ -424,7 +431,7 @@
                 }
 
                 console.log('✅ Registration successful');
-                showNotification('تم إنشاء الحساب بنجاح!', 'success');
+                showNotification(t('auth.msg.account_created'), 'success');
 
                 // Auto-login after registration
                 setTimeout(async () => {
@@ -434,7 +441,7 @@
                         if (loginResult.error) {
                             // If auto-login fails, just show success message
                             console.warn('Auto-login failed:', loginResult.error);
-                            showNotification('تم إنشاء الحساب! يمكنك تسجيل الدخول الآن', 'success');
+                            showNotification(t('auth.msg.account_created_login'), 'success');
                             showLogin();
                             return;
                         }
@@ -466,7 +473,7 @@
                             console.warn('Activity creation failed (non-critical):', activityError);
                         }
 
-                        showNotification('تم تسجيل الدخول بنجاح!', 'success');
+                        showNotification(t('auth.msg.login_success'), 'success');
                         
                         // Redirect to dashboard
                         setTimeout(() => {
@@ -475,7 +482,7 @@
 
                     } catch (loginError) {
                         console.error('Auto-login error:', loginError);
-                        showNotification('تم إنشاء الحساب! يمكنك تسجيل الدخول الآن', 'success');
+                        showNotification(t('auth.msg.account_created_login'), 'success');
                         showLogin();
                     }
                 }, 1000);
@@ -483,13 +490,13 @@
             } catch (error) {
                 console.error('❌ Registration error:', error);
                 
-                let errorMessage = 'حدث خطأ في التسجيل';
+                let errorMessage = t('auth.msg.register_error');
                 if (error.message.includes('already registered')) {
-                    errorMessage = 'هذا البريد الإلكتروني مسجل مسبقاً';
+                    errorMessage = t('auth.msg.email_exists');
                 } else if (error.message.includes('invalid email')) {
-                    errorMessage = 'البريد الإلكتروني غير صحيح';
+                    errorMessage = t('auth.msg.email_invalid');
                 } else if (error.message.includes('weak password')) {
-                    errorMessage = 'كلمة المرور ضعيفة جداً';
+                    errorMessage = t('auth.msg.password_weak');
                 }
                 
                 showNotification(errorMessage, 'error');
@@ -535,14 +542,14 @@
                     const { error } = await window.supabaseAuth.resendConfirmation(email);
                     
                     if (error) {
-                        showNotification('فشل في إعادة الإرسال، يرجى المحاولة لاحقاً', 'error');
+                        showNotification(t('auth.msg.resend_failed'), 'error');
                     } else {
-                        showNotification('تم إعادة إرسال رسالة التأكيد، تحقق من بريدك الإلكتروني', 'success');
+                        showNotification(t('auth.msg.resend_ok'), 'success');
                     }
                 }
             } catch (error) {
                 console.error('Error resending confirmation:', error);
-                showNotification('حدث خطأ في إعادة الإرسال', 'error');
+                showNotification(t('auth.msg.resend_error'), 'error');
             }
         }
 
@@ -563,7 +570,7 @@
                         localStorage.setItem('userName', data.session.user.user_metadata?.full_name || data.session.user.email.split('@')[0]);
                         
                         // Show success notification before redirect
-                        showNotification('مرحباً بك! جاري تحميل المنصة...', 'success');
+                        showNotification(t('auth.msg.welcome_loading'), 'success');
                         
                         // Delay redirect to allow notification to show
                         setTimeout(() => {
