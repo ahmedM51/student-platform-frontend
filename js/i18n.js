@@ -1,0 +1,605 @@
+(function(){
+  const translations = {
+    ar: {
+      'brand.title': 'مساعد الطالب',
+      'brand.subtitle': 'منصة التعلم الذكية',
+      'nav.subjects': 'المواد الدراسية',
+      'nav.subjects_add': 'إضافة مادة جديدة',
+      'nav.planner': 'المخطط الدراسي',
+      'nav.timer': 'مؤقت المذاكرة',
+      'nav.ai': 'المساعد الذكي',
+      'nav.voice': 'النسخة الصوتية',
+      'nav.mynotes': 'ملاحظاتي الصوتية',
+      'nav.contact': 'تواصل معانا',
+      'nav.privacy': 'سياسة الخصوصية',
+      'nav.logout': 'تسجيل الخروج',
+      'loading.text': 'جاري تحميل المنصة...',
+      'home.intro.video_title': 'فيديو تعريفي بالمنصة',
+      'home.intro.video_desc': 'شاهد هذا الفيديو القصير لمعرفة كيفية استخدام المنصة خطوة بخطوة.',
+      'home.stats.today_advanced': 'اليوم المتقدمة',
+      'home.stats.completed_lectures': 'المحاضرات المنجزة',
+      'home.stats.avg_progress': 'متوسط التقدم',
+      'home.stats.quality_test': 'اختبار الجودة',
+      'home.quick_actions.title': 'الإجراءات السريعة',
+      'home.quick.study_timer': 'موقت المذاكرة',
+      'home.quick.study_planner': 'المخطط الدراسي',
+      'home.quick.ai_assistant': 'المساعد الذكي',
+      'home.quick.subjects': 'إدارة المواد',
+      'home.quick.mynotes': 'ملاحظاتي',
+      'home.mynotes.title': 'ملاحظاتي (سريع)',
+      'home.mynotes.placeholder_title': 'عنوان الملاحظة',
+      'home.mynotes.placeholder_body': 'اكتب ملاحظتك هنا...',
+      'home.mynotes.save': 'حفظ الملاحظة',
+      'home.mynotes.note_list_title': 'أحدث الملاحظات',
+      'home.mynotes.open_page': 'فتح صفحة الملاحظات',
+      'home.recent.title': 'النشاط الأخير',
+      'home.recent.none_title': 'لا توجد أنشطة حديثة',
+      'home.recent.none_desc': 'ابدأ باستخدام المنصة لرؤية نشاطك هنا',
+      'contact.title': 'تواصل معانا',
+      'contact.subtitle': 'اختر الطريقة المناسبة للتواصل',
+      'contact.whatsapp': 'واتساب',
+      'contact.facebook': 'فيسبوك',
+      "timer.title": "موقت المذاكرة",
+      "timer.session_title": "جلسة دراسة",
+      "timer.session_counter": "الجلسة",
+      "timer.select_subject": "اختر المادة للدراسة...",
+      "timer.study_time": "وقت الدراسة",
+      "timer.break_time": "وقت الراحة",
+      "timer.start": "ابدأ",
+      "timer.pause": "توقف",
+      "timer.reset": "إعادة تعيين",
+      "timer.progress.start": "اختر مادة وابدأ جلسة الدراسة",
+      "timer.progress.active": "جلسة دراسة نشطة - ركز!",
+      "timer.progress.relax": "وقت الراحة - استرخ قليلاً",
+      "timer.today_sessions": "جلسات اليوم",
+      "timer.no_sessions": "لم تبدأ أي جلسة بعد",
+      "timer.quick_settings": "إعدادات سريعة",
+      "timer.study_minutes": "وقت الدراسة (دقائق)",
+      "timer.break_minutes": "وقت الراحة (دقائق)",
+      "timer.long_break_minutes": "الراحة الطويلة (دقائق)",
+      "timer.sound_enabled": "تفعيل الصوت",
+      "timer.stats_today": "إحصائيات اليوم",
+      "timer.stats.completed": "الجلسات المكتملة",
+      "timer.stats.total": "إجمالي وقت الدراسة",
+      "timer.stats.top_subject": "المادة الأكثر دراسة",
+      "timer.stats.focus": "معدل التركيز",
+      "timer.presets": "أوقات محددة مسبقاً",
+      "timer.preset.classic": "بومودورو كلاسيكي",
+      "timer.preset.classic_desc": "25د دراسة / 5د راحة",
+      "timer.preset.intense": "جلسة مكثفة",
+      "timer.preset.intense_desc": "50د دراسة / 10د راحة",
+      "timer.preset.quick": "جلسة سريعة",
+      "timer.preset.quick_desc": "15د دراسة / 3د راحة",
+      "timer.preset.deep": "جلسة عميقة",
+      "timer.preset.deep_desc": "90د دراسة / 20د راحة"
+      ,
+      // Subjects page
+      'subjects.title': 'إدارة المواد',
+      'subjects.add': 'إضافة مادة جديدة',
+      'subjects.stats.total': 'إجمالي المواد',
+      'subjects.stats.lectures': 'إجمالي المحاضرات',
+      'subjects.stats.files': 'الملفات المرفوعة',
+      'subjects.stats.avg': 'متوسط التقدم',
+      'subjects.search.placeholder': 'البحث في المواد...',
+      'subjects.sort.name': 'ترتيب حسب الاسم',
+      'subjects.sort.date': 'ترتيب حسب التاريخ',
+      'subjects.sort.progress': 'ترتيب حسب التقدم',
+      'subjects.sort.lectures': 'ترتيب حسب المحاضرات',
+
+      // Planner page
+      'planner.title': 'المخطط الدراسي',
+      'planner.add': 'إضافة مهمة',
+      'planner.stats.total': 'إجمالي المهام',
+      'planner.stats.completed': 'المهام المكتملة',
+      'planner.stats.pending': 'المهام المعلقة',
+      'planner.stats.urgent': 'المهام العاجلة',
+      'planner.view.title': 'عرض المخطط',
+      'planner.view.list': 'قائمة',
+      'planner.view.calendar': 'تقويم',
+      'planner.view.ai': 'مخطط ذكي',
+      'planner.list.today': 'مهام اليوم',
+      'planner.list.upcoming': 'المهام القادمة',
+      'planner.list.all': 'جميع المهام',
+      'planner.list.done': 'المهام المكتملة',
+      'planner.calendar.sun': 'الأحد',
+      'planner.calendar.mon': 'الاثنين',
+      'planner.calendar.tue': 'الثلاثاء',
+      'planner.calendar.wed': 'الأربعاء',
+      'planner.calendar.thu': 'الخميس',
+      'planner.calendar.fri': 'الجمعة',
+      'planner.calendar.sat': 'السبت',
+
+      // AI Assistant page
+      'ai.title': 'المساعد الذكي',
+      'ai.qa.title': 'محادثة مع المساعد الذكي',
+      'ai.qa.choose_lecture': 'اختر المحاضرة:',
+      'ai.qa.placeholder_option': '-- اختر محاضرة --',
+      'ai.qa.input.placeholder': 'اكتب سؤالك هنا...',
+      'ai.qa.button.send': 'إرسال',
+      'ai.qa.empty': 'مرحباً! اختر محاضرة واسأل أي سؤال تريد',
+      'ai.quiz.title': 'إنشاء اختبار',
+      'ai.quiz.subtitle': 'أنشئ اختبار فوري من المحاضرات',
+      'ai.quiz.settings.type': 'نوع الأسئلة',
+      'ai.quiz.settings.count': 'عدد الأسئلة',
+      'ai.quiz.button.generate': 'إنشاء اختبار فوري'
+      ,
+      // Privacy Policy
+      'pp.title': 'سياسة الخصوصية',
+      'pp.last_updated': 'آخر تحديث:',
+      'pp.sec.info': 'المعلومات التي نجمعها',
+      'pp.sec.cookies': 'ملفات تعريف الارتباط (Cookies) وتقنيات مشابهة',
+      'pp.sec.ads': 'Google AdSense والإعلانات المخصصة',
+      'pp.sec.compliance': 'الامتثال للأنظمة (GDPR/CCPA)',
+      'pp.sec.use': 'استخدام البيانات',
+      'pp.sec.share': 'مشاركة البيانات',
+      'pp.sec.security': 'أمان المعلومات',
+      'pp.sec.external': 'روابط خارجية',
+      'pp.sec.rights': 'حقوقك وكيفية التواصل',
+      'pp.sec.updates': 'تحديثات السياسة'
+      ,
+      // AI Voice page (essential labels)
+      'voice.title': 'صديق الدراسة الذكي — النسخة الصوتية',
+      'voice.badge': 'وضع صوت أولاً',
+      'voice.session': 'جلسة مباشرة',
+      'voice.buttons.mic_on': 'تشغيل الميكروفون 🎙️',
+      'voice.buttons.enable_audio': 'تفعيل الصوت 🔊',
+      'voice.buttons.ptt': 'اضغط وتكلم 🎤',
+      'voice.buttons.replay': 'إعادة تشغيل الصوت 🔊',
+      'voice.buttons.clear': 'مسح المحادثة',
+      'voice.buttons.direct_on': 'وضع إجابة مباشرة: مفعل',
+      'voice.source.title': 'مصدر المحاضرة',
+      'voice.source.subtitle': 'ألصق نص المحاضرة هنا. سيتم التعامل معه كمصدر الحقيقة أثناء الجلسة.',
+      'voice.input.placeholder': 'اكتب أو الصق سؤالك هنا... ثم اضغط Enter'
+      ,
+      'voice.greeting': 'مرحباً! أنا جاهز أذاكر معاك. الصق نص المحاضرة أو ابدأ بسؤالك الأول.',
+      'voice.files.title': 'ملفات للمذاكرة',
+      'voice.files.subtitle': 'ارفع ملفات PDF/TXT/MD وسيتم استخراج النص وإضافته للمصدر',
+      'voice.files.upload_btn': 'رفع الملفات',
+      'voice.lectureInput.placeholder': 'الصق هنا نص المحاضرة ...',
+      'voice.buttons.auto_explain': 'ابدأ الشرح الآن',
+      'voice.buttons.read_aloud': 'قراءة المحاضرة بصوت',
+      'voice.buttons.stop_reading': 'إيقاف القراءة',
+      'voice.tip': 'تلميح: بعد كل إجابة قد أسألك: هل تريد تفاصيل أكثر أو مثال؟'
+      ,
+      // AI Voice share section
+      'voice.share.title': 'مشاركة الشاشة (تجريبي)',
+      'voice.share.subtitle': 'شارك شاشة المحاضرة، التقط لقطة، واستخرج النص تلقائياً لإضافته للمصدر.'
+      ,
+      'voice.buttons.share_screen': 'بدء مشاركة الشاشة',
+      'voice.buttons.stop_share': 'إيقاف',
+      'voice.buttons.capture_ocr': 'التقاط واستخراج نص'
+      ,
+      // Privacy Policy paragraphs
+      'pp.intro': 'نلتزم في "منصة الطالب الذكي" بحماية خصوصية مستخدمينا. توضح هذه الصفحة كيفية جمع معلوماتك واستخدامها ومشاركتها وحمايتها عند استخدامك لموقعنا.',
+      'pp.cookies.p': 'نستخدم نحن وشركاؤنا (مثل Google) ملفات تعريف الارتباط لأغراض متعددة، منها تحسين التجربة وقياس الأداء وعرض الإعلانات. قد تستخدم Google ملفات تعريف الارتباط لعرض إعلانات مخصصة للمستخدمين بناءً على زياراتهم لموقعنا ومواقع أخرى على الإنترنت.',
+      'pp.ads.li1': 'قد تُعرض إعلانات مقدمة من Google كطرف ثالث على موقعنا.',
+      'pp.ads.li2': 'تستخدم Google ملفات تعريف الارتباط لعرض الإعلانات بناءً على زياراتك السابقة لهذا الموقع أو مواقع أخرى.',
+      'pp.ads.li3': 'يمكنك إلغاء الاشتراك في استخدام الإعلانات المخصصة من Google من خلال زيارة صفحة إعدادات إعلانات Google.',
+      'pp.ads.li4': 'للمزيد حول كيفية استخدام Google للبيانات، راجع سياسة الإعلانات والتتبّع لدى Google وسياسة الخصوصية لدى Google.',
+      'pp.compliance.p': 'إذا كنت مقيماً في منطقة تطبق قوانين حماية البيانات مثل GDPR (الاتحاد الأوروبي) أو CCPA (كاليفورنيا)، فقد تكون لك حقوق إضافية بشأن الوصول إلى بياناتك وتصحيحها وحذفها والاعتراض على معالجتها. لطلب ممارسة هذه الحقوق، يُرجى التواصل معنا.',
+      'pp.use.li1': 'تحسين تجربة المستخدم وتطوير ميزات جديدة.',
+      'pp.use.li2': 'تقديم الدعم الفني وتحليل الأداء.',
+      'pp.use.li3': 'عرض الإعلانات وإدارة تفضيلاتها عند تفعيلها.',
+      'pp.share.p': 'قد نشارك بعض البيانات مع مزودي الخدمات الذين يساعدوننا في تشغيل الموقع (مثل التحليلات أو الاستضافة)، وذلك وفق اتفاقيات تلتزم بحماية الخصوصية. لا نبيع بياناتك الشخصية.',
+      'pp.security.p': 'نطبق إجراءات أمنية مناسبة لحماية بياناتك من الوصول غير المصرح به. رغم ذلك، لا يمكن ضمان أمان تام عبر الإنترنت.',
+      'pp.external.p': 'قد يحتوي موقعنا على روابط إلى مواقع خارجية لا نتحكم فيها. ننصحك بمراجعة سياسات الخصوصية الخاصة بتلك المواقع.',
+      'pp.rights.p': 'للاستفسارات أو لطلبات الوصول/الحذف/الاعتراض على المعالجة، تواصل معنا عبر البريد الإلكتروني وواتساب الموضحين أدناه.',
+      'pp.updates.p': 'قد نقوم بتحديث هذه السياسة من وقت لآخر. يسري أي تعديل فور نشره على هذه الصفحة.'
+      ,
+      // My Notes (voice notes) UI
+      'mynote.title': 'ملاحظاتي - المساعد الصوتي الذكي',
+      'mynote.sidebar.all': 'كل الملاحظات',
+      'mynote.sidebar.categories': 'الفئات',
+      'mynote.btn.add_note': 'إضافة ملاحظة',
+      'mynote.form.category': 'الفئة',
+      'mynote.form.choose_category': 'اختر فئة',
+      'mynote.form.upload_audio': 'رفع ملف صوتي',
+      'mynote.form.or': 'أو',
+      'mynote.form.record': 'بدء التسجيل',
+      'mynote.form.stop_record': 'إيقاف التسجيل',
+      'mynote.form.save': 'حفظ الملاحظة',
+      'mynote.empty': 'لا توجد ملاحظات في هذه الفئة. ابدأ بإضافة واحدة!',
+      'mynote.note.transcription': 'النص الأصلي المحوّل:',
+      'mynote.note.translation': 'الترجمة العربية:',
+      // My Notes messages
+      'mynote.msg.firebase_init_error': 'خطأ في تهيئة Firebase. تحقق من إعدادات المفتاح.',
+      'mynote.msg.need_file_or_record': 'الرجاء إما تحميل ملف أو التسجيل مباشرة.',
+      'mynote.msg.need_category': 'الرجاء اختيار فئة للملاحظة.',
+      'mynote.msg.wait_user': 'الرجاء الانتظار حتى يتم تحميل حساب المستخدم.',
+      'mynote.msg.stop_before_save': 'الرجاء إيقاف التسجيل أولاً قبل الحفظ.',
+      'mynote.msg.file_too_big': 'حجم الملف يتجاوز الحد الأقصى المسموح به. الرجاء تسجيل مقطع أقصر أو تحميل ملف أصغر.',
+      'mynote.msg.record_start': 'بدأ التسجيل. الرجاء التحدث بوضوح.',
+      'mynote.msg.mic_fail': 'فشل الوصول إلى الميكروفون. تأكد من إعطاء إذن استخدام الميكروفون للمتصفح.',
+      'mynote.msg.record_stopped': 'تم إيقاف التسجيل. يمكنك الآن حفظ الملاحظة.',
+      'mynote.msg.saved': 'تم حفظ الملاحظة بنجاح! جاري معالجة النص والترجمة.',
+      'mynote.msg.save_failed': 'فشل حفظ الملاحظة. يرجى التحقق من وحدة التحكم.',
+      'mynote.msg.category_needed': 'الرجاء إدخال اسم للفئة.',
+      'mynote.msg.category_exists': 'هذه الفئة موجودة بالفعل.',
+      'mynote.msg.category_added': 'تمت إضافة فئة بنجاح!',
+      'mynote.msg.category_add_failed': 'فشل إضافة الفئة.'
+    ,
+    // Common
+    'common.or': 'أو'
+    ,
+    // Auth page
+    'auth.logo': 'منصة الطالب الذكي',
+    'auth.subtitle': 'مرحباً بك في رحلة التعلم الذكي',
+    'auth.tabs.login': 'تسجيل الدخول',
+    'auth.tabs.register': 'إنشاء حساب',
+    'auth.email': 'البريد الإلكتروني',
+    'auth.password': 'كلمة المرور',
+    'auth.name': 'الاسم الكامل',
+    'auth.confirm_password': 'تأكيد كلمة المرور',
+    'auth.placeholder.email': 'أدخل بريدك الإلكتروني',
+    'auth.placeholder.password': 'أدخل كلمة المرور',
+    'auth.placeholder.confirm_password': 'أعد إدخال كلمة المرور',
+    'auth.placeholder.name': 'أدخل اسمك الكامل',
+    'auth.btn.login': 'تسجيل الدخول',
+    'auth.btn.google_login': 'تسجيل الدخول بجوجل',
+    'auth.btn.register': 'إنشاء حساب جديد',
+    'auth.btn.google_register': 'التسجيل بجوجل',
+    'auth.google': 'تسجيل الدخول بجوجل',
+    'auth.footer.login': 'تسجيل الدخول',
+    // Auth messages
+    'auth.msg.db_error': 'خطأ في الاتصال بقاعدة البيانات. يرجى التحقق من اتصال الإنترنت.',
+    'auth.msg.loading_try_again': 'جاري تحميل النظام، يرجى المحاولة مرة أخرى',
+    'auth.msg.signing_in': 'جاري تسجيل الدخول...',
+    'auth.msg.google_error': 'حدث خطأ في تسجيل الدخول بجوجل',
+    'auth.msg.allow_popups': 'يرجى السماح بالنوافذ المنبثقة والمحاولة مرة أخرى',
+    'auth.msg.check_network': 'تحقق من اتصال الإنترنت والمحاولة مرة أخرى',
+    'auth.msg.redirecting': 'جاري إعادة التوجيه...',
+    'auth.msg.enter_email_password': 'يرجى إدخال البريد الإلكتروني وكلمة المرور',
+    'auth.msg.login_error': 'خطأ في تسجيل الدخول',
+    'auth.msg.invalid_credentials': 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+    'auth.msg.email_not_confirmed': 'يرجى تأكيد البريد الإلكتروني أولاً',
+    'auth.msg.login_success': 'تم تسجيل الدخول بنجاح!'
+    ,
+    'auth.msg.connection_error': 'حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى',
+    'auth.msg.fill_all_fields': 'يرجى ملء جميع الحقول',
+    'auth.msg.passwords_not_match': 'كلمات المرور غير متطابقة',
+    'auth.msg.password_too_short': 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+    'auth.msg.creating_account': 'جاري إنشاء الحساب...',
+    'auth.msg.account_created': 'تم إنشاء الحساب بنجاح!'
+    ,
+    'auth.msg.account_created_login': 'تم إنشاء الحساب! يمكنك تسجيل الدخول الآن',
+    'auth.msg.unexpected_google_error': 'حدث خطأ في الاتصال مع الخادم، يرجى المحاولة مرة أخرى',
+    'auth.msg.welcome_loading': 'مرحباً بك! جاري تحميل المنصة...',
+    'auth.msg.resend_failed': 'فشل في إعادة الإرسال، يرجى المحاولة لاحقاً',
+    'auth.msg.resend_ok': 'تم إعادة إرسال رسالة التأكيد، تحقق من بريدك الإلكتروني',
+    'auth.msg.resend_error': 'حدث خطأ في إعادة الإرسال'
+  },
+  en: {
+      'brand.title': 'Student Assistant',
+      'brand.subtitle': 'Smart Learning Platform',
+      'nav.subjects': 'Subjects',
+      'nav.subjects_add': 'Add Subject',
+      'nav.planner': 'Study Planner',
+      'nav.timer': 'Study Timer',
+      'nav.ai': 'AI Assistant',
+      'nav.voice': 'Voice Version',
+      'nav.mynotes': 'My Voice Notes',
+      'nav.contact': 'Contact Us',
+      'nav.privacy': 'Privacy Policy',
+      'nav.logout': 'Logout',
+      'loading.text': 'Loading the platform...',
+      'home.intro.video_title': 'Platform Introduction Video',
+      'home.intro.video_desc': 'Watch this short video to learn how to use the platform step by step.',
+      'home.stats.today_advanced': 'Advanced Today',
+      'home.stats.completed_lectures': 'Completed Lectures',
+      'home.stats.avg_progress': 'Average Progress',
+      'home.stats.quality_test': 'Quality Test',
+      'home.quick_actions.title': 'Quick Actions',
+      'home.quick.study_timer': 'Study Timer',
+      'home.quick.study_planner': 'Study Planner',
+      'home.quick.ai_assistant': 'AI Assistant',
+      'home.quick.subjects': 'Manage Subjects',
+      'home.quick.mynotes': 'My Notes',
+      'home.mynotes.title': 'My Notes (Quick)',
+      'home.mynotes.placeholder_title': 'Note title',
+      'home.mynotes.placeholder_body': 'Write your note here...',
+      'home.mynotes.save': 'Save Note',
+      'home.mynotes.note_list_title': 'Latest Notes',
+      'home.mynotes.open_page': 'Open Notes Page',
+      'home.recent.title': 'Recent Activity',
+      'home.recent.none_title': 'No recent activity',
+      'home.recent.none_desc': 'Start using the platform to see your activity here',
+      'contact.title': 'Contact Us',
+      'contact.subtitle': 'Choose the suitable way to contact us',
+      'contact.whatsapp': 'WhatsApp',
+      'contact.facebook': 'Facebook',
+      "timer.title": "Study Timer",
+      "timer.session_title": "Study Session",
+      "timer.session_counter": "Session",
+      "timer.select_subject": "Choose a subject to study...",
+      "timer.study_time": "Study Time",
+      "timer.break_time": "Break Time",
+      "timer.start": "Start",
+      "timer.pause": "Pause",
+      "timer.reset": "Reset",
+      "timer.progress.start": "Choose a subject and start a study session",
+      "timer.progress.active": "Active study session - focus!",
+      "timer.progress.relax": "Break time - relax",
+      "timer.today_sessions": "Today's Sessions",
+      "timer.no_sessions": "No sessions yet",
+      "timer.quick_settings": "Quick Settings",
+      "timer.study_minutes": "Study time (minutes)",
+      "timer.break_minutes": "Break time (minutes)",
+      "timer.long_break_minutes": "Long break (minutes)",
+      "timer.sound_enabled": "Enable sound",
+      "timer.stats_today": "Today's Statistics",
+      "timer.stats.completed": "Completed Sessions",
+      "timer.stats.total": "Total Study Time",
+      "timer.stats.top_subject": "Top Subject",
+      "timer.stats.focus": "Focus Rate",
+      "timer.presets": "Preset Times",
+      "timer.preset.classic": "Classic Pomodoro",
+      "timer.preset.classic_desc": "25m study / 5m break",
+      "timer.preset.intense": "Intense Session",
+      "timer.preset.intense_desc": "50m study / 10m break",
+      "timer.preset.quick": "Quick Session",
+      "timer.preset.quick_desc": "15m study / 3m break",
+      "timer.preset.deep": "Deep Session",
+      "timer.preset.deep_desc": "90m study / 20m break"
+      ,
+      // Subjects page
+      'subjects.title': 'Manage Subjects',
+      'subjects.add': 'Add Subject',
+      'subjects.stats.total': 'Total Subjects',
+      'subjects.stats.lectures': 'Total Lectures',
+      'subjects.stats.files': 'Uploaded Files',
+      'subjects.stats.avg': 'Average Progress',
+      'subjects.search.placeholder': 'Search subjects...',
+      'subjects.sort.name': 'Sort by name',
+      'subjects.sort.date': 'Sort by date',
+      'subjects.sort.progress': 'Sort by progress',
+      'subjects.sort.lectures': 'Sort by lectures',
+
+      // Planner page
+      'planner.title': 'Study Planner',
+      'planner.add': 'Add Task',
+      'planner.stats.total': 'Total Tasks',
+      'planner.stats.completed': 'Completed Tasks',
+      'planner.stats.pending': 'Pending Tasks',
+      'planner.stats.urgent': 'Urgent Tasks',
+      'planner.view.title': 'Planner View',
+      'planner.view.list': 'List',
+      'planner.view.calendar': 'Calendar',
+      'planner.view.ai': 'AI Planner',
+      'planner.list.today': "Today's Tasks",
+      'planner.list.upcoming': 'Upcoming Tasks',
+      'planner.list.all': 'All Tasks',
+      'planner.list.done': 'Completed Tasks',
+      'planner.calendar.sun': 'Sun',
+      'planner.calendar.mon': 'Mon',
+      'planner.calendar.tue': 'Tue',
+      'planner.calendar.wed': 'Wed',
+      'planner.calendar.thu': 'Thu',
+      'planner.calendar.fri': 'Fri',
+      'planner.calendar.sat': 'Sat',
+
+      // AI Assistant page
+      'ai.title': 'AI Assistant',
+      'ai.qa.title': 'Chat with the AI Assistant',
+      'ai.qa.choose_lecture': 'Choose lecture:',
+      'ai.qa.placeholder_option': '-- Select a lecture --',
+      'ai.qa.input.placeholder': 'Type your question here...',
+      'ai.qa.button.send': 'Send',
+      'ai.qa.empty': 'Hello! Choose a lecture and ask any question you want',
+      'ai.quiz.title': 'Create Quiz',
+      'ai.quiz.subtitle': 'Generate an instant quiz from lectures',
+      'ai.quiz.settings.type': 'Question Type',
+      'ai.quiz.settings.count': 'Question Count',
+      'ai.quiz.button.generate': 'Generate Quiz'
+      ,
+      // Privacy Policy
+      'pp.title': 'Privacy Policy',
+      'pp.last_updated': 'Last updated:',
+      'pp.sec.info': 'Information We Collect',
+      'pp.sec.cookies': 'Cookies and Similar Technologies',
+      'pp.sec.ads': 'Google AdSense and Personalized Ads',
+      'pp.sec.compliance': 'Compliance (GDPR/CCPA)',
+      'pp.sec.use': 'Use of Data',
+      'pp.sec.share': 'Data Sharing',
+      'pp.sec.security': 'Information Security',
+      'pp.sec.external': 'External Links',
+      'pp.sec.rights': 'Your Rights & Contact',
+      'pp.sec.updates': 'Policy Updates'
+      ,
+      // AI Voice page (essential labels)
+      'voice.title': 'Smart Study Friend — Voice Edition',
+      'voice.badge': 'Voice-first Mode',
+      'voice.session': 'Live Session',
+      'voice.buttons.mic_on': 'Turn Microphone On 🎙️',
+      'voice.buttons.enable_audio': 'Enable Audio 🔊',
+      'voice.buttons.ptt': 'Push-to-Talk 🎤',
+      'voice.buttons.replay': 'Replay Audio 🔊',
+      'voice.buttons.clear': 'Clear Chat',
+      'voice.buttons.direct_on': 'Direct Answer Mode: On',
+      'voice.source.title': 'Lecture Source',
+      'voice.source.subtitle': 'Paste your lecture text here. It will be treated as the source of truth during the session.',
+      'voice.input.placeholder': 'Type or paste your question here... then press Enter'
+      ,
+      'voice.greeting': "Hi! I'm ready to study with you. Paste the lecture text or ask your first question.",
+      'voice.files.title': 'Study Files',
+      'voice.files.subtitle': 'Upload PDF/TXT/MD files; text will be extracted and added to the source',
+      'voice.files.upload_btn': 'Upload Files',
+      'voice.lectureInput.placeholder': 'Paste lecture text here ...',
+      'voice.buttons.auto_explain': 'Start Explaining Now',
+      'voice.buttons.read_aloud': 'Read Lecture Aloud',
+      'voice.buttons.stop_reading': 'Stop Reading',
+      'voice.tip': 'Tip: After each answer I may ask if you want more detail or an example.'
+      ,
+      // AI Voice share section
+      'voice.share.title': 'Screen Share (Experimental)',
+      'voice.share.subtitle': 'Share your lecture screen, capture a shot, and auto-extract text to add to the source.'
+      ,
+      'voice.buttons.share_screen': 'Start Screen Share',
+      'voice.buttons.stop_share': 'Stop',
+      'voice.buttons.capture_ocr': 'Capture & OCR'
+      ,
+      // Privacy Policy paragraphs
+      'pp.intro': 'We at "Smart Student Platform" are committed to protecting your privacy. This page explains how we collect, use, share, and protect your data while using our site.',
+      'pp.cookies.p': 'We and our partners (such as Google) use cookies for multiple purposes, including improving the experience, measuring performance, and showing ads. Google may use cookies to display personalized ads based on visits to our site and others on the web.',
+      'pp.ads.li1': 'Third-party ads provided by Google may be shown on our site.',
+      'pp.ads.li2': 'Google uses cookies to show ads based on your previous visits to this or other sites.',
+      'pp.ads.li3': 'You can opt out of Google personalized ads via the Google Ads Settings page.',
+      'pp.ads.li4': 'For more on how Google uses data, see Google Ads & Tracking Policy and Google Privacy Policy.',
+      'pp.compliance.p': 'If you reside in a region governed by data protection laws like GDPR (EU) or CCPA (California), you may have additional rights to access, correct, delete, and object to processing your data. To exercise these rights, please contact us.',
+      'pp.use.li1': 'Improve user experience and develop new features.',
+      'pp.use.li2': 'Provide technical support and analyze performance.',
+      'pp.use.li3': 'Display and manage ad preferences when enabled.',
+      'pp.share.p': 'We may share certain data with service providers helping us operate the site (e.g., analytics or hosting) under agreements that protect privacy. We do not sell your personal data.',
+      'pp.security.p': 'We apply appropriate security measures to protect your data from unauthorized access. However, online security cannot be absolutely guaranteed.',
+      'pp.external.p': 'Our site may contain links to external websites we do not control. Please review those sites’ privacy policies.',
+      'pp.rights.p': 'For inquiries or requests to access/delete/object to processing, contact us via the email and WhatsApp below.',
+      'pp.updates.p': 'We may update this policy from time to time. Any changes take effect upon posting on this page.'
+      ,
+      // My Notes (voice notes) UI
+      'mynote.title': 'My Notes - Smart Voice Assistant',
+      'mynote.sidebar.all': 'All Notes',
+      'mynote.sidebar.categories': 'Categories',
+      'mynote.btn.add_note': 'Add Note',
+      'mynote.form.category': 'Category',
+      'mynote.form.choose_category': 'Choose a category',
+      'mynote.form.upload_audio': 'Upload audio file',
+      'mynote.form.or': 'or',
+      'mynote.form.record': 'Start Recording',
+      'mynote.form.stop_record': 'Stop Recording',
+      'mynote.form.save': 'Save Note',
+      'mynote.empty': 'No notes in this category. Start by adding one!',
+      'mynote.note.transcription': 'Original transcription:',
+      'mynote.note.translation': 'Arabic translation:',
+      // My Notes messages
+      'mynote.msg.firebase_init_error': 'Firebase initialization error. Check your keys.',
+      'mynote.msg.need_file_or_record': 'Please upload a file or record audio.',
+      'mynote.msg.need_category': 'Please choose a category.',
+      'mynote.msg.wait_user': 'Please wait for the user account to load.',
+      'mynote.msg.stop_before_save': 'Please stop recording before saving.',
+      'mynote.msg.file_too_big': 'File size exceeds the allowed limit. Please record a shorter clip or upload a smaller file.',
+      'mynote.msg.record_start': 'Recording started. Please speak clearly.',
+      'mynote.msg.mic_fail': 'Microphone access failed. Ensure the browser has permission.',
+      'mynote.msg.record_stopped': 'Recording stopped. You can save the note now.',
+      'mynote.msg.saved': 'Note saved successfully! Processing transcription and translation...',
+      'mynote.msg.save_failed': 'Failed to save the note. Check console for details.',
+      'mynote.msg.category_needed': 'Please enter a category name.',
+      'mynote.msg.category_exists': 'This category already exists.',
+      'mynote.msg.category_added': 'Category added successfully!',
+      'mynote.msg.category_add_failed': 'Failed to add category.'
+    ,
+    // Common
+    'common.or': 'or'
+    ,
+    // Auth page
+    'auth.logo': 'Smart Student Platform',
+    'auth.subtitle': 'Welcome to the smart learning journey',
+    'auth.tabs.login': 'Login',
+    'auth.tabs.register': 'Create Account',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.name': 'Full Name',
+    'auth.confirm_password': 'Confirm Password',
+    'auth.placeholder.email': 'Enter your email',
+    'auth.placeholder.password': 'Enter your password',
+    'auth.placeholder.confirm_password': 'Re-enter your password',
+    'auth.placeholder.name': 'Enter your full name',
+    'auth.btn.login': 'Sign In',
+    'auth.btn.google_login': 'Sign in with Google',
+    'auth.btn.register': 'Create New Account',
+    'auth.btn.google_register': 'Sign up with Google',
+    'auth.google': 'Sign in with Google',
+    'auth.footer.login': 'Login',
+    // Auth messages
+    'auth.msg.db_error': 'Database connection error. Please check your internet connection.',
+    'auth.msg.loading_try_again': 'System loading, please try again',
+    'auth.msg.signing_in': 'Signing in...',
+    'auth.msg.google_error': 'Google sign-in failed',
+    'auth.msg.allow_popups': 'Please allow popups and try again',
+    'auth.msg.check_network': 'Check your internet connection and try again',
+    'auth.msg.redirecting': 'Redirecting...',
+    'auth.msg.enter_email_password': 'Please enter email and password',
+    'auth.msg.login_error': 'Login error',
+    'auth.msg.invalid_credentials': 'Invalid email or password',
+    'auth.msg.email_not_confirmed': 'Please confirm your email first',
+    'auth.msg.login_success': 'Logged in successfully!'
+    ,
+    'auth.msg.connection_error': 'A connection error occurred, please try again',
+    'auth.msg.fill_all_fields': 'Please fill in all fields',
+    'auth.msg.passwords_not_match': 'Passwords do not match',
+    'auth.msg.password_too_short': 'Password must be at least 6 characters',
+    'auth.msg.creating_account': 'Creating account...',
+    'auth.msg.account_created': 'Account created successfully!'
+    ,
+    'auth.msg.account_created_login': 'Account created! You can sign in now',
+    'auth.msg.unexpected_google_error': 'Server communication error, please try again',
+    'auth.msg.welcome_loading': 'Welcome! Loading the platform...',
+    'auth.msg.resend_failed': 'Resend failed, please try later',
+    'auth.msg.resend_ok': 'Confirmation email resent, check your inbox',
+    'auth.msg.resend_error': 'Error while resending'
+  }
+  };
+
+  function getLang(){
+    const urlParam = new URLSearchParams(location.search).get('lang');
+    if (urlParam) return urlParam;
+    return localStorage.getItem('lang') || 'en';
+  }
+
+  function dirFor(lang){
+    return lang === 'ar' ? 'rtl' : 'ltr';
+  }
+
+  function t(key){
+    const lang = window.currentLang || getLang();
+    return (translations[lang] && translations[lang][key]) || (translations['ar'][key]) || '';
+  }
+
+  function applyI18n(lang){
+    const html = document.documentElement;
+    html.lang = lang;
+    html.dir = dirFor(lang);
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (!key) return;
+      el.textContent = t(key);
+    });
+
+    document.querySelectorAll('[data-i18n-attr]').forEach(el => {
+      const mapping = el.getAttribute('data-i18n-attr'); // e.g., "placeholder:search.placeholder,title:tooltip.key"
+      if (!mapping) return;
+      mapping.split(',').forEach(pair => {
+        const [attr, key] = pair.split(':');
+        if (attr && key) el.setAttribute(attr.trim(), t(key.trim()));
+      });
+    });
+
+    const select = document.getElementById('langSelect');
+    if (select) {
+      select.value = lang;
+      // Flip alignment for the select container if needed
+    }
+  }
+
+  async function setLanguage(lang){
+    window.currentLang = lang;
+    localStorage.setItem('lang', lang);
+    applyI18n(lang);
+  }
+
+  // Expose helpers
+  window.setLanguage = setLanguage;
+  window.t = t;
+
+  // Auto-apply on DOM ready
+  function init(){
+    const lang = getLang();
+    window.currentLang = lang;
+    applyI18n(lang);
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
