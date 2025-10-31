@@ -490,7 +490,7 @@
     }
 
     // --------------- Core Logic ---------------
-    const API_BASE = ((location.protocol === 'http:' || location.protocol === 'https:') && location.hostname !== 'localhost') ? '' : (localStorage.getItem('API_BASE') || '');
+    const API_BASE = 'https://student-platform-backend-one.vercel.app';
     async function ensureSession(){
       try{
         if(!window.supabaseClient) window.initializeSupabase();
