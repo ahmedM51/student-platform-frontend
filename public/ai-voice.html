@@ -150,10 +150,15 @@
               <input id="pdfFiles" type="file" multiple accept=".pdf,.txt,.md" class="input" style="padding:10px" />
               <button class="btn btn-primary" onclick="uploadSelectedFiles()" data-i18n="voice.files.upload_btn">رفع الملفات</button>
               <button class="btn btn-accent" onclick="startAutoExplain()" data-i18n="voice.buttons.auto_explain">ابدأ الشرح الآن</button>
+              <button class="btn btn-primary" onclick="generateAudioFromLecture()">توليد ملف صوتي للشرح 🎧</button>
               <button class="btn btn-ghost" onclick="readLectureAloud()" data-i18n="voice.buttons.read_aloud">قراءة المحاضرة بصوت</button>
               <button class="btn btn-danger" onclick="stopReading()" data-i18n="voice.buttons.stop_reading">إيقاف القراءة</button>
             </div>
             <div id="uploadsList" class="muted"></div>
+            <div id="audioResult" class="stack-v" style="margin-top:8px">
+              <audio id="aiAudio" controls style="width:100%; display:none"></audio>
+              <a id="audioDownload" href="#" download="lecture-explain.mp3" style="display:none">تحميل الصوت (MP3)</a>
+            </div>
           </div>
 
           <div class="stack-v">
@@ -688,6 +693,34 @@
       replyText = `${persona.prefix} ${replyText}`;
       appendMsg('ai', replyText);
       speak(replyText);
+    }
+
+    // Generate a single MP3 file that contains the Arabic explanation of the lecture
+    async function generateAudioFromLecture(){
+      try{
+        const content = getLecture();
+        if(!content || content.length < 30){
+          appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة الأول (ارفع PDF أو الصق النص).`);
+          return;
+        }
+        appendMsg('ai', 'جاري إنشاء شرح موجز وتحويله إلى صوت...');
+        const prompt = `اقرأ نص المحاضرة وقدّم شرحًا مبسّطًا بالعربية في فقرتين إلى ثلاث فقرات قصيرة مع أمثلة سريعة يمكن سماعها في أقل من 5 دقائق.`;
+        const explanation = await askGemini(prompt) || content.slice(0, 1200);
+        // Request backend TTS (returns data URL)
+        const headers = { 'Content-Type':'application/json' };
+        const r = await fetch(`${API_BASE}/api/tts`, { method:'POST', headers, body: JSON.stringify({ text: explanation }) });
+        if(!r.ok){ appendMsg('ai', 'تعذّر توليد الصوت. تأكد من تهيئة مفتاح OPENAI_API_KEY على السيرفر.'); return; }
+        const j = await r.json();
+        const url = j && j.audio;
+        if(!url){ appendMsg('ai', 'لم يصلني الصوت من الخادم.'); return; }
+        const audio = document.getElementById('aiAudio');
+        const link = document.getElementById('audioDownload');
+        if(audio){ audio.src = url; audio.style.display='block'; try{ await audio.play(); }catch(_){} }
+        if(link){ link.href = url; link.style.display='inline-block'; }
+        appendMsg('ai', 'تم إنشاء ملف صوتي يشرح المحاضرة. يمكنك تشغيله أو تحميله.');
+      }catch(_){
+        appendMsg('ai', 'حدث خطأ أثناء إنشاء الصوت.');
+      }
     }
 
     async function startAutoExplain(){
