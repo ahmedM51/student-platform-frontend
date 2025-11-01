@@ -150,7 +150,8 @@
               <input id="pdfFiles" type="file" multiple accept=".pdf,.txt,.md" class="input" style="padding:10px" />
               <button class="btn btn-primary" onclick="uploadSelectedFiles()" data-i18n="voice.files.upload_btn">رفع الملفات</button>
               <button class="btn btn-accent" onclick="startAutoExplain()" data-i18n="voice.buttons.auto_explain">ابدأ الشرح الآن</button>
-              <button class="btn btn-primary" onclick="generateAudioFromLecture()">توليد ملف صوتي للشرح 🎧</button>
+              <button class="btn btn-ghost" onclick="startLiveAboutLecture()">التحدث Live عن ذلك</button>
+              <button class="btn btn-primary" onclick="generateAudioFromLecture()">إنشاء ملخّص صوتي 🎧</button>
               <button class="btn btn-ghost" onclick="readLectureAloud()" data-i18n="voice.buttons.read_aloud">قراءة المحاضرة بصوت</button>
               <button class="btn btn-danger" onclick="stopReading()" data-i18n="voice.buttons.stop_reading">إيقاف القراءة</button>
             </div>
@@ -158,6 +159,19 @@
             <div id="audioResult" class="stack-v" style="margin-top:8px">
               <audio id="aiAudio" controls style="width:100%; display:none"></audio>
               <a id="audioDownload" href="#" download="lecture-explain.mp3" style="display:none">تحميل الصوت (MP3)</a>
+              <div id="customPlayer" style="display:none; background:#f1f5f9; border:1px solid #e5e7eb; border-radius:14px; padding:10px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <input id="cpBar" type="range" min="0" max="100" value="0" style="flex:1;" />
+                  <span id="cpTime" class="muted">0:00</span>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:center; gap:18px; margin-top:6px;">
+                  <button id="cpDownload" class="btn btn-ghost" title="تحميل">⬇️</button>
+                  <button id="cpBack" class="btn btn-ghost" title="-10s">↺10</button>
+                  <button id="cpPlay" class="btn btn-primary" title="تشغيل">▶️</button>
+                  <button id="cpFwd" class="btn btn-ghost" title="+10s">10↻</button>
+                  <button id="cpSpeed" class="btn btn-ghost" title="السرعة">1x</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -713,14 +727,67 @@
         const j = await r.json();
         const url = j && j.audio;
         if(!url){ appendMsg('ai', 'لم يصلني الصوت من الخادم.'); return; }
+        // Show custom player styled like the screenshot
         const audio = document.getElementById('aiAudio');
         const link = document.getElementById('audioDownload');
-        if(audio){ audio.src = url; audio.style.display='block'; try{ await audio.play(); }catch(_){} }
-        if(link){ link.href = url; link.style.display='inline-block'; }
-        appendMsg('ai', 'تم إنشاء ملف صوتي يشرح المحاضرة. يمكنك تشغيله أو تحميله.');
+        if(audio){ audio.src = url; audio.style.display='none'; }
+        if(link){ link.href = url; link.style.display='none'; }
+        setupCustomPlayer(url);
+        appendMsg('ai', 'تم إنشاء مُلخّص صوتي. يمكنك تشغيله أو تحميله من المشغّل أدناه.');
       }catch(_){
         appendMsg('ai', 'حدث خطأ أثناء إنشاء الصوت.');
       }
+    }
+
+    // ---------------- Custom Audio Player ----------------
+    function fmtTime(s){ s = Math.max(0, s|0); const m = (s/60)|0; const ss = (s%60)|0; return `${m}:${ss<10?'0':''}${ss}`; }
+    function setupCustomPlayer(url){
+      const cp = document.getElementById('customPlayer');
+      const bar = document.getElementById('cpBar');
+      const time = document.getElementById('cpTime');
+      const play = document.getElementById('cpPlay');
+      const back = document.getElementById('cpBack');
+      const fwd = document.getElementById('cpFwd');
+      const spd = document.getElementById('cpSpeed');
+      const dl = document.getElementById('cpDownload');
+      if(!cp) return;
+      // single hidden audio element reused
+      const a = document.getElementById('aiAudio');
+      a.src = url; a.preload = 'metadata';
+      cp.style.display = 'block';
+      dl.onclick = ()=>{ try{ const x = document.createElement('a'); x.href=url; x.download='lecture-explain.mp3'; document.body.appendChild(x); x.click(); x.remove(); }catch(_){}}
+      let speeds = [1, 1.25, 1.5, 2]; let si = 0; spd.onclick = ()=>{ si=(si+1)%speeds.length; a.playbackRate = speeds[si]; spd.textContent = `${speeds[si]}x`; };
+      back.onclick = ()=>{ try{ a.currentTime = Math.max(0, a.currentTime - 10); }catch(_){ } };
+      fwd.onclick = ()=>{ try{ a.currentTime = Math.min((a.duration||0), a.currentTime + 10); }catch(_){ } };
+      play.onclick = async ()=>{
+        try{
+          if(a.paused){ await a.play(); play.textContent='⏸️'; } else { a.pause(); play.textContent='▶️'; }
+        }catch(_){ }
+      };
+      a.onloadedmetadata = ()=>{
+        try{ bar.value = 0; time.textContent = `0:00 / ${fmtTime(a.duration||0)}`; }catch(_){ }
+      };
+      a.ontimeupdate = ()=>{
+        try{
+          const d = a.duration||0; const c = a.currentTime||0; bar.value = d? Math.round((c/d)*100) : 0; time.textContent = `${fmtTime(c)} / ${fmtTime(d)}`;
+        }catch(_){ }
+      };
+      bar.oninput = ()=>{
+        try{ const d=a.duration||0; if(d){ a.currentTime = (+bar.value/100)*d; } }catch(_){ }
+      };
+    }
+
+    // Quick entry to Live mode for the uploaded lecture (like Gemini Live)
+    function startLiveAboutLecture(){
+      const content = getLecture();
+      if(!content || content.length < 30){ appendMsg('ai', 'ارفع المحاضرة أو الصق نصاً أولاً، ثم ابدأ التحدث Live.'); return; }
+      appendMsg('ai', 'وضع Live مفعّل. تكلّم الآن وسأردّ معتمداً على نص المحاضرة.');
+      // Ensure STT is running
+      try{
+        if(!recog){ alert('خاصية التعرّف على الصوت غير مدعومة في هذا المتصفح. يُفضّل استخدام Chrome.'); return; }
+        if(!state.live){ state.live = true; }
+        if(!state.recognizing){ recog.start(); }
+      }catch(_){ }
     }
 
     async function startAutoExplain(){
