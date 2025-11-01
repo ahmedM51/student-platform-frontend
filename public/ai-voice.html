@@ -65,6 +65,13 @@
     .footer { padding-top: 8px; }
     .screen-box { border:1px dashed #cbd5e1; border-radius:12px; padding:10px; background:#f8fafc }
     video#screenPreview { width:100%; max-height:220px; background:#000; border-radius:10px }
+    /* Mobile-friendly tweaks */
+    @media (max-width: 600px) {
+      .btn { padding: 14px 16px; font-size: 16px; }
+      .pill { padding: 10px 14px; }
+      #customPlayer button { min-width: 44px; min-height: 44px; font-size: 18px; }
+      #customPlayer input[type=range] { height: 10px; }
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>
@@ -463,6 +470,16 @@
       appendMsg('ai', 'تم تفعيل الصوت على جهازك. اسألني وسوف أجيبك بصوت.');
     }
 
+    // Show the enable-audio button proactively on mobile to pass autoplay policy
+    window.addEventListener('DOMContentLoaded', ()=>{
+      try{
+        if (isMobile && !state.audioEnabled){
+          const btn = document.getElementById('audioEnableBtn');
+          if (btn) btn.style.display = 'inline-block';
+        }
+      }catch(_){ }
+    });
+
     // --------------- STT (SpeechRecognition) ---------------
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recog = null;
@@ -769,6 +786,11 @@
     function startLiveAboutLecture(){
       const content = getLecture();
       if(!content || content.length < 30){ appendMsg('ai', 'ارفع المحاضرة أو الصق نصاً أولاً، ثم ابدأ التحدث Live.'); return; }
+      if (isMobile && !state.audioEnabled){
+        appendMsg('ai', 'على الجوال: اضغط زر "تفعيل الصوت 🔊" أولاً لتمكين الصوت، ثم ابدأ التحدث Live.');
+        const btn = document.getElementById('audioEnableBtn'); if (btn) btn.style.display='inline-block';
+        return;
+      }
       appendMsg('ai', 'وضع Live مفعّل. تكلّم الآن وسأردّ معتمداً على نص المحاضرة.');
       // Ensure STT is running
       try{
