@@ -518,19 +518,8 @@
 
     // Lightweight activity logger (safe no-op if table not present)
     async function logActivity(type, description, icon='star'){
-      try{
-        if(!window.supabaseDB || !window.supabaseDB.activities || !window.supabaseDB.activities.create) return;
-        const tok = await ensureSession().catch(()=>null);
-        const userId = state.userId || null;
-        if(!tok || !userId) return; // require auth
-        await window.supabaseDB.activities.create({
-          user_id: userId,
-          type: type,
-          description: description,
-          icon: icon,
-          created_at: new Date().toISOString()
-        });
-      }catch(_){ }
+      // Disabled on this page to avoid schema mismatches causing 400s
+      return;
     }
 
     async function uploadFile(file){
@@ -613,20 +602,14 @@
         }
       }catch(_){ }
       if(pdfFiles) pdfFiles.value = '';
-      // بعد رفع الملفات ودمج النص
-      try { 
+      // بعد رفع الملفات ودمج النص لا نبدأ الشرح تلقائياً — اعرض خيارات Live أو ملخّص صوتي
+      try {
         const lectureText = getLecture();
         if(!lectureText || lectureText.length < 30){
-          appendMsg('ai', `${persona.prefix} محتاج نص واضح من المحاضرة عشان أشرح. جرّب رفع PDF أو TXT/MD وسيتم استخراج النص مباشرة.`);
-          speak(`${persona.prefix} محتاج نص من المحاضرة عشان أبدأ أشرح.`);
+          appendMsg('ai', `${persona.prefix} محتاج نص واضح من المحاضرة. جرّب رفع PDF أو TXT/MD وسيتم استخراج النص مباشرة.`);
+          speak(`${persona.prefix} محتاج نص من المحاضرة عشان أبدأ.`);
         } else {
-          // على الجوال: اطلب تفعيل الصوت قبل التحدث
-          if (isMobile && !state.audioEnabled) {
-            appendMsg('ai', 'قبل ما أتكلم، اضغط زر "تفعيل الصوت 🔊" فوق علشان أقدر أتكلم بصوت على جوالك. بعد كده اسألني وأنا هجاوبك بصوت.');
-          } else {
-            await startAutoExplain();
-            try{ logActivity('lecture_uploaded', 'تم رفع ملفات وإضافة نص للمحاضرة', 'upload'); }catch(_){ }
-          }
+          appendMsg('ai', 'تم إضافة نص المحاضرة. اختر: التحدث Live عن ذلك، أو إنشاء ملخّص صوتي 🎧.');
         }
       } catch(_){ }
     }
@@ -723,7 +706,12 @@
         // Request backend TTS (returns data URL)
         const headers = { 'Content-Type':'application/json' };
         const r = await fetch(`${API_BASE}/api/tts`, { method:'POST', headers, body: JSON.stringify({ text: explanation }) });
-        if(!r.ok){ appendMsg('ai', 'تعذّر توليد الصوت. تأكد من تهيئة مفتاح OPENAI_API_KEY على السيرفر.'); return; }
+        if(!r.ok){
+          // Fallback: استخدم متصفحك لقراءة الملخّص بصوت إذا تعذّر إنشاء ملف MP3
+          appendMsg('ai', 'تعذّر توليد ملف MP3 (تحقق من OPENAI_API_KEY على الخادم). سأقرأ الملخص بصوت الآن كحل بديل.');
+          try{ speak(explanation); }catch(_){ }
+          return;
+        }
         const j = await r.json();
         const url = j && j.audio;
         if(!url){ appendMsg('ai', 'لم يصلني الصوت من الخادم.'); return; }
