@@ -1238,6 +1238,80 @@ ${lectureContent}
             return j && j.response ? j.response : '';
         }
 
+        // --- TTS helpers ---
+        function splitTextForTts(t){
+            const maxChunkChars = 1000; // conservative per-request
+            const seps = /([\.\!\?\n]|[\u061F\u06D4])+/; // include Arabic question mark/stop
+            const parts = t.split(seps).reduce((acc, piece)=>{
+                if (!piece) return acc;
+                if (seps.test(piece)) { // separator
+                    if (acc.length) acc[acc.length-1] += piece;
+                    else acc.push(piece);
+                } else {
+                    acc.push(piece);
+                }
+                return acc;
+            }, []);
+            const out = [];
+            let buf = '';
+            for (const p of parts){
+                if ((buf + p).length > maxChunkChars){
+                    if (buf) out.push(buf.trim());
+                    buf = p;
+                } else {
+                    buf += p;
+                }
+            }
+            if (buf.trim()) out.push(buf.trim());
+            return out;
+        }
+
+        async function responseToArrayBuffer(j){
+            let src = j?.audio || j?.audioUrl || j?.url || '';
+            if (j?.base64) {
+                const bstr = atob(j.base64);
+                const bytes = new Uint8Array(bstr.length);
+                for (let i=0;i<bstr.length;i++) bytes[i] = bstr.charCodeAt(i);
+                return bytes.buffer;
+            }
+            if (!src) return null;
+            const r = await fetch(src);
+            if (!r.ok) return null;
+            return await r.arrayBuffer();
+        }
+
+        function concatArrayBuffers(buffers){
+            const total = buffers.reduce((s,b)=> s + (b?.byteLength||0), 0);
+            const out = new Uint8Array(total);
+            let offset = 0;
+            for (const b of buffers){
+                if (!b) continue;
+                const u = new Uint8Array(b);
+                out.set(u, offset);
+                offset += u.byteLength;
+            }
+            return out.buffer;
+        }
+
+        async function synthesizeLargeTts(text, maxBytes){
+            const chunks = splitTextForTts(text);
+            const buffers = [];
+            let total = 0;
+            for (const c of chunks){
+                const j = await postJsonWithFallback('/api/tts', { text: c });
+                const buf = await responseToArrayBuffer(j);
+                if (!buf) continue;
+                total += buf.byteLength;
+                if (total > maxBytes) break;
+                buffers.push(buf);
+            }
+            if (!buffers.length) return '';
+            // Concatenate MP3 frames (works with most browsers/encoders)
+            const merged = concatArrayBuffers(buffers);
+            const blob = new Blob([merged], { type: 'audio/mpeg' });
+            return URL.createObjectURL(blob);
+        }
+
         async function explainFullSource(){
             try{
                 const { title, content } = await resolveCurrentSource();
@@ -1305,18 +1379,25 @@ ${lectureContent}
                     } catch(_) {}
                 }
                 if (!text || text.trim().length < 10) { addMessage('تعذر إنشاء نص الملخص الصوتي', 'ai'); return; }
-                // Safety trim for TTS providers
-                if (text.length > 1200) text = text.slice(0, 1200);
-                const j = await postJsonWithFallback('/api/tts', { text });
                 const audioEl = document.getElementById('aiSummaryAudio');
-                if (audioEl && j) {
-                    let src = j.audio || j.audioUrl || j.url || '';
-                    if (!src && j.base64) {
-                        src = `data:audio/mpeg;base64,${j.base64}`;
+                // If text is reasonably short, single TTS call
+                if (text.length <= 1200) {
+                    const j = await postJsonWithFallback('/api/tts', { text });
+                    if (audioEl && j) {
+                        let src = j.audio || j.audioUrl || j.url || '';
+                        if (!src && j.base64) src = `data:audio/mpeg;base64,${j.base64}`;
+                        if (src) {
+                            audioEl.classList.remove('hidden');
+                            audioEl.src = src;
+                            try { await audioEl.play(); } catch(_) {}
+                        }
                     }
-                    if (src) {
+                } else {
+                    // Multi-chunk TTS up to ~10MB total
+                    const url = await synthesizeLargeTts(text, 10 * 1024 * 1024);
+                    if (audioEl && url) {
                         audioEl.classList.remove('hidden');
-                        audioEl.src = src;
+                        audioEl.src = url;
                         try { await audioEl.play(); } catch(_) {}
                     }
                 }
