@@ -23,6 +23,14 @@
     <link rel="canonical" href="https://student-platform-frontend.vercel.app/ai-assistant.html">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js for client-side PDF text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" referrerpolicy="no-referrer"></script>
+    <script>
+      if (window['pdfjsLib']) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+    </script>
+    <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -32,6 +40,7 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
         .quiz-card { transition: all 0.3s ease; }
         .quiz-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
         .typing-indicator {
@@ -56,6 +65,8 @@
             border-radius: 1rem 1rem 0.25rem 1rem;
             margin-left: 2rem;
             text-align: right;
+            max-width: 85%;
+            word-wrap: break-word;
         }
         .ai-message {
             background: #f3f4f6;
@@ -63,8 +74,22 @@
             padding: 0.75rem 1rem;
             border-radius: 1rem 1rem 1rem 0.25rem;
             margin-right: 2rem;
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+        /* Custom scrollbar for chat area */
+        #chatArea::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chatArea::-webkit-scrollbar-thumb {
+            background-color: #d1d5db; /* gray-300 */
+            border-radius: 4px;
+        }
+        #chatArea::-webkit-scrollbar-track {
+            background-color: #f3f4f6; /* gray-100 */
         }
     </style>
+    <script src="js/i18n.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->
@@ -75,12 +100,16 @@
                     <button onclick="window.location.href='index.html'" class="text-gray-600 hover:text-gray-900 ml-4">
                         <i class="fas fa-arrow-right text-xl"></i>
                     </button>
-                    <h1 class="text-xl font-bold text-gray-900 mr-4">المساعد الذكي</h1>
+                    <h1 class="text-xl font-bold text-gray-900 mr-4" data-i18n="ai.title">المساعد الذكي</h1>
                 </div>
                 <div class="flex items-center space-x-4 space-x-reverse">
+                    <select id="langSelect" onchange="setLanguage(this.value)" class="bg-gray-100 text-gray-800 px-2 py-2 rounded-lg text-sm">
+                        <option value="ar">العربية</option>
+                        <option value="en">English</option>
+                    </select>
                     <span id="userEmail" class="text-sm text-gray-600"></span>
                     <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-sign-out-alt ml-2"></i>تسجيل الخروج
+                        <i class="fas fa-sign-out-alt ml-2"></i><span data-i18n="nav.logout">تسجيل الخروج</span>
                     </button>
                 </div>
             </div>
@@ -95,31 +124,63 @@
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h3 class="text-lg font-semibold mb-4 flex items-center">
                     <i class="fas fa-comments text-blue-500 ml-3"></i>
-                    محادثة مع المساعد الذكي
+                    <span data-i18n="ai.qa.title">محادثة مع المساعد الذكي</span>
                 </h3>
                 
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">اختر المحاضرة:</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="ai.qa.choose_lecture">اختر المحاضرة:</label>
                     <select id="qaLectureSelect" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" onchange="enableQA()">
-                        <option value="">-- اختر محاضرة --</option>
+                        <option value="" data-i18n="ai.qa.placeholder_option">-- اختر محاضرة --</option>
                     </select>
-                </div>
-
-                <div id="chatArea" class="bg-gray-50 rounded-lg p-4 h-64 overflow-y-auto mb-4 border">
-                    <div class="text-center text-gray-500 py-8">
-                        <i class="fas fa-robot text-4xl mb-2"></i>
-                        <p>مرحباً! اختر محاضرة واسأل أي سؤال تريد</p>
+                    <div class="mt-2">
+                        <button type="button" onclick="addCurrentLectureToQaUploads()" class="px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200" data-i18n="ai.qa.add_current_to_uploads">إضافة هذه المحاضرة إلى "الملفات المرفوعة" للمحادثة</button>
+                    </div>
+                    <div class="mt-3 grid grid-cols-1 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="ai.qa.upload_files_label">أو ارفع ملفات (PDF, DOCX, TXT, MD)</label>
+                            <input id="qaFiles" type="file" multiple accept=".pdf,.docx,.txt,.md" class="block w-full text-sm text-gray-700"
+                                   onchange="handleQaFilesChange(this.files)">
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.qa.select_hint">اختر من القائمة: المحاضرات أو "الملفات المرفوعة" أو "المنصة (عام)"</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="ai.qa.url_label">أو أدخل رابط مباشر (PDF أو TXT/MD)</label>
+                            <div class="flex gap-2">
+                                <input id="qaUrl" type="url" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-i18n-attr="placeholder:home.mynotes.open_page" placeholder="https://example.com/lecture.pdf">
+                                <button type="button" onclick="handleQaUrl()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600" data-i18n="ai.qa.use_url">استخدام الرابط</button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.qa.cors_hint">قد تمنع بعض المواقع الوصول بسبب CORS. يفضّل رابط مباشر للملف.</p>
+                        </div>
                     </div>
                 </div>
 
+                <div id="chatArea" class="bg-gray-50 rounded-lg p-4 h-96 overflow-y-auto mb-4 border">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-robot text-4xl mb-2"></i>
+                        <p data-i18n="ai.qa.empty">مرحباً! اختر محاضرة واسأل أي سؤال تريد</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm" onclick="explainFullSource()">
+                        <i class="fas fa-chalkboard-teacher ml-1"></i> شرح كامل
+                    </button>
+                    <button class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm" onclick="summarizeFullSource()">
+                        <i class="fas fa-list ml-1"></i> تلخيص كامل
+                    </button>
+                    <button class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg text-sm" onclick="audioSummaryFullSource()">
+                        <i class="fas fa-headphones ml-1"></i> ملخص صوتي
+                    </button>
+                    <audio id="aiSummaryAudio" class="hidden" controls></audio>
+                </div>
+
                 <div class="flex space-x-2 space-x-reverse">
-                    <input type="text" id="questionInput" placeholder="اكتب سؤالك هنا..." 
+                    <input type="text" id="questionInput" data-i18n-attr="placeholder:ai.qa.input.placeholder" placeholder="اكتب سؤالك هنا..." 
                            class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            disabled onkeypress="handleEnterKey(event)">
                     <button id="askBtn" onclick="sendMessage()" 
                             class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled>
-                        <i class="fas fa-paper-plane"></i>
+                        <i class="fas fa-paper-plane"></i> <span data-i18n="ai.qa.button.send"></span>
                     </button>
                 </div>
             </div>
@@ -129,24 +190,42 @@
                 <div class="bg-gradient-to-r from-green-500 to-green-600 p-6">
                     <h2 class="text-xl font-bold text-white flex items-center">
                         <i class="fas fa-clipboard-question ml-3"></i>
-                        إنشاء اختبار
+                        <span data-i18n="ai.quiz.title">إنشاء اختبار</span>
                     </h2>
-                    <p class="text-green-100 mt-2">أنشئ اختبار فوري من المحاضرات</p>
+                    <p class="text-green-100 mt-2" data-i18n="ai.quiz.subtitle">أنشئ اختبار فوري من المحاضرات</p>
                 </div>
                 
                 <div class="p-6">
                     <!-- Quiz Settings -->
                     <div class="space-y-4 mb-6">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">اختر المحاضرات</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="ai.quiz.choose_lectures">اختر المحاضرات</label>
                             <select id="quizLectureSelect" multiple class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent h-32">
                             </select>
-                            <p class="text-xs text-gray-500 mt-1">يمكنك اختيار عدة محاضرات بالضغط مع Ctrl</p>
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.quiz.multi_hint">يمكنك اختيار عدة محاضرات بالضغط مع Ctrl</p>
+                            <div class="mt-2">
+                                <button type="button" onclick="addSelectedLecturesToQuizUploads()" class="px-3 py-2 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200" data-i18n="ai.quiz.add_selected_to_uploads">إضافة المحاضرات المحددة إلى "الملفات المرفوعة" للاختبار</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="ai.quiz.upload_label">أو ارفع ملفات لإنشاء اختبار منها (PDF, DOCX, TXT, MD)</label>
+                            <input id="quizFiles" type="file" multiple accept=".pdf,.docx,.txt,.md" class="block w-full text-sm text-gray-700"
+                                   onchange="handleQuizFilesChange(this.files)">
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.quiz.upload_hint">إذا رُفعت ملفات هنا سيتم استخدامها كمصدر رئيسي للأسئلة</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="ai.quiz.url_label">أو أدخل رابط مباشر لملف المحتوى (PDF أو TXT/MD)</label>
+                            <div class="flex gap-2">
+                                <input id="quizUrl" type="url" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="https://example.com/file.pdf">
+                                <button type="button" onclick="handleQuizUrl()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600" data-i18n="ai.quiz.use_url">استخدام الرابط</button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.quiz.url_hint">ملاحظة: يجب أن يكون الرابط مباشراً. بعض الروابط قد تُحجب (CORS).</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">نوع الأسئلة</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="ai.quiz.settings.type">نوع الأسئلة</label>
                                 <select id="questionType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
                                     <option value="multiple">اختيار متعدد</option>
                                     <option value="truefalse">صح وخطأ</option>
@@ -155,14 +234,16 @@
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">عدد الأسئلة</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="ai.quiz.settings.count">عدد الأسئلة</label>
                                 <select id="questionCount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
                                     <option value="5">5 أسئلة</option>
-                                    <option value="10" selected>10 أسئلة</option>
+                                    <option value="10">10 أسئلة</option>
                                     <option value="15">15 سؤال</option>
                                     <option value="20">20 سؤال</option>
                                     <option value="25">25 سؤال</option>
                                     <option value="30">30 سؤال</option>
+                                    <option value="40">40 سؤال</option>
+                                    <option value="50" selected>50 سؤال</option>
                                 </select>
                             </div>
                         </div>
@@ -171,7 +252,7 @@
                     <button id="generateQuizBtn" onclick="generateQuiz()" 
                             class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled>
-                        <i class="fas fa-magic ml-2"></i>إنشاء اختبار فوري
+                        <i class="fas fa-magic ml-2"></i><span data-i18n="ai.quiz.button.generate">إنشاء اختبار فوري</span>
                     </button>
                 </div>
             </div>
@@ -179,35 +260,7 @@
 
         <!-- Quiz Display Area -->
         <div id="quizContainer" class="hidden mt-8">
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-6">
-                    <h2 class="text-xl font-bold text-white flex items-center justify-between">
-                        <span><i class="fas fa-clipboard-check ml-3"></i>الاختبار</span>
-                        <span id="quizTimer" class="text-purple-100"></span>
-                    </h2>
-                </div>
-                
-                <div class="p-6">
-                    <div id="quizContent"></div>
-                    
-                    <div class="flex justify-between items-center mt-6">
-                        <div class="text-sm text-gray-600">
-                            السؤال <span id="currentQuestion">1</span> من <span id="totalQuestions">10</span>
-                        </div>
-                        <div class="space-x-2 space-x-reverse">
-                            <button id="prevBtn" onclick="previousQuestion()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg disabled:opacity-50">
-                                السابق
-                            </button>
-                            <button id="nextBtn" onclick="nextQuestion()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                                التالي
-                            </button>
-                            <button id="submitQuizBtn" onclick="submitQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg hidden">
-                                إنهاء الاختبار
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Quiz content will be injected here -->
         </div>
 
         <!-- Quiz Results -->
@@ -215,7 +268,7 @@
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                 <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 p-6">
                     <h2 class="text-xl font-bold text-white flex items-center">
-                        <i class="fas fa-trophy ml-3"></i>نتائج الاختبار
+                        <i class="fas fa-trophy ml-3"></i><span data-i18n="ai.quiz.results_title">نتائج الاختبار</span>
                     </h2>
                 </div>
                 
@@ -229,102 +282,661 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script>
+        // -------- Lecture content enrichment (PDF/Text extraction) --------
+        function normalizePdfUrl(url) {
+            try {
+                const u = new URL(url);
+                const href = u.href;
+                // Google Drive: use uc?export=download&id=
+                if (u.hostname.includes('drive.google.com')) {
+                    const idMatch = href.match(/\/file\/d\/([^/]+)\//);
+                    const idFromQuery = u.searchParams.get('id');
+                    const fileId = idMatch ? idMatch[1] : idFromQuery;
+                    if (fileId) return `https://drive.google.com/uc?export=download&id=${fileId}`;
+                }
+                // Dropbox share -> direct
+                if (u.hostname.includes('dropbox.com')) {
+                    // dl=1 forces direct download
+                    u.searchParams.set('dl', '1');
+                    return u.toString();
+                }
+                return url;
+            } catch (_) { return url; }
+        }
+        function isPdfUrl(url) { return /\.pdf(?:[?#].*)?$/i.test(url || ''); }
+        async function looksLikePdfByContentType(url) {
+            try {
+                // Try HEAD first
+                const h = await fetch(url, { method: 'HEAD' });
+                const ct = h.headers.get('content-type') || '';
+                if (/application\/pdf/i.test(ct)) return true;
+            } catch (_) { /* ignore, may be blocked */ }
+            try {
+                // Fallback tiny GET if HEAD blocked (some CDNs)
+                const g = await fetch(url, { method: 'GET', headers: { 'Range': 'bytes=0-0' } });
+                const ct2 = g.headers.get('content-type') || '';
+                if (/application\/pdf/i.test(ct2)) return true;
+            } catch (_) { /* CORS or blocked */ }
+            return false;
+        }
+        async function extractTextFromPdf(url) {
+            if (!window.pdfjsLib) return '';
+            try {
+                const loadingTask = pdfjsLib.getDocument({ url, withCredentials: false });
+                const pdf = await loadingTask.promise;
+                let fullText = '';
+                for (let p = 1; p <= pdf.numPages; p++) {
+                    const page = await pdf.getPage(p);
+                    const content = await page.getTextContent();
+                    const strings = content.items.map(it => it.str).filter(Boolean);
+                    fullText += strings.join(' ') + '\n\n';
+                }
+                return fullText.trim();
+            } catch (e) { console.warn('PDF extraction failed:', e); return ''; }
+        }
+
+        // Extract text from a locally uploaded PDF file using pdf.js
+        async function extractTextFromLocalPdf(file) {
+            if (!window.pdfjsLib) return '';
+            try {
+                const buffer = await file.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument({ data: buffer });
+                const pdf = await loadingTask.promise;
+                let fullText = '';
+                for (let p = 1; p <= pdf.numPages; p++) {
+                    const page = await pdf.getPage(p);
+                    const content = await page.getTextContent();
+                    const strings = content.items.map(it => it.str).filter(Boolean);
+                    fullText += strings.join(' ') + '\n\n';
+                }
+                return fullText.trim();
+            } catch (e) { console.warn('Local PDF extraction failed:', e); return ''; }
+        }
+
+        async function extractTextFromLocalDocx(file) {
+            try {
+                if (!window.mammoth || !window.mammoth.extractRawText) return '';
+                const buffer = await file.arrayBuffer();
+                const result = await window.mammoth.extractRawText({ arrayBuffer: buffer });
+                return (result && result.value) ? result.value.trim() : '';
+            } catch (e) { console.warn('Local DOCX extraction failed:', e); return ''; }
+        }
+
+        // Handlers to read uploaded files and build concatenated text content
+        async function handleQaFilesChange(fileList) {
+            if (!fileList || fileList.length === 0) {
+                // Do not clear previous uploads; simply return
+                return;
+            }
+            showNotification('جاري معالجة الملفات للمحادثة...', 'info');
+            const parts = [];
+            for (const file of fileList) {
+                const name = file.name || 'ملف';
+                if (/\.pdf$/i.test(name)) {
+                    const t = await extractTextFromLocalPdf(file);
+                    if (t) parts.push(`-- ${name} --\n${t}`);
+                } else if (/\.docx$/i.test(name)) {
+                    const t = await extractTextFromLocalDocx(file);
+                    if (t) parts.push(`-- ${name} --\n${t}`);
+                } else if (/\.(txt|md)$/i.test(name)) {
+                    try { const t = await file.text(); if (t) parts.push(`-- ${name} --\n${t}`); } catch(_) {}
+                } else {
+                    showNotification(`صيغة غير مدعومة: ${name}`, 'error');
+                }
+            }
+            const newChunk = parts.join('\n\n');
+            uploadedQaText = uploadedQaText ? (uploadedQaText + '\n\n' + newChunk) : newChunk;
+            if (uploadedQaText && uploadedQaText.length > 50) {
+                showNotification('تم تجهيز محتوى الملفات للمحادثة', 'success');
+            }
+            // Enable/select uploaded option
+            const sel = document.getElementById('qaLectureSelect');
+            let opt = sel?.querySelector('option[value="__uploaded__"]');
+            if (!opt) {
+                opt = document.createElement('option');
+                opt.value = '__uploaded__';
+                opt.textContent = t('subjects.stats.files');
+                sel?.insertBefore(opt, sel.firstChild?.nextSibling);
+            }
+            opt.disabled = false;
+            sel.value = '__uploaded__';
+            enableQA();
+            // Allow selecting the same files again by clearing the input value
+            try { const qaInput = document.getElementById('qaFiles'); if (qaInput) qaInput.value = ''; } catch(_) {}
+        }
+
+        async function handleQuizFilesChange(fileList) {
+            const sel = document.getElementById('quizLectureSelect');
+            if (!fileList || fileList.length === 0) {
+                // Do not clear previous uploads; simply return
+                return;
+            }
+            showNotification('جاري معالجة الملفات للاختبار...', 'info');
+            const parts = [];
+            for (const file of fileList) {
+                const name = file.name || 'ملف';
+                if (/\.pdf$/i.test(name)) {
+                    const t = await extractTextFromLocalPdf(file);
+                    if (t) parts.push(`-- ${name} --\n${t}`);
+                } else if (/\.(txt|md)$/i.test(name)) {
+                    try { const t = await file.text(); if (t) parts.push(`-- ${name} --\n${t}`); } catch(_) {}
+                } else {
+                    showNotification(`صيغة غير مدعومة: ${name}`, 'error');
+                }
+            }
+            const newChunk = parts.join('\n\n');
+            uploadedQuizText = uploadedQuizText ? (uploadedQuizText + '\n\n' + newChunk) : newChunk;
+            if (uploadedQuizText && uploadedQuizText.length > 50) {
+                showNotification('تم تجهيز محتوى الملفات للاختبار', 'success');
+            }
+            // Enable/select uploaded option
+            let opt = sel?.querySelector('option[value="__uploaded__"]');
+            if (!opt) {
+                opt = document.createElement('option');
+                opt.value = '__uploaded__';
+                opt.textContent = t('subjects.stats.files');
+                sel?.insertBefore(opt, sel.firstChild);
+            }
+            opt.disabled = false;
+            sel.value = '__uploaded__';
+            // Allow selecting the same files again by clearing the input value
+            try { const quizInput = document.getElementById('quizFiles'); if (quizInput) quizInput.value = ''; } catch(_) {}
+        }
+
+        // Use direct URL as Q&A source (PDF/TXT/MD)
+        async function handleQaUrl() {
+            try {
+                const input = document.getElementById('qaUrl');
+                let url = (input?.value || '').trim();
+                if (!url) { showNotification('يرجى إدخال رابط صالح', 'error'); return; }
+
+                url = normalizePdfUrl(url);
+                showNotification('جاري قراءة المحتوى من الرابط...', 'info');
+                let text = '';
+
+                if (isPdfUrl(url) || await looksLikePdfByContentType(url)) {
+                    text = await extractTextFromPdf(url);
+                } else if (/\.(txt|md)(?:[?#].*)?$/i.test(url)) {
+                    try { const r = await fetch(url); if (r.ok) text = await r.text(); } catch(_) {}
+                } else {
+                    try {
+                        const r = await fetch(url, { headers: { 'Accept': 'text/plain' } });
+                        if (r.ok) {
+                            const ct = r.headers.get('content-type') || '';
+                            if (/text\//i.test(ct)) text = await r.text();
+                        }
+                    } catch(_) {}
+                }
+
+                if (!text || text.trim().length < 50) {
+                    showNotification('تعذر قراءة محتوى كافٍ من الرابط. تأكد أن الرابط مباشر لملف PDF أو TXT.', 'warning');
+                    return;
+                }
+
+                uploadedQaText = `-- URL --\n${text}`;
+
+                // select uploaded option and enable QA
+                const sel = document.getElementById('qaLectureSelect');
+                let opt = sel?.querySelector('option[value="__uploaded__"]');
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = '__uploaded__';
+                    opt.textContent = t('subjects.stats.files');
+                    sel?.insertBefore(opt, sel.firstChild?.nextSibling);
+                }
+                opt.disabled = false;
+                sel.value = '__uploaded__';
+                enableQA();
+
+                showNotification('تم تجهيز محتوى الرابط للمحادثة', 'success');
+            } catch (e) {
+                console.warn('handleQaUrl error:', e);
+                showNotification('حدث خطأ أثناء معالجة الرابط', 'error');
+            }
+        }
+
+        // Aggregate selected lectures into the uploaded pools
+        async function addCurrentLectureToQaUploads() {
+            try {
+                const sel = document.getElementById('qaLectureSelect');
+                const val = sel?.value || '';
+                if (!val || val === '__uploaded__' || val === '__platform__') {
+                    showNotification('يرجى اختيار محاضرة فعلية لإضافتها', 'warning');
+                    return;
+                }
+
+                const lectureResult = await window.supabaseDB.lectures.getWithContent(val);
+                const lecture = lectureResult?.data;
+                if (!lecture) { showNotification('تعذر العثور على المحاضرة', 'error'); return; }
+
+                // Enrich/collect content
+                let content = '';
+                try {
+                    content = await buildLectureContentFallback(lecture);
+                } catch(_) {}
+                if (!content || content.trim().length < 20) {
+                    showNotification('لا يوجد محتوى كافٍ في هذه المحاضرة', 'warning');
+                    return;
+                }
+
+                const title = lecture.title || 'محاضرة';
+                const chunk = `-- ${title} --\n${content}`;
+                uploadedQaText = uploadedQaText ? (uploadedQaText + "\n\n" + chunk) : chunk;
+
+                // Ensure uploaded option exists and select it
+                let opt = sel.querySelector('option[value="__uploaded__"]');
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = '__uploaded__';
+                    opt.textContent = t('subjects.stats.files');
+                    sel.insertBefore(opt, sel.firstChild?.nextSibling);
+                }
+                opt.disabled = false;
+                sel.value = '__uploaded__';
+                enableQA();
+                showNotification('تمت إضافة المحاضرة إلى الملفات المرفوعة للمحادثة', 'success');
+            } catch (e) {
+                console.warn('addCurrentLectureToQaUploads error:', e);
+                showNotification('حدث خطأ أثناء إضافة المحاضرة', 'error');
+            }
+        }
+
+        async function addSelectedLecturesToQuizUploads() {
+            try {
+                const sel = document.getElementById('quizLectureSelect');
+                const ids = Array.from(sel?.selectedOptions || [])
+                    .map(o => o.value)
+                    .filter(v => v && v !== '__uploaded__');
+                if (!ids.length) {
+                    showNotification('يرجى اختيار محاضرة أو أكثر لإضافتها', 'warning');
+                    return;
+                }
+
+                showNotification('جاري جمع محتوى المحاضرات المختارة...', 'info');
+                const parts = [];
+                for (const id of ids) {
+                    try {
+                        const lectureResult = await window.supabaseDB.lectures.getWithContent(id);
+                        const lecture = lectureResult?.data;
+                        if (!lecture) continue;
+                        let content = '';
+                        try { content = await buildLectureContentFallback(lecture); } catch(_) {}
+                        if (content && content.trim().length >= 20) {
+                            const title = lecture.title || 'محاضرة';
+                            parts.push(`-- ${title} --\n${content}`);
+                        }
+                    } catch(_) {}
+                }
+
+                if (!parts.length) {
+                    showNotification('لم يتم العثور على محتوى كافٍ في المحاضرات المختارة', 'warning');
+                    return;
+                }
+
+                // Merge into uploaded quiz text (append to existing content if present)
+                const newChunk = parts.join('\n\n');
+                uploadedQuizText = uploadedQuizText ? (uploadedQuizText + '\n\n' + newChunk) : newChunk;
+
+                // Ensure uploaded option exists and select it
+                let opt = sel.querySelector('option[value="__uploaded__"]');
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = '__uploaded__';
+                    opt.textContent = t('subjects.stats.files');
+                    sel.insertBefore(opt, sel.firstChild);
+                }
+                opt.disabled = false;
+                sel.value = '__uploaded__';
+
+                const btn = document.getElementById('generateQuizBtn');
+                if (btn) btn.disabled = false;
+
+                showNotification('تم جمع المحاضرات في الملفات المرفوعة للاختبار', 'success');
+            } catch (e) {
+                console.warn('addSelectedLecturesToQuizUploads error:', e);
+                showNotification('حدث خطأ أثناء جمع المحاضرات', 'error');
+            }
+        }
+        // Use direct URL as quiz source (PDF/TXT/MD)
+        async function handleQuizUrl() {
+            try {
+                const input = document.getElementById('quizUrl');
+                let url = (input?.value || '').trim();
+                if (!url) { showNotification('يرجى إدخال رابط صالح', 'error'); return; }
+
+                url = normalizePdfUrl(url);
+                showNotification('جاري قراءة المحتوى من الرابط...', 'info');
+                let text = '';
+
+                if (isPdfUrl(url) || await looksLikePdfByContentType(url)) {
+                    text = await extractTextFromPdf(url);
+                } else if (/\.(txt|md)(?:[?#].*)?$/i.test(url)) {
+                    try { const r = await fetch(url); if (r.ok) text = await r.text(); } catch(_) {}
+                } else {
+                    try {
+                        const r = await fetch(url, { headers: { 'Accept': 'text/plain' } });
+                        if (r.ok) {
+                            const ct = r.headers.get('content-type') || '';
+                            if (/text\//i.test(ct)) text = await r.text();
+                        }
+                    } catch(_) {}
+                }
+
+                if (!text || text.trim().length < 50) {
+                    showNotification('تعذر قراءة محتوى كافٍ من الرابط. تأكد أن الرابط مباشر لملف PDF أو TXT.', 'warning');
+                    return;
+                }
+
+                uploadedQuizText = `-- URL --\n${text}`;
+
+                // select uploaded option and enable generate
+                const sel = document.getElementById('quizLectureSelect');
+                let opt = sel?.querySelector('option[value="__uploaded__"]');
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = '__uploaded__';
+                    opt.textContent = 'الملفات المرفوعة';
+                    sel?.insertBefore(opt, sel.firstChild);
+                }
+                opt.disabled = false;
+                sel.value = '__uploaded__';
+                const btn = document.getElementById('generateQuizBtn');
+                if (btn) btn.disabled = false;
+
+                showNotification('تم تجهيز محتوى الرابط للاختبار', 'success');
+            } catch (e) {
+                console.warn('handleQuizUrl error:', e);
+                showNotification('حدث خطأ أثناء معالجة الرابط', 'error');
+            }
+        }
+
+        
+        async function buildLectureContentFallback(lecture) {
+            // If DB already has rich content, prefer it
+            if (lecture.full_content && String(lecture.full_content).trim()) return lecture.full_content;
+            if (lecture.file_content && String(lecture.file_content).trim()) return lecture.file_content;
+
+            let url = lecture.file_url || lecture.content_url || lecture.url || lecture.attachment_url || lecture.download_url || '';
+            if (url) url = normalizePdfUrl(url);
+            if (url) {
+                if (isPdfUrl(url) || await looksLikePdfByContentType(url)) {
+                    const text = await extractTextFromPdf(url);
+                    if (text && text.length > 100) return text;
+                } else if (/\.(txt|md)(?:[?#].*)?$/i.test(url)) {
+                    try { const r = await fetch(url); if (r.ok) { const t = await r.text(); if (t && t.trim()) return t; } } catch(_) {}
+                } else {
+                    // Inform user once if URL likely not readable due to CORS/HTML viewer
+                    try { showNotification('الرابط ليس PDF مباشر أو يمنع الوصول (CORS). استخدم رابط PDF مباشر أو ارفع الملف.', 'info'); } catch(_) {}
+                }
+            }
+
+            // Minimal but structured fallback
+            let content = `عنوان المحاضرة: ${lecture.title || ''}` + "\n";
+            if (lecture.description) content += `وصف المحاضرة: ${lecture.description}` + "\n";
+            if (url) content += `رابط الملف: ${url}` + "\n";
+            if (lecture.notes) content += `ملاحظات إضافية: ${lecture.notes}` + "\n";
+            return content;
+        }
         // Gemini API Configuration
-        // 🛑 تم استبدال المفتاح النائب بمفتاحك الشخصي بنجاح.
-        // التطبيق جاهز الآن للعمل بشكل دائم وحقيقي باستخدام خدمات Gemini.
-        const GEMINI_API_KEY ="AIzaSyCJJeUJYRMWGBrMVD1xxFudKZaGBbuMwCQ";
+        // تأكد من أن هذا المفتاح صحيح لضمان عمل النموذج 'الحقيقي'
+        const GEMINI_API_KEY ="AIzaSyB8p4Vh8TmQplHOMrKaGwProWRLn5Dn2uc";
         
         let currentUser = null;
         let currentQuiz = null;
         let currentQuestionIndex = 0;
         let userAnswers = [];
+        let uploadedQaText = '';
+        let uploadedQuizText = '';
+
+        function detectLanguage(text) {
+            try {
+                const sample = (text || '').slice(0, 2000);
+                const arMatches = sample.match(/[\u0600-\u06FF]/g) || [];
+                const enMatches = sample.match(/[A-Za-z]/g) || [];
+                if (arMatches.length === 0 && enMatches.length === 0) return 'ar';
+                return arMatches.length >= enMatches.length ? 'ar' : 'en';
+            } catch (_) { return 'ar'; }
+        }
+
+        // Optional platform context for answering questions about the platform itself
+        const platformContext = `المنصة تحتوي على صفحات رئيسية: الصفحة الرئيسية، المواد الدراسية، المخطط الدراسي، مؤقت المذاكرة، والمساعد الذكي. يمكن للمستخدم إضافة مواد، إضافة محاضرات وروابط ملفات لها، ثم استخدام المساعد الذكي لطرح الأسئلة وإنشاء اختبارات.`;
 
         /**
-         * Get AI response from Google Gemini API
+         * Get AI text response from Gemini API for Q&A, grounded in lecture context.
          * @param {string} textPrompt - User's question or prompt
          * @param {object} lectureContext - Lecture context for educational responses
+         * @returns {Promise<string>} The generated text response.
          */
-        async function getGeminiResponse(textPrompt, lectureContext = null) {
-            // ✅ FIX: Changed model name from gemini-1.5-flash-latest to gemini-2.5-flash
+        async function getGeminiQaResponse(textPrompt, lectureContext) {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            
+            // Build comprehensive context from lecture data
+            let lectureContent = '';
+            // Prioritize the dedicated full content if available
+            if (lectureContext.full_content) {
+                lectureContent = lectureContext.full_content;
+            } else {
+                // Fallback compilation if full_content is missing
+                lectureContent = `عنوان المحاضرة: ${lectureContext.title}\n`;
+                if (lectureContext.description) lectureContent += `وصف المحاضرة: ${lectureContext.description}\n`;
+                if (lectureContext.file_content) lectureContent += `محتوى الملف: ${lectureContext.file_content}\n`;
+                // Add any available URL so the model knows the source when no extracted text exists
+                const urlField = lectureContext.file_url || lectureContext.content_url || lectureContext.url || lectureContext.attachment_url || lectureContext.download_url || '';
+                if (urlField) lectureContent += `رابط الملف: ${urlField}\n`;
+                if (lectureContext.notes) lectureContent += `ملاحظات إضافية: ${lectureContext.notes}\n`;
+            }
+
+            // Determine content strength and languages
+            const contentWeak = !lectureContext.full_content && (!lectureContext.file_content || String(lectureContext.file_content).trim().length < 80);
+            const lectureLang = detectLanguage(lectureContent);
+            const questionLang = detectLanguage(textPrompt || '');
+            const respLang = questionLang || lectureLang || 'ar';
+
+            const systemInstructionText = respLang === 'ar'
+                ? (contentWeak
+                    ? `أنت خبير أكاديمي. أجب باللغة العربية الفصحى وبأسلوب واضح.
+
+قواعد:
+1) إذا كان المحتوى المتاح محدوداً، اذكر ذلك بجملة قصيرة أولاً.
+2) اعتمد فقط على محتوى المحاضرة المرفق، ويمكنك ترجمة المقتطفات للشرح إن كانت بلغة مختلفة.
+3) قدّم إجابة تعليمية دقيقة ومنظمة (عناوين، قوائم) دون اختلاق معلومات.
+4) إن كانت هناك معلومات ناقصة، وضّح المطلوب.`
+                    : `أنت خبير أكاديمي ومتخصص في تحليل المحاضرات. أجب بالعربية واعتمد فقط على محتوى المحاضرة المقدم (ترجم المقتطفات عند الحاجة دون إضافة معلومات خارج النص).
+
+قواعد:
+1) استخدم محتوى المحاضرة فقط.
+2) اجعل الإجابة عربية فصحى ومنسقة.
+3) إذا لم تجد المعلومة داخل النص، اذكر ذلك.`)
+                : (contentWeak
+                    ? `You are an academic expert. Answer in clear, formal English.
+
+Rules:
+1) If the available content is limited, state that briefly first.
+2) Ground strictly in the provided lecture content; translate excerpts if the source language differs.
+3) Provide a concise, structured answer (headings, lists) without hallucinating.
+4) If information is missing, say what exactly is needed.`
+                    : `You are an academic expert specialized in lecture analysis. Answer in English strictly based on the provided lecture content (you may translate excerpts when needed, but do not add outside info).
+
+Rules:
+1) Use only the lecture content.
+2) Keep a professional, structured English style.
+3) If the information is not present, say so.`);
+
+            // User Query Content
+            const userContentParts = [
+                {
+                    text: (respLang === 'ar'
+                        ? `محتوى المحاضرة المتاح الذي يجب عليك الاعتماد عليه:\n======================================\n${lectureContent}\n======================================`
+                        : `Lecture content you must rely on:\n======================================\n${lectureContent}\n======================================`)
+                },
+                {
+                    text: (respLang === 'ar' ? `سؤال الطالب: ${textPrompt}` : `Student question: ${textPrompt}`)
+                }
+            ];
+
+            const payload = {
+                contents: [{ parts: userContentParts }],
+                systemInstruction: { parts: [{ text: systemInstructionText }] },
+            };
 
             try {
-                const parts = [];
+                // Implementing simple retry mechanism for robustness
+                const MAX_RETRIES = 3;
+                let response = null;
+                for (let i = 0; i < MAX_RETRIES; i++) {
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-                // Add context about the lecture if available
-                let contextualPrompt = textPrompt;
-                if (lectureContext) {
-                    // Build comprehensive context from lecture data
-                    let lectureContent = '';
-                    if (lectureContext.full_content) {
-                        lectureContent = lectureContext.full_content;
+                    if (response.ok) break;
+
+                    if (i < MAX_RETRIES - 1) {
+                        console.warn(`Retry attempt ${i + 1} for Gemini Q&A due to status ${response.status}`);
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000)); // Exponential backoff
                     } else {
-                        lectureContent = `عنوان المحاضرة: ${lectureContext.title}`;
-                        if (lectureContext.description) {
-                            lectureContent += `\nوصف المحاضرة: ${lectureContext.description}`;
-                        }
-                        if (lectureContext.content_type) {
-                            lectureContent += `\nنوع المحتوى: ${lectureContext.content_type}`;
-                        }
-                        if (lectureContext.file_content) {
-                            lectureContent += `\nمحتوى الملف: ${lectureContext.file_content}`;
-                        }
-                        if (lectureContext.notes) {
-                            lectureContent += `\nملاحظات إضافية: ${lectureContext.notes}`;
-                        }
+                        const errorData = await response.json();
+                        throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
                     }
-
-                    contextualPrompt = `أنت مساعد تعليمي ذكي ومتخصص في التعليم والمواد الأكاديمية. لديك معرفة واسعة ويمكنك مساعدة الطلاب في جميع أسئلتهم التعليمية.
-
-معلومات المحاضرة المتاحة:
-${lectureContent}
-
-سؤال الطالب: ${textPrompt}
-
-إرشادات الإجابة:
-- استخدم معرفتك الواسعة لتقديم إجابات شاملة ومفيدة ودقيقة
-- إذا كان السؤال متعلقاً بمحتوى المحاضرة، اربط إجابتك بالمحتوى المتاح واستشهد بأجزاء منه
-- إذا كان السؤال عاماً في المجال التعليمي، قدم معلومات تفصيلية ومفيدة
-- اذكر الأحداث والمفاهيم والتواريخ والشخصيات المهمة عند الحاجة
-- قدم السياق والأسباب والنتائج والأمثلة التوضيحية
-- استخدم اللغة العربية الواضحة والمناسبة للطلاب
-- نظم إجابتك بشكل منطقي ومرتب مع استخدام النقاط والفقرات عند الحاجة
-- إذا لم تجد المعلومة في محتوى المحاضرة، استخدم معرفتك العامة وأشر إلى ذلك
-- كن مفيداً وتعليمياً وتفاعلياً في جميع إجاباتك`;
-                }
-
-                parts.push({ text: contextualPrompt });
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: parts
-                        }]
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
                 }
 
                 const result = await response.json();
                 const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
                 if (aiResponse) {
+                    // If content was weak, show a gentle notice once
+                    try {
+                        if (contentWeak) {
+                            showNotification('تنبيه: لا يوجد نص للمحاضرة، تم تقديم إجابة عامة بناءً على العنوان/الوصف.', 'info');
+                        }
+                    } catch (_) {}
                     return aiResponse;
                 } else {
-                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء رد.');
+                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء رد (قد يكون المحتوى غير كافٍ للإجابة).');
                 }
-
             } catch (error) {
                 console.error("Gemini API Error:", error);
                 // Return a user-friendly error message
-                return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي: ${error.message}`;
+                return `عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي أو انتهت مهلة الرد: ${error.message}. يرجى المحاولة بسؤال آخر أو اختيار محاضرة مختلفة.`;
+            }
+        }
+
+        /**
+         * Get AI structured JSON response for Quiz generation.
+         */
+        async function getGeminiQuiz(lectureContent, questionCount, questionType) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            
+            // Define the JSON schema for the quiz structure (ensures 100% valid JSON output)
+            const quizSchema = {
+                type: "OBJECT",
+                properties: {
+                    title: { type: "STRING", description: "عنوان جذاب ومناسب للاختبار." },
+                    questions: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                question: { type: "STRING", description: "نص السؤال." },
+                                type: { type: "STRING", description: "نوع السؤال: 'multiple' أو 'truefalse'." },
+                                options: { 
+                                    type: "ARRAY", 
+                                    items: { type: "STRING" },
+                                    description: "قائمة بالخيارات (مثلاً: أ) الخيار الأول، ب) الخيار الثاني، ج) الخيار الثالث، د) الخيار الرابع) أو (صح، خطأ)."
+                                },
+                                correct: { type: "INTEGER", description: "مؤشر الإجابة الصحيحة في قائمة الخيارات (0، 1، 2، 3 أو 0، 1)." }
+                            },
+                            required: ["question", "type", "options", "correct"]
+                        }
+                    }
+                },
+                required: ["title", "questions"]
+            };
+
+            const lang = detectLanguage(lectureContent);
+            let questionTypeInstructions = '';
+            if (questionType === 'multiple') {
+                questionTypeInstructions = (lang === 'ar')
+                    ? `أنشئ ${questionCount} سؤال اختيار من متعدد (multiple) بـ 4 خيارات لكل سؤال.`
+                    : `Create ${questionCount} multiple-choice (multiple) questions with 4 options each.`;
+            } else if (questionType === 'truefalse') {
+                questionTypeInstructions = (lang === 'ar')
+                    ? `أنشئ ${questionCount} سؤال صح وخطأ (truefalse) بخيارين (صح أو خطأ) لكل سؤال.`
+                    : `Create ${questionCount} true/false (truefalse) questions with two options (True or False).`;
+            } else if (questionType === 'mixed') {
+                const multipleCount = Math.ceil(questionCount * 0.6);
+                const trueFalseCount = questionCount - multipleCount;
+                questionTypeInstructions = (lang === 'ar')
+                    ? `أنشئ ${multipleCount} سؤال اختيار من متعدد (multiple) و ${trueFalseCount} سؤال صح وخطأ (truefalse).`
+                    : `Create ${multipleCount} multiple-choice (multiple) and ${trueFalseCount} true/false (truefalse) questions.`;
+            }
+
+            const quizPrompt = (lang === 'ar')
+                ? `أنت خبير في إنشاء اختبارات تعليمية. مهمتك هي إنشاء اختبار تعليمي باللغة المناسبة للمحتوى (هنا: العربية) بناءً على محتوى المحاضرة المقدم.
+
+**التعليمات:**
+- **المحتوى**: يجب أن تكون جميع الأسئلة والإجابات الصحيحة مستمدة **فقط** من محتوى المحاضرة المرفق أدناه.
+- **العدد والنوع**: ${questionTypeInstructions}
+- **التنسيق**: يجب أن يكون الإخراج بصيغة JSON صالح يتبع المخطط المحدد، ولا يجب أن يحتوي على أي نص إضافي قبل أو بعد الـ JSON.
+
+محتوى المحاضرة:
+======================================
+${lectureContent}
+======================================`
+                : `You are an expert at creating educational quizzes. Your task is to produce a quiz in English, based strictly on the provided lecture content.
+
+Instructions:
+- Content: All questions and correct answers must be derived ONLY from the lecture content below.
+- Count and type: ${questionTypeInstructions}
+- Format: Output must be valid JSON following the provided schema, with no extra text before or after the JSON.
+
+Lecture content:
+======================================
+${lectureContent}
+======================================`;
+
+            const payload = {
+                contents: [{ parts: [{ text: quizPrompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: quizSchema
+                }
+            };
+
+            try {
+                // Implementing simple retry mechanism for robustness
+                const MAX_RETRIES = 3;
+                let response = null;
+                for (let i = 0; i < MAX_RETRIES; i++) {
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) break;
+
+                    if (i < MAX_RETRIES - 1) {
+                        console.warn(`Retry attempt ${i + 1} for Gemini Quiz due to status ${response.status}`);
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000)); // Exponential backoff
+                    } else {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
+                    }
+                }
+
+                const result = await response.json();
+                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (jsonText) {
+                    return JSON.parse(jsonText);
+                } else {
+                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء JSON صالح أو كانت الاستجابة فارغة.');
+                }
+            } catch (error) {
+                console.error("Gemini API Error (Quiz):", error);
+                throw new Error(`فشل الاتصال بـ Gemini أو تحليل الاستجابة: ${error.message}`);
             }
         }
 
@@ -384,7 +996,7 @@ ${lectureContent}
         async function loadUserData() {
             try {
                 const userName = localStorage.getItem('userName') || currentUser?.email?.split('@')[0] || 'المستخدم';
-                const userEmail = localStorage.getItem('userEmail') || currentUser?.email || '';
+                // const userEmail = localStorage.getItem('userEmail') || currentUser?.email || ''; // Unused variable
                 document.getElementById('userEmail').textContent = `مرحباً، ${userName}`;
             } catch (error) {
                 console.error('Error loading user data:', error);
@@ -410,36 +1022,56 @@ ${lectureContent}
                 const qaLectureSelect = document.getElementById('qaLectureSelect');
                 const quizLectureSelect = document.getElementById('quizLectureSelect');
                 
+                // Reset and add special options
                 qaLectureSelect.innerHTML = '<option value="">-- اختر محاضرة --</option>';
-                quizLectureSelect.innerHTML = '<option value="">-- اختر محاضرة --</option>';
+                // Platform (general) option
+                const platformOpt = document.createElement('option');
+                platformOpt.value = '__platform__';
+                platformOpt.textContent = 'المنصة (عام)';
+                qaLectureSelect.appendChild(platformOpt);
+                // Uploaded files placeholder option (disabled until files uploaded)
+                const uploadedQaOpt = document.createElement('option');
+                uploadedQaOpt.value = '__uploaded__';
+                uploadedQaOpt.textContent = 'الملفات المرفوعة';
+                uploadedQaOpt.disabled = !(uploadedQaText && uploadedQaText.length > 0);
+                qaLectureSelect.appendChild(uploadedQaOpt);
+
+                // Quiz select reset and uploaded option (disabled until files uploaded)
+                quizLectureSelect.innerHTML = '';
+                const uploadedQuizOpt = document.createElement('option');
+                uploadedQuizOpt.value = '__uploaded__';
+                uploadedQuizOpt.textContent = 'الملفات المرفوعة';
+                uploadedQuizOpt.disabled = !(uploadedQuizText && uploadedQuizText.length > 0);
+                quizLectureSelect.appendChild(uploadedQuizOpt);
 
                 // Load lectures for each subject
+                let hasLectures = false;
                 for (const subject of subjects) {
                     const lecturesResult = await window.supabaseDB.lectures.getBySubject(subject.id);
                     if (lecturesResult.data && lecturesResult.data.length > 0) {
-                        const lectures = lecturesResult.data;
-                        
-                        lectures.forEach(lecture => {
+                        hasLectures = true;
+                        lecturesResult.data.forEach(lecture => {
+                            const lectureTitle = `${lecture.title} - ${subject.name}`;
+
                             // Add to Q&A dropdown
                             const qaOption = document.createElement('option');
                             qaOption.value = lecture.id;
-                            qaOption.textContent = `${lecture.title} - ${subject.name}`;
-                            qaOption.dataset.subjectId = subject.id;
+                            qaOption.textContent = lectureTitle;
                             qaLectureSelect.appendChild(qaOption);
 
                             // Add to Quiz dropdown
                             const quizOption = document.createElement('option');
                             quizOption.value = lecture.id;
-                            quizOption.textContent = `${lecture.title} - ${subject.name}`;
-                            quizOption.dataset.subjectId = subject.id;
+                            quizOption.textContent = lectureTitle;
                             quizLectureSelect.appendChild(quizOption);
                         });
                     }
                 }
 
-                if (qaLectureSelect.children.length === 1) {
-                    qaLectureSelect.innerHTML = '<option value="">لا توجد محاضرات متاحة - أضف محاضرات في إدارة المواد</option>';
-                    quizLectureSelect.innerHTML = '<option value="">لا توجد محاضرات متاحة - أضف محاضرات في إدارة المواد</option>';
+                if (!hasLectures) {
+                    const noLectureText = '<option value="" disabled>لا توجد محاضرات متاحة - أضف محاضرات</option>';
+                    qaLectureSelect.innerHTML = noLectureText;
+                    quizLectureSelect.innerHTML = noLectureText;
                 }
 
                 console.log('✅ Lectures loaded from database');
@@ -455,21 +1087,30 @@ ${lectureContent}
             const lectureId = document.getElementById('qaLectureSelect').value;
             const questionInput = document.getElementById('questionInput');
             const askBtn = document.getElementById('askBtn');
+            const chatArea = document.getElementById('chatArea');
+            const isUploaded = lectureId === '__uploaded__' && uploadedQaText.length > 0;
+            const isPlatform = lectureId === '__platform__';
             
-            if (lectureId) {
+            if ((lectureId && lectureId !== '__uploaded__' && lectureId !== '') || isUploaded || isPlatform) {
                 questionInput.disabled = false;
                 askBtn.disabled = false;
                 
-                const chatArea = document.getElementById('chatArea');
                 chatArea.innerHTML = `
                     <div class="ai-message chat-message">
-                        <p>مرحباً! لقد اخترت محاضرة. يمكنك الآن طرح أي سؤال عن محتوى هذه المحاضرة.</p>
+                        <p>مرحباً! يمكنك الآن طرح أي سؤال بناءً على المصدر المحدد (محاضرة/ملفات/وضع المنصة).</p>
                     </div>
                 `;
             } else {
                 questionInput.disabled = true;
                 askBtn.disabled = true;
+                chatArea.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-robot text-4xl mb-2"></i>
+                        <p>مرحباً! اختر محاضرة واسأل أي سؤال تريد</p>
+                    </div>
+                `;
             }
+            scrollToBottom();
         }
 
         // Enable quiz generation when lectures are selected
@@ -494,7 +1135,7 @@ ${lectureContent}
             
             const lectureSelect = document.getElementById('qaLectureSelect');
             if (!lectureSelect.value) {
-                showNotification('يرجى اختيار محاضرة أولاً', 'error');
+                showNotification('يرجى اختيار محاضرة أو رفع ملفات أو تفعيل وضع المنصة أولاً', 'error');
                 return;
             }
 
@@ -504,7 +1145,7 @@ ${lectureContent}
             
             // Show typing indicator
             const typingDiv = document.createElement('div');
-            typingDiv.className = 'message';
+            typingDiv.className = 'message typing-indicator-wrapper';
             typingDiv.innerHTML = `
                 <div class="ai-message">
                     <div class="flex items-center">
@@ -519,18 +1160,31 @@ ${lectureContent}
             scrollToBottom();
 
             try {
-                const lectureId = lectureSelect.value;
-                
-                // Get lecture content from database including file content
-                const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
-                const lecture = lectureResult.data;
-                
-                if (!lecture) {
-                    throw new Error('لم يتم العثور على المحاضرة');
+                let lecture = null;
+                const selVal = lectureSelect.value;
+                if (selVal === '__platform__') {
+                    lecture = { title: 'منصة الطالب الذكي', full_content: platformContext };
+                } else if (selVal === '__uploaded__') {
+                    if (!uploadedQaText) throw new Error('لم يتم رفع ملفات بعد');
+                    lecture = { title: 'ملفات مرفوعة', full_content: uploadedQaText };
+                } else {
+                    const lectureId = selVal;
+                    const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
+                    lecture = lectureResult.data;
+                    if (!lecture) throw new Error('لم يتم العثور على المحاضرة');
                 }
 
-                // Generate AI response using Gemini API with actual content
-                const response = await getGeminiResponse(message, lecture);
+                // Enrich lecture content if needed
+                try {
+                    if (!lecture.full_content || !(lecture.file_content || '').trim() || (lecture.file_content || '').trim().length < 80) {
+                        const enriched = await buildLectureContentFallback(lecture);
+                        if (enriched && enriched.trim()) {
+                            lecture.full_content = enriched;
+                        }
+                    }
+                } catch (_) {}
+
+                const response = await getGeminiQaResponse(message, lecture);
                 
                 // Remove typing indicator
                 typingDiv.remove();
@@ -545,15 +1199,334 @@ ${lectureContent}
             }
         }
 
+        async function resolveCurrentSource() {
+            const lectureSelect = document.getElementById('qaLectureSelect');
+            const selVal = lectureSelect?.value || '';
+            if (selVal === '__platform__') {
+                return { title: 'منصة الطالب الذكي', content: platformContext };
+            } else if (selVal === '__uploaded__') {
+                if (!uploadedQaText) throw new Error('لم يتم رفع ملفات بعد');
+                return { title: 'ملفات مرفوعة', content: uploadedQaText };
+            } else if (selVal) {
+                const lectureResult = await window.supabaseDB.lectures.getWithContent(selVal);
+                const lecture = lectureResult?.data;
+                if (!lecture) throw new Error('لم يتم العثور على المحاضرة');
+                let content = '';
+                try { content = await buildLectureContentFallback(lecture); } catch(_) {}
+                const merged = content || lecture.full_content || lecture.file_content || '';
+                return { title: lecture.title || 'محاضرة', content: merged };
+            }
+            throw new Error('يرجى اختيار محاضرة أو رفع ملفات أو تفعيل وضع المنصة');
+        }
+
+        const API_BASE_FALLBACK = 'https://student-platform-backend-one.vercel.app';
+        async function postJsonWithFallback(path, payload){
+            // Always prefer calling the backend domain first (works on dev and prod)
+            try {
+                const rBackend = await fetch(`${API_BASE_FALLBACK}${path}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                if (rBackend.ok) return await rBackend.json();
+            } catch(_) { /* proceed to same-origin fallback */ }
+            // Fallback to same-origin only if backend unreachable
+            try{
+                const rSame = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                if (rSame.ok) return await rSame.json();
+            }catch(__){ return null; }
+            return null;
+        }
+        async function backendAsk(question, context){
+            const j = await postJsonWithFallback('/api/ai/ask', { question, context });
+            return j && j.response ? j.response : '';
+        }
+
+        // --- TTS helpers ---
+        function splitTextForTts(t){
+            const maxChunkChars = 1000; // conservative per-request
+            const seps = /([\.\!\?\n]|[\u061F\u06D4])+/; // include Arabic question mark/stop
+            const parts = t.split(seps).reduce((acc, piece)=>{
+                if (!piece) return acc;
+                if (seps.test(piece)) { // separator
+                    if (acc.length) acc[acc.length-1] += piece;
+                    else acc.push(piece);
+                } else {
+                    acc.push(piece);
+                }
+                return acc;
+            }, []);
+            const out = [];
+            let buf = '';
+            for (const p of parts){
+                if ((buf + p).length > maxChunkChars){
+                    if (buf) out.push(buf.trim());
+                    buf = p;
+                } else {
+                    buf += p;
+                }
+            }
+            if (buf.trim()) out.push(buf.trim());
+            return out;
+        }
+
+        async function responseToArrayBuffer(j){
+            let src = j?.audio || j?.audioUrl || j?.url || '';
+            if (j?.base64) {
+                const bstr = atob(j.base64);
+                const bytes = new Uint8Array(bstr.length);
+                for (let i=0;i<bstr.length;i++) bytes[i] = bstr.charCodeAt(i);
+                return bytes.buffer;
+            }
+            if (!src) return null;
+            const r = await fetch(src);
+            if (!r.ok) return null;
+            return await r.arrayBuffer();
+        }
+
+        function concatArrayBuffers(buffers){
+            const total = buffers.reduce((s,b)=> s + (b?.byteLength||0), 0);
+            const out = new Uint8Array(total);
+            let offset = 0;
+            for (const b of buffers){
+                if (!b) continue;
+                const u = new Uint8Array(b);
+                out.set(u, offset);
+                offset += u.byteLength;
+            }
+            return out.buffer;
+        }
+
+        async function synthesizeLargeTts(text, maxBytes){
+            const chunks = splitTextForTts(text);
+            const buffers = [];
+            let total = 0;
+            for (const c of chunks){
+                const j = await postJsonWithFallback('/api/tts', { text: c });
+                const buf = await responseToArrayBuffer(j);
+                if (!buf) continue;
+                total += buf.byteLength;
+                if (total > maxBytes) break;
+                buffers.push(buf);
+            }
+            if (!buffers.length) return '';
+            // Concatenate MP3 frames (works with most browsers/encoders)
+            const merged = concatArrayBuffers(buffers);
+            const blob = new Blob([merged], { type: 'audio/mpeg' });
+            return URL.createObjectURL(blob);
+        }
+
+        // --- Dialogue summary (male teacher vs female student) ---
+        async function buildDialogueSummary(fullText){
+            try{
+                const maxChunk = 12000;
+                const chunks = [];
+                for (let i=0; i<fullText.length; i+=maxChunk){ chunks.push(fullText.slice(i, i+maxChunk)); }
+                if (chunks.length <= 1){
+                    const p = 'لخّص المحتوى التالي على هيئة حوار تعليمي موجز بين "المدرّس" (رجل) و"الطالبة" (بنت). اجعل الحوار مناسباً للاستماع: 4–8 تبادلات كحد أقصى، جُمل قصيرة واضحة، تغطي أهم الأفكار مع أمثلة صغيرة عند الحاجة. استخدم صيغاً مثل: المدرّس: ...\nالطالبة: ...';
+                    return await getGeminiQaResponse(p, { title: 'ملف', full_content: fullText });
+                }
+                const outlines = [];
+                for (const c of chunks){
+                    const p = 'استخرج أهم 5-8 نقاط أساسية من هذا الجزء بشكل موجز مناسب لحوار سمعي.';
+                    const r = await getGeminiQaResponse(p, { title: 'جزء', full_content: c });
+                    if (r) outlines.push(r);
+                }
+                const merged = outlines.join('\n');
+                const finalPrompt = 'بناءً على النقاط التالية، اكتب ملخّصاً سمعياً قصيراً على هيئة حوار بين "المدرّس" (رجل) و"الطالبة" (بنت)، 4–8 تبادلات فقط، جمل قصيرة وواضحة، بلا مقدمات ولا خاتمة طويلة. استخدم الصيغة: المدرّس: ...\nالطالبة: ...';
+                return await getGeminiQaResponse(finalPrompt + '\n\n' + merged, { title: 'مخطط مجمع', full_content: '' });
+            }catch(_){ return ''; }
+        }
+
+        // --- Alternating-voice TTS for dialogue ---
+        async function synthesizeDialogueTts(dialogueText, maxBytes){
+            const lines = (dialogueText||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+            const utterances = [];
+            for (const line of lines){
+                const mTeacher = /^المدرّس\s*:\s*(.*)$/i.exec(line);
+                const mStudent = /^الطالبة\s*:\s*(.*)$/i.exec(line);
+                if (mTeacher) { utterances.push({ text: mTeacher[1], voice: 'male' }); continue; }
+                if (mStudent) { utterances.push({ text: mStudent[1], voice: 'female' }); continue; }
+                utterances.push({ text: line, voice: 'neutral' });
+            }
+            const buffers = [];
+            let total = 0;
+            for (const u of utterances){
+                const body = { text: u.text };
+                if (u.voice === 'male') body.voice = 'male';
+                else if (u.voice === 'female') body.voice = 'female';
+                const j = await postJsonWithFallback('/api/tts', body);
+                const buf = await responseToArrayBuffer(j);
+                if (!buf) continue;
+                total += buf.byteLength; if (total > maxBytes) break;
+                buffers.push(buf);
+            }
+            if (!buffers.length) return '';
+            const merged = concatArrayBuffers(buffers);
+            const blob = new Blob([merged], { type: 'audio/mpeg' });
+            return URL.createObjectURL(blob);
+        }
+
+        async function explainFullSource(){
+            try{
+                const { title, content } = await resolveCurrentSource();
+                if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للشرح', 'warning'); return; }
+                addMessage('أشرح المحاضرة بالكامل: ' + title, 'user');
+                const system = 'اشرح المحتوى التالي شرحاً كاملاً على هيئة حوار تعليمي بين "المدرّس" (رجل) و"الطالبة" (بنت). يجب أن يغطي الحوار جميع المحاور المهمة بتدرّج منطقي، مع أسئلة واعتراضات قصيرة من الطالبة وردود واضحة من المدرّس، وأمثلة مركزة عند الحاجة، وبعربية فصحى مبسطة وبدون حشو. استخدم صيغاً مثل: المدرّس: ...\nالطالبة: ...';
+                let reply = await backendAsk(system, content);
+                if (!reply || reply.trim().length < 10) {
+                    try {
+                        reply = await clientExplainLarge(content);
+                    } catch(_) {}
+                }
+                addMessage(reply || 'تعذر إنشاء الشرح الآن', 'ai');
+            }catch(e){ showNotification('حدث خطأ أثناء الشرح', 'error'); }
+        }
+
+        async function summarizeFullSource(){
+            try{
+                const { content } = await resolveCurrentSource();
+                if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للتلخيص', 'warning'); return; }
+                addMessage('ألخّص المحاضرة بالكامل.', 'user');
+                const system = 'لخّص المحتوى التالي في نقاط عربية واضحة ومختصرة جداً (5-9 نقاط)، بدون مقدمات أو ختام.';
+                let reply = await backendAsk(system, content);
+                if (!reply || reply.trim().length < 10) {
+                    try {
+                        const fallback = await clientSummarizeLarge(content);
+                        reply = fallback || reply;
+                    } catch(_) {}
+                }
+                addMessage(reply || 'تعذر إنشاء التلخيص الآن', 'ai');
+            }catch(e){ showNotification('حدث خطأ أثناء التلخيص', 'error'); }
+        }
+
+        async function clientSummarizeLarge(fullText){
+            try{
+                const maxChunk = 12000;
+                const chunks = [];
+                for (let i=0; i<fullText.length; i+=maxChunk){ chunks.push(fullText.slice(i, i+maxChunk)); }
+                if (chunks.length <= 1){
+                    const p = 'لخّص المحتوى التالي في نقاط عربية واضحة ومختصرة جداً (5-9 نقاط)، بدون مقدمات أو ختام.';
+                    return await getGeminiQaResponse(p, { title: 'محاضرة', full_content: fullText });
+                }
+                const partials = [];
+                for (const c of chunks){
+                    const p = 'لخّص بإيجاز أبرز النقاط التعليمية من هذا الجزء في 3-5 نقاط عربية.';
+                    const r = await getGeminiQaResponse(p, { title: 'جزء محاضرة', full_content: c });
+                    if (r) partials.push(r);
+                }
+                const merged = partials.join('\n');
+                const finalPrompt = 'ادمج الملخصات الجزئية التالية في نقاط نهائية موجزة (5-9 نقاط) بالعربية الواضحة بدون أي مقدمة أو خاتمة:';
+                return await getGeminiQaResponse(finalPrompt + '\n\n' + merged, { title: 'ملخصات جزئية', full_content: '' });
+            }catch(_){ return ''; }
+        }
+
+        async function audioSummaryFullSource(){
+            try{
+                const { content } = await resolveCurrentSource();
+                if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للملخص الصوتي', 'warning'); return; }
+                // Create a full dialogue explanation (entire file) suitable for two voices (male/female)
+                let dialogue = await backendAsk('اشرح المحتوى التالي شرحاً كاملاً على هيئة حوار تعليمي بين "المدرّس" (رجل) و"الطالبة" (بنت). يجب أن يغطي الحوار جميع المحاور المهمة بتدرّج منطقي، مع أسئلة واعتراضات قصيرة من الطالبة وردود واضحة من المدرّس، وأمثلة مركزة عند الحاجة، وبعربية فصحى مبسطة وبدون حشو. استخدم صيغاً مثل: المدرّس: ...\nالطالبة: ...', content);
+                if (!dialogue || dialogue.trim().length < 10){
+                    try { dialogue = await clientExplainLarge(content); } catch(_) {}
+                }
+                if (!dialogue || dialogue.trim().length < 10){ showNotification('تعذر إنشاء نص الشرح الحواري الكامل', 'error'); return; }
+                dialogue = dialogue.trim();
+                const audioEl = document.getElementById('aiSummaryAudio');
+                // Try alternating-voice synthesis up to ~10MB
+                let url = await synthesizeDialogueTts(dialogue, 10 * 1024 * 1024);
+                if (!url){
+                    // Fallback to single-shot or multi-chunk neutral TTS
+                    if (dialogue.length <= 1200){
+                        const j = await postJsonWithFallback('/api/tts', { text: dialogue });
+                        if (j){
+                            url = j.audio || j.audioUrl || j.url || '';
+                            if (!url && j.base64) url = `data:audio/mpeg;base64,${j.base64}`;
+                        }
+                    }
+                    if (!url){ url = await synthesizeLargeTts(dialogue, 10 * 1024 * 1024); }
+                }
+                if (!url) { showNotification('تعذر إنشاء الصوت', 'error'); return; }
+                if (audioEl) { audioEl.src = url; audioEl.classList.remove('hidden'); audioEl.play().catch(()=>{}); }
+            }catch(e){ showNotification('حدث خطأ أثناء إنشاء الملخص الصوتي', 'error'); }
+        }
+
+        async function clientExplainLarge(fullText){
+            const maxChunk = 12000;
+            const chunks = [];
+            for (let i=0; i<fullText.length; i+=maxChunk){ chunks.push(fullText.slice(i, i+maxChunk)); }
+            if (chunks.length <= 1){
+                const p = 'اشرح المحتوى التالي شرحاً كاملاً على هيئة حوار تعليمي بين "المدرّس" (رجل) و"الطالبة" (بنت). يجب أن يغطي الحوار جميع المحاور المهمة بتدرّج منطقي، مع أسئلة واعتراضات قصيرة من الطالبة وردود واضحة من المدرّس، وأمثلة مركزة عند الحاجة، وبعربية فصحى مبسطة وبدون حشو. استخدم صيغاً مثل: المدرّس: ...\nالطالبة: ...';
+                return await getGeminiQaResponse(p, { title: 'محاضرة', full_content: fullText });
+            }
+            const outlines = [];
+            for (const c of chunks){
+                const p = 'استخرج مخططاً تعليمياً موجزاً بالنقاط للمفاهيم والمحاور الأساسية من هذا الجزء.';
+                const r = await getGeminiQaResponse(p, { title: 'جزء محاضرة', full_content: c });
+                if (r) outlines.push(r);
+            }
+            const mergedOutline = outlines.join('\n');
+            const finalPrompt = 'اعتماداً على المخطط التالي، اكتب الشرح كاملاً على هيئة حوار تعليمي بين "المدرّس" (رجل) و"الطالبة" (بنت). ليكن الحوار متدرّجاً يغطي جميع المحاور، مع أسئلة واعتراضات وجوابها، وأمثلة قصيرة حيث يلزم، وبدون مقدمات أو خاتمة مطوّلة. استخدم صيغاً مثل: المدرّس: ...\nالطالبة: ...';
+            return await getGeminiQaResponse(finalPrompt + '\n\n' + mergedOutline, { title: 'مخطط مجمّع', full_content: '' });
+        }
+
+        async function clientAudioSummaryLarge(fullText){
+            const maxChunk = 12000;
+            const chunks = [];
+            for (let i=0; i<fullText.length; i+=maxChunk){ chunks.push(fullText.slice(i, i+maxChunk)); }
+            if (chunks.length <= 1){
+                const p = 'لخّص المحتوى التالي في فقرة عربية قصيرة مفهومة للاستماع (3-6 جمل).';
+                return await getGeminiQaResponse(p, { title: 'ملفات', full_content: fullText });
+            }
+            const partials = [];
+            for (const c of chunks){
+                const p = 'قدّم خلاصة موجزة جداً لهذا الجزء في جملتين عربيتين كحد أقصى.';
+                const r = await getGeminiQaResponse(p, { title: 'جزء', full_content: c });
+                if (r) partials.push(r);
+            }
+            const merged = partials.join(' ');
+            const finalPrompt = 'ادمج الخلاصات الجزئية التالية في فقرة عربية واحدة سلسة مناسبة للاستماع (3-6 جمل)، خالية من المقدمات والخواتيم:';
+            return await getGeminiQaResponse(finalPrompt + '\n\n' + merged, { title: 'خلاصات جزئية', full_content: '' });
+        }
+
         // Generate quiz
         async function generateQuiz() {
-            const lectureSelect = document.getElementById('quizLectureSelect');
-            const selectedOptions = Array.from(lectureSelect.selectedOptions);
-            
-            if (selectedOptions.length === 0) {
-                showNotification('يرجى اختيار محاضرة واحدة على الأقل', 'error');
+            // If no uploaded content, try to build from selected lectures automatically
+            if (!(uploadedQuizText && uploadedQuizText.length > 80)) {
+                try {
+                    const sel = document.getElementById('quizLectureSelect');
+                    const ids = Array.from(sel?.selectedOptions || [])
+                        .map(o => o.value)
+                        .filter(v => v && v !== '__uploaded__');
+                    if (ids.length > 0) {
+                        showNotification('جاري جمع محتوى المحاضرات المحددة للاختبار...', 'info');
+                        const parts = [];
+                        for (const id of ids) {
+                            try {
+                                const lectureResult = await window.supabaseDB.lectures.getWithContent(id);
+                                const lecture = lectureResult?.data;
+                                if (!lecture) continue;
+                                let content = '';
+                                try { content = await buildLectureContentFallback(lecture); } catch(_) {}
+                                if (content && content.trim().length >= 20) {
+                                    const title = lecture.title || 'محاضرة';
+                                    parts.push(`-- ${title} --\n${content}`);
+                                }
+                            } catch(_) {}
+                        }
+                        const newChunk = parts.join('\n\n');
+                        if (newChunk && newChunk.length > 80) {
+                            uploadedQuizText = newChunk;
+                        }
+                    }
+                } catch(_) {}
+            }
+
+            if (!(uploadedQuizText && uploadedQuizText.length > 80)) {
+                showNotification('يرجى رفع ملفات للاختبار أولاً (PDF أو TXT/MD) أو اختيار محاضرات من القائمة', 'error');
                 return;
             }
+
+            const generateQuizBtn = document.getElementById('generateQuizBtn');
+            const originalBtnText = generateQuizBtn.innerHTML;
+            generateQuizBtn.disabled = true;
+            generateQuizBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>';
 
             try {
                 // Show loading state
@@ -580,140 +1553,20 @@ ${lectureContent}
                 const questionCount = parseInt(document.getElementById('questionCount').value) || 10;
                 const questionType = document.getElementById('questionType').value || 'multiple';
                 
-                // Get lecture content from the first selected lecture
-                const lectureId = selectedOptions[0].value;
-                const lectureResult = await window.supabaseDB.lectures.getWithContent(lectureId);
-                const lecture = lectureResult.data;
+                // Use uploaded content only
+                const lectureContent = uploadedQuizText;
+
+                // Generate quiz data using the structured response function
+                const quizData = await getGeminiQuiz(lectureContent, questionCount, questionType);
                 
-                if (!lecture) {
-                    throw new Error('لم يتم العثور على المحاضرة');
+                // Reset button state
+                generateQuizBtn.innerHTML = originalBtnText;
+                generateQuizBtn.disabled = false;
+
+                // Validation (minimal check before display)
+                if (!quizData || !quizData.questions || quizData.questions.length === 0) {
+                    throw new Error('الاستجابة كانت فارغة أو غير مكتملة. ربما المحتوى كان قصيراً جداً.');
                 }
-
-                // Build comprehensive lecture content
-                let lectureContent = '';
-                if (lecture.full_content) {
-                    lectureContent = lecture.full_content;
-                } else {
-                    lectureContent = `عنوان المحاضرة: ${lecture.title}`;
-                    if (lecture.description) {
-                        lectureContent += `\nوصف المحاضرة: ${lecture.description}`;
-                    }
-                    if (lecture.content_type) {
-                        lectureContent += `\nنوع المحتوى: ${lecture.content_type}`;
-                    }
-                    if (lecture.file_content) {
-                        lectureContent += `\nمحتوى الملف: ${lecture.file_content}`;
-                    }
-                    if (lecture.notes) {
-                        lectureContent += `\nملاحظات إضافية: ${lecture.notes}`;
-                    }
-                }
-
-                // Generate quiz prompt based on question type
-                let questionTypeInstructions = '';
-                let exampleFormat = '';
-                
-                if (questionType === 'multiple') {
-                    questionTypeInstructions = `إنشاء ${questionCount} سؤال اختيار من متعدد، كل سؤال يحتوي على 4 خيارات (أ، ب، ج، د)`;
-                    exampleFormat = `{
-      "question": "ما هو...؟",
-      "type": "multiple",
-      "options": ["أ) الخيار الأول", "ب) الخيار الثاني", "ج) الخيار الثالث", "د) الخيار الرابع"],
-      "correct": 0
-    }`;
-                } else if (questionType === 'truefalse') {
-                    questionTypeInstructions = `إنشاء ${questionCount} سؤال صح وخطأ، كل سؤال يحتوي على خيارين: صح أو خطأ`;
-                    exampleFormat = `{
-      "question": "العبارة التالية صحيحة...",
-      "type": "truefalse",
-      "options": ["صح", "خطأ"],
-      "correct": 0
-    }`;
-                } else if (questionType === 'mixed') {
-                    const multipleCount = Math.ceil(questionCount * 0.6);
-                    const trueFalseCount = questionCount - multipleCount;
-                    questionTypeInstructions = `إنشاء ${multipleCount} سؤال اختيار من متعدد و ${trueFalseCount} سؤال صح وخطأ`;
-                    exampleFormat = `{
-      "question": "نص السؤال؟",
-      "type": "multiple", // أو "truefalse"
-      "options": ["أ) الخيار الأول", "ب) الخيار الثاني", "ج) الخيار الثالث", "د) الخيار الرابع"], // أو ["صح", "خطأ"]
-      "correct": 0
-    }`;
-                }
-                
-                const quizPrompt = `أنت مساعد تعليمي متخصص في إنشاء الاختبارات التعليمية. قم بإنشاء اختبار تعليمي باللغة العربية بناءً على المحاضرة التالية:
-
-معلومات المحاضرة:
-${lectureContent}
-
-المطلوب:
-- ${questionTypeInstructions}
-- يجب أن تغطي الأسئلة جوانب مختلفة من موضوع المحاضرة
-- اجعل الأسئلة تعتمد على المحتوى الفعلي للمحاضرة
-- تأكد من أن الإجابات الصحيحة دقيقة ومبنية على محتوى المحاضرة
-- نوع الأسئلة بين المفاهيم الأساسية والتفاصيل والتطبيقات
-- اجعل الأسئلة واضحة ومفهومة للطلاب
-- تأكد من أن الخيارات الخاطئة معقولة وليست واضحة الخطأ
-
-يرجى تنسيق الإجابة بالشكل التالي بالضبط (JSON صالح فقط):
-{
-  "title": "اختبار: ${lecture.title}",
-  "questions": [
-    ${exampleFormat}
-  ]
-}
-
-تأكد من أن الإجابة تكون JSON صالح فقط بدون أي نص إضافي قبل أو بعد JSON.`;
-
-                const aiResponse = await getGeminiResponse(quizPrompt);
-                
-                // Parse AI response to extract quiz data
-                let quizData;
-                try {
-                    // Clean the response and extract JSON
-                    let cleanResponse = aiResponse.trim();
-                    
-                    // Remove any markdown code blocks
-                    cleanResponse = cleanResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-                    
-                    // Find JSON object
-                    const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) {
-                        quizData = JSON.parse(jsonMatch[0]);
-                    } else {
-                        throw new Error('لم يتم العثور على بيانات الاختبار في الاستجابة');
-                    }
-                } catch (parseError) {
-                    console.error('Error parsing AI response:', parseError);
-                    console.log('AI Response:', aiResponse);
-                    // Fallback: create a simple quiz based on lecture info
-                    quizData = createFallbackQuiz(lecture, questionCount, questionType);
-                }
-
-                // Validate and fix quiz data
-                if (!quizData.questions || quizData.questions.length === 0) {
-                    quizData = createFallbackQuiz(lecture, questionCount, questionType);
-                }
-
-                // Ensure all questions have proper structure
-                quizData.questions = quizData.questions.map((q, index) => {
-                    if (!q.question || !q.options || !Array.isArray(q.options)) {
-                        return {
-                            question: `سؤال ${index + 1}: ما هو الموضوع الرئيسي للمحاضرة؟`,
-                            type: questionType === 'mixed' ? 'multiple' : questionType,
-                            options: questionType === 'truefalse' ? ['صح', 'خطأ'] : 
-                                    ['أ) الموضوع الأساسي', 'ب) موضوع مختلف', 'ج) لا يوجد موضوع', 'د) جميع ما سبق'],
-                            correct: 0
-                        };
-                    }
-                    
-                    // Ensure correct answer index is valid
-                    if (typeof q.correct !== 'number' || q.correct < 0 || q.correct >= q.options.length) {
-                        q.correct = 0;
-                    }
-                    
-                    return q;
-                });
 
                 currentQuiz = quizData;
                 currentQuestionIndex = 0;
@@ -724,6 +1577,11 @@ ${lectureContent}
                 
             } catch (error) {
                 console.error('Error generating quiz:', error);
+                
+                // Reset button state
+                generateQuizBtn.innerHTML = originalBtnText;
+                // Keep disabled state until user changes files/URL
+
                 document.getElementById('quizContainer').innerHTML = `
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                         <div class="bg-gradient-to-r from-red-500 to-red-600 p-6">
@@ -735,7 +1593,7 @@ ${lectureContent}
                             <div class="text-red-500 mb-4">
                                 <i class="fas fa-exclamation-triangle text-4xl"></i>
                             </div>
-                            <p class="text-red-600 mb-4">حدث خطأ في إنشاء الاختبار</p>
+                            <p class="text-red-600 mb-4">${error.message || 'حدث خطأ غير متوقع في إنشاء الاختبار'}</p>
                             <button onclick="generateQuiz()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
                                 <i class="fas fa-redo ml-2"></i>المحاولة مرة أخرى
                             </button>
@@ -746,39 +1604,6 @@ ${lectureContent}
             }
         }
 
-        // Create fallback quiz when AI generation fails
-        function createFallbackQuiz(lecture, questionCount = 10, questionType = 'multiple') {
-            const questions = [];
-            
-            for (let i = 0; i < questionCount; i++) {
-                if (questionType === 'truefalse' || (questionType === 'mixed' && i >= Math.ceil(questionCount * 0.6))) {
-                    questions.push({
-                        question: `العبارة التالية صحيحة: المحاضرة "${lecture.title}" تحتوي على معلومات مفيدة.`,
-                        type: 'truefalse',
-                        options: ['صح', 'خطأ'],
-                        correct: 0
-                    });
-                } else {
-                    questions.push({
-                        question: `ما هو عنوان هذه المحاضرة؟`,
-                        type: 'multiple',
-                        options: [
-                            `أ) ${lecture.title}`,
-                            'ب) محاضرة أخرى',
-                            'ج) لا أعرف',
-                            'د) جميع ما سبق'
-                        ],
-                        correct: 0
-                    });
-                }
-            }
-            
-            return {
-                title: `اختبار: ${lecture.title}`,
-                questions: questions
-            };
-        }
-
         // Display quiz
         function displayQuiz() {
             if (!currentQuiz || !currentQuiz.questions || currentQuiz.questions.length === 0) {
@@ -787,7 +1612,6 @@ ${lectureContent}
             }
 
             // Initialize user answers array
-            // NOTE: It is better to rely on existing answers if they exist (e.g., if navigating back and forth)
             if (userAnswers.length !== currentQuiz.questions.length) {
                 userAnswers = new Array(currentQuiz.questions.length).fill(-1);
             }
@@ -796,7 +1620,7 @@ ${lectureContent}
             quizArea.innerHTML = `
                 <div class="bg-white rounded-lg border-2 border-green-200 p-6">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-bold text-green-800">${currentQuiz.title}</h3>
+                        <h3 class="text-lg font-bold text-green-800">${currentQuiz.title || 'الاختبار الجديد'}</h3>
                         <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm" id="questionCounter">
                             السؤال ${currentQuestionIndex + 1} من ${currentQuiz.questions.length}
                         </span>
@@ -823,7 +1647,7 @@ ${lectureContent}
                         ${renderQuestion(currentQuestionIndex)}
                     </div>
 
-                    <div class="flex justify-between">
+                    <div class="flex justify-between flex-wrap gap-3">
                         <button id="prevBtn" onclick="previousQuestion()" 
                                 class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 ${currentQuestionIndex === 0 ? 'disabled' : ''}>
@@ -832,7 +1656,7 @@ ${lectureContent}
                         </button>
                         
                         <button id="nextBtn" onclick="nextQuestion()" 
-                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors">
+                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors flex-1 min-w-[120px]">
                             ${currentQuestionIndex === currentQuiz.questions.length - 1 ? 
                                 '<i class="fas fa-check ml-2"></i>إنهاء الاختبار' : 
                                 'التالي<i class="fas fa-arrow-left mr-2"></i>'}
@@ -840,6 +1664,8 @@ ${lectureContent}
                     </div>
                 </div>
             `;
+            // Scroll to quiz section
+            quizArea.scrollIntoView({ behavior: 'smooth' });
         }
 
         function renderQuestion(index) {
@@ -892,8 +1718,6 @@ ${lectureContent}
                 label.classList.remove('border-gray-200');
                 label.classList.add('border-green-500', 'bg-green-50');
             }
-            
-            console.log('Answer selected:', questionIndex, answerIndex, 'Total answered:', userAnswers.filter(a => a !== -1).length);
         }
 
         function nextQuestion() {
@@ -1004,7 +1828,7 @@ ${lectureContent}
                         <div class="text-lg font-medium ${gradeColor}">${gradeMessage}</div>
                     </div>
                     
-                    <div class="flex gap-4 justify-center">
+                    <div class="flex gap-4 justify-center flex-wrap">
                         <button onclick="reviewAnswers()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
                             <i class="fas fa-eye ml-2"></i>
                             مراجعة الإجابات
@@ -1016,6 +1840,7 @@ ${lectureContent}
                     </div>
                 </div>
             `;
+            quizContainer.scrollIntoView({ behavior: 'smooth' });
         }
 
         function calculateScore() {
@@ -1031,7 +1856,7 @@ ${lectureContent}
         function reviewAnswers() {
             let reviewHtml = `
                 <div class="bg-white rounded-lg border-2 border-gray-200 p-6">
-                    <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center justify-between mb-6 flex-wrap gap-2">
                         <h4 class="text-lg font-semibold text-gray-800 flex items-center">
                             <i class="fas fa-list-check ml-2"></i>
                             مراجعة الإجابات
@@ -1049,6 +1874,10 @@ ${lectureContent}
                 const isCorrect = userAnswer === correctAnswer;
                 const wasAnswered = userAnswer !== -1;
 
+                // Ensure options are safe
+                const correctOptionText = question.options[correctAnswer] || 'غير متاح';
+                const userAnswerText = wasAnswered ? (question.options[userAnswer] || 'غير متاح') : 'لم تجب على هذا السؤال';
+
                 reviewHtml += `
                     <div class="mb-6 p-4 border rounded-lg ${
                         !wasAnswered ? 'border-gray-300 bg-gray-50' :
@@ -1062,22 +1891,16 @@ ${lectureContent}
                             <span class="font-semibold">السؤال ${index + 1}</span>
                         </div>
                         <p class="font-medium mb-3">${question.question}</p>
-                        <div class="text-sm space-y-1">
-                            ${wasAnswered ? `
-                                <div class="flex items-center">
-                                    <span class="text-gray-600 ml-2">إجابتك:</span>
-                                    <span class="${isCorrect ? 'text-green-600' : 'text-red-600'}">${question.options[userAnswer]}</span>
-                                </div>
-                            ` : `
-                                <div class="flex items-center">
-                                    <span class="text-gray-600 ml-2">إجابتك:</span>
-                                    <span class="text-gray-500">لم تجب على هذا السؤال</span>
-                                </div>
-                            `}
+                        <div class="text-sm space-y-2 border-t pt-3">
+                            <div class="flex items-start">
+                                <span class="text-gray-600 ml-2 min-w-[70px]">إجابتك:</span>
+                                <span class="${wasAnswered && isCorrect ? 'text-green-600 font-medium' : wasAnswered ? 'text-red-600 line-through' : 'text-gray-500 italic'}">${userAnswerText}</span>
+                            </div>
+                            
                             ${!isCorrect || !wasAnswered ? `
-                                <div class="flex items-center">
-                                    <span class="text-gray-600 ml-2">الإجابة الصحيحة:</span>
-                                    <span class="text-green-600">${question.options[correctAnswer]}</span>
+                                <div class="flex items-start">
+                                    <span class="text-gray-600 ml-2 min-w-[70px]">الصحيحة:</span>
+                                    <span class="text-green-600 font-medium">${correctOptionText}</span>
                                 </div>
                             ` : ''}
                         </div>
@@ -1090,6 +1913,7 @@ ${lectureContent}
             `;
 
             document.getElementById('quizContainer').innerHTML = reviewHtml;
+            document.getElementById('quizContainer').scrollIntoView({ behavior: 'smooth' });
         }
 
         // Generate new quiz
@@ -1102,10 +1926,6 @@ ${lectureContent}
             currentQuestionIndex = 0;
             userAnswers = [];
             
-            // Reset form
-            document.getElementById('quizLectureSelect').selectedIndex = 0;
-            document.getElementById('generateQuizBtn').disabled = true;
-            
             // Scroll to quiz generation section
             document.querySelector('.bg-gradient-to-r.from-green-500').scrollIntoView({ 
                 behavior: 'smooth' 
@@ -1116,10 +1936,22 @@ ${lectureContent}
         function addMessage(message, sender) {
             const chatArea = document.getElementById('chatArea');
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}-message chat-message`;
-            messageDiv.innerHTML = `<p>${message}</p>`;
+            messageDiv.className = `message`;
+            
+            // Create inner content with correct class
+            const innerDiv = document.createElement('div');
+            innerDiv.className = `${sender}-message chat-message`;
+            
+            // Apply line breaks for formatting
+            innerDiv.innerHTML = `<p>${message.replace(/\n/g, '<br>')}</p>`;
+            
+            messageDiv.appendChild(innerDiv);
             chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
+            
+            // Remove any old typing indicators if they somehow persisted
+            document.querySelectorAll('.typing-indicator-wrapper').forEach(el => el.remove());
+            
+            scrollToBottom();
         }
 
         // Scroll to bottom of chat area
@@ -1131,12 +1963,18 @@ ${lectureContent}
         // Show notification
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 p-4 rounded-lg text-white font-medium z-50 ${
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg text-white font-medium z-50 transition-all duration-300 transform translate-x-0 ${
                 type === 'success' ? 'bg-green-500' : 
                 type === 'error' ? 'bg-red-500' : 'bg-blue-500'
             }`;
             notification.textContent = message;
             document.body.appendChild(notification);
+            
+            // Animation for removal
+            setTimeout(() => {
+                notification.classList.add('translate-x-full', 'opacity-0');
+                notification.classList.remove('translate-x-0');
+            }, 2500);
             
             setTimeout(() => notification.remove(), 3000);
         }
@@ -1155,5 +1993,14 @@ ${lectureContent}
             }
         }
     </script>
+    <!-- Site Footer -->
+    <footer class="mt-10 border-t bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div>© <span id="footerYear"></span> منصة الطالب الذكي</div>
+        <div class="space-x-4 space-x-reverse">
+        </div>
+      </div>
+    </footer>
+    <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
 </body>
 </html>
