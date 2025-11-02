@@ -831,23 +831,24 @@
       speak(replyText);
     }
 
-    // Generate a single MP3 file that contains the Arabic explanation of the lecture
+    // Generate a single MP3 file that contains the Arabic explanation of the lecture (full lecture dialogue up to ~10MB)
     async function generateAudioFromLecture(){
       try{
         const content = getLecture();
         if(!content || content.length < 30){ appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة الأول (ارفع PDF أو الصق النص).`); return; }
-        appendMsg('ai', 'جارٍ إنشاء ملخّص حواري (ولد/بنت) وتحويله إلى صوت...');
-        let dialogue = await buildDialogueSummary(content);
-        if(!dialogue || dialogue.length < 40){
-          // Fallback: quick 4-turn dialogue from first sentences
+        appendMsg('ai', 'جارٍ إنشاء شرح حواري كامل (ولد/بنت) يغطي كل المحاضرة وتحويله إلى صوت حتى 10MB...');
+        // Build full dialogue explanation over the entire file
+        let dialogue = await buildDialogueExplain(content);
+        if(!dialogue || dialogue.length < 60){
+          // Fallback: use start of content if explain fails
           const s = splitSentences(content);
-          const base = s.slice(0,6).join(' ');
-          dialogue = `المدرّس: لنبدأ بتلخيص الفكرة الأساسية باختصار. ${base}\nالطالبة: تمام، ممكن مثال صغير؟\nالمدرّس: مثال سريع يوضّح النقطة.\nالطالبة: شكراً، كده اتضح الملخص.`;
+          const base = s.slice(0,12).join(' ');
+          dialogue = `المدرّس: سنعرض الفكرة العامة ونمشي على المحاور كاملة. ${base}\nالطالبة: تمام، نكمل باقي المحاور؟`;
         }
-        // Prefer alternating-voice synthesis
+        // Prefer alternating-voice synthesis up to ~10MB cap
         let url = await synthesizeDialogueTts(dialogue, 10 * 1024 * 1024);
         if(!url){
-          // Fallback to single-shot or multi-chunk neutral voice
+          // Fallback to single-shot or multi-chunk neutral voice up to ~10MB
           if (dialogue.length <= 1200){
             const r = await fetch(`${API_BASE}/api/tts`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: dialogue }) });
             if (r.ok){ const j = await r.json(); url = (j && (j.audio || j.audioUrl || j.url)) || ''; if(!url && j && j.base64){ url = `data:audio/mpeg;base64,${j.base64}`; } }
@@ -860,7 +861,7 @@
         if(audio){ audio.src = url; audio.style.display='none'; }
         if(link){ link.href = url; link.style.display=''; }
         setupCustomPlayer(url);
-        appendMsg('ai', 'تم إنشاء مُلخّص صوتي حواري (ولد/بنت) يغطي المحاضرة. يمكنك تشغيله أو تحميله.');
+        appendMsg('ai', 'تم إنشاء شرح صوتي حواري (ولد/بنت) يغطي كامل المحاضرة حتى حد 10MB. يمكنك تشغيله أو تحميله.');
       }catch(_){ appendMsg('ai', 'حدث خطأ أثناء إنشاء الصوت.'); }
     }
 
