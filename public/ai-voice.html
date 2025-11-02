@@ -83,6 +83,7 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     }
   </script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script src="js/i18n.js"></script>
 </head>
 <body>
@@ -152,9 +153,9 @@
 
           <div class="stack-v">
             <div class="title" style="font-size:16px" data-i18n="voice.files.title">ملفات للمذاكرة</div>
-            <div class="sub" data-i18n="voice.files.subtitle">ارفع ملفات PDF/TXT/MD وسيتم استخراج النص وإضافته للمصدر</div>
+            <div class="sub" data-i18n="voice.files.subtitle">ارفع ملفات PDF/DOCX/TXT/MD وسيتم استخراج النص وإضافته للمصدر</div>
             <div class="stack-h" style="flex-wrap:wrap">
-              <input id="pdfFiles" type="file" multiple accept=".pdf,.txt,.md" class="input" style="padding:10px" />
+              <input id="pdfFiles" type="file" multiple accept=".pdf,.docx,.txt,.md" class="input" style="padding:10px" />
               <button class="btn btn-primary" onclick="uploadSelectedFiles()" data-i18n="voice.files.upload_btn">رفع الملفات</button>
               <button class="btn btn-accent" onclick="startAutoExplain()" data-i18n="voice.buttons.auto_explain">ابدأ الشرح الآن</button>
               <button class="btn btn-ghost" onclick="startLiveAboutLecture()">التحدث Live عن ذلك</button>
@@ -568,6 +569,19 @@
             if (localText && localText.trim()) {
               lectureInput.value = (lectureInput.value ? (lectureInput.value + "\n\n") : '') + localText;
             }
+          }
+          // For DOCX, extract locally using Mammoth
+          else if (/\.docx$/i.test(f.name)) {
+            try {
+              if (window.mammoth && window.mammoth.extractRawText) {
+                const buf = await f.arrayBuffer();
+                const result = await window.mammoth.extractRawText({ arrayBuffer: buf });
+                const docxText = (result && result.value) ? result.value.trim() : '';
+                if (docxText) {
+                  lectureInput.value = (lectureInput.value ? (lectureInput.value + "\n\n") : '') + docxText;
+                }
+              }
+            } catch(_) {}
           }
         } catch (_) {}
       }
