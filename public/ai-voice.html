@@ -6,6 +6,7 @@
   <title>صديق الدراسة الذكي - النسخة الصوتية</title>
   <meta name="description" content="صديق الدراسة الذكي (Voice-First): محاكاة جلسة دراسية مباشرة مع مرشد ودود. تفاعل صوتي بالعربية مع دعم للنص والصوت." />
   <style>
+
     :root {
       --bg: #f7f7fb;
       --card: #ffffff;
@@ -659,6 +660,57 @@
       }catch(_){ return null; }
     }
 
+    // ---------- Dialogue summary (teacher male vs student female) ----------
+    async function buildDialogueSummary(fullText){
+      try{
+        const maxChunk = 12000;
+        const chunks=[]; for(let i=0;i<fullText.length;i+=maxChunk){ chunks.push(fullText.slice(i,i+maxChunk)); }
+        if(chunks.length<=1){
+          const prompt = `لخّص المحتوى التالي على هيئة حوار تعليمي موجز بين "المدرّس" (رجل) و"الطالبة" (بنت). اجعل الحوار مناسباً للاستماع: 4–8 تبادلات كحد أقصى، جُمل قصيرة واضحة، تغطي أهم الأفكار أمثلةً صغيرة عند الحاجة. استخدم صيغاً مثل:\nالمدرّس: ...\nالطالبة: ...`;
+          const resp = await askGemini(prompt + "\n\n" + fullText);
+          return resp || '';
+        }
+        const outlines=[];
+        for(const c of chunks){
+          const p = `استخرج النقاط الأساسية جداً (أهم 5-8 نقاط) من هذا الجزء بطريقة مختصرة تصلح لحوار سمعي.`;
+          const r = await askGemini(p + "\n\n" + c);
+          if(r) outlines.push(r);
+        }
+        const merged = outlines.join('\n');
+        const finalPrompt = `بناءً على النقاط التالية، اكتب ملخّصاً سمعياً على هيئة حوار قصير بين "المدرّس" (رجل) و"الطالبة" (بنت)، 4–8 تبادلات فقط، جمل قصيرة وواضحة، بلا مقدمات ولا خاتمة طويلة. استخدم الصيغة:\nالمدرّس: ...\nالطالبة: ...`;
+        const finalResp = await askGemini(finalPrompt + "\n\n" + merged);
+        return finalResp || merged;
+      }catch(_){ return ''; }
+    }
+
+    // ---------- Alternating-voice TTS for dialogue ----------
+    async function synthesizeDialogueTts(dialogueText, maxBytes){
+      // Split by lines that start with المدرّس:/الطالبة:
+      const lines = (dialogueText||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      const utterances = [];
+      for(const line of lines){
+        const mTeacher = /^المدرّس\s*:\s*(.*)$/i.exec(line);
+        const mStudent = /^الطالبة\s*:\s*(.*)$/i.exec(line);
+        if(mTeacher){ utterances.push({ text: mTeacher[1], voice: 'male' }); continue; }
+        if(mStudent){ utterances.push({ text: mStudent[1], voice: 'female' }); continue; }
+        // Fallback: treat as neutral
+        utterances.push({ text: line, voice: 'neutral' });
+      }
+      const buffers=[]; let total=0;
+      for(const u of utterances){
+        const body = { text: u.text };
+        // Optional voice hint if backend supports it
+        if(u.voice==='male') body.voice = 'male'; else if(u.voice==='female') body.voice = 'female';
+        const r = await fetch(`${API_BASE}/api/tts`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if(!r.ok) continue; const j = await r.json(); const buf = await responseToArrayBuffer(j); if(!buf) continue;
+        total += buf.byteLength; if(total>maxBytes) break; buffers.push(buf);
+      }
+      if(!buffers.length) return '';
+      const merged = concatArrayBuffers(buffers);
+      const blob = new Blob([merged], { type:'audio/mpeg' });
+      return URL.createObjectURL(blob);
+    }
+
     // ---------- TTS helpers (multi-chunk up to ~10MB) ----------
     function splitTextForTts(t){
       const maxChunkChars = 1000;
@@ -784,23 +836,31 @@
       try{
         const content = getLecture();
         if(!content || content.length < 30){ appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة الأول (ارفع PDF أو الصق النص).`); return; }
-        appendMsg('ai', 'جاري إنشاء شرح حواري كامل وتحويله إلى صوت...');
-        let explanation = await buildDialogueExplain(content);
-        if(!explanation || explanation.length < 60){ explanation = content.slice(0, 1600); }
-        // TTS: single call for short text, else multi-chunk up to ~10MB
-        let url = '';
-        if (explanation.length <= 1200){
-          const r = await fetch(`${API_BASE}/api/tts`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: explanation }) });
-          if (r.ok){ const j = await r.json(); url = (j && (j.audio || j.audioUrl || j.url)) || ''; if(!url && j && j.base64){ url = `data:audio/mpeg;base64,${j.base64}`; } }
+        appendMsg('ai', 'جارٍ إنشاء ملخّص حواري (ولد/بنت) وتحويله إلى صوت...');
+        let dialogue = await buildDialogueSummary(content);
+        if(!dialogue || dialogue.length < 40){
+          // Fallback: quick 4-turn dialogue from first sentences
+          const s = splitSentences(content);
+          const base = s.slice(0,6).join(' ');
+          dialogue = `المدرّس: لنبدأ بتلخيص الفكرة الأساسية باختصار. ${base}\nالطالبة: تمام، ممكن مثال صغير؟\nالمدرّس: مثال سريع يوضّح النقطة.\nالطالبة: شكراً، كده اتضح الملخص.`;
         }
-        if(!url){ url = await synthesizeLargeTts(explanation, 10 * 1024 * 1024); }
-        if(!url){ appendMsg('ai', 'تعذّر توليد ملف الصوت. سأقرأ الملخص كحل بديل.'); try{ speak(explanation); }catch(_){ } return; }
+        // Prefer alternating-voice synthesis
+        let url = await synthesizeDialogueTts(dialogue, 10 * 1024 * 1024);
+        if(!url){
+          // Fallback to single-shot or multi-chunk neutral voice
+          if (dialogue.length <= 1200){
+            const r = await fetch(`${API_BASE}/api/tts`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: dialogue }) });
+            if (r.ok){ const j = await r.json(); url = (j && (j.audio || j.audioUrl || j.url)) || ''; if(!url && j && j.base64){ url = `data:audio/mpeg;base64,${j.base64}`; } }
+          }
+          if(!url){ url = await synthesizeLargeTts(dialogue, 10 * 1024 * 1024); }
+        }
+        if(!url){ appendMsg('ai', 'تعذّر توليد ملف الصوت. سأقرأ الملخّص كحل بديل.'); try{ speak(dialogue); }catch(_){ } return; }
         const audio = document.getElementById('aiAudio');
         const link = document.getElementById('audioDownload');
         if(audio){ audio.src = url; audio.style.display='none'; }
         if(link){ link.href = url; link.style.display=''; }
         setupCustomPlayer(url);
-        appendMsg('ai', 'تم إنشاء مُلخّص صوتي طويل يغطي كامل المحاضرة. يمكنك تشغيله أو تحميله.');
+        appendMsg('ai', 'تم إنشاء مُلخّص صوتي حواري (ولد/بنت) يغطي المحاضرة. يمكنك تشغيله أو تحميله.');
       }catch(_){ appendMsg('ai', 'حدث خطأ أثناء إنشاء الصوت.'); }
     }
 
