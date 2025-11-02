@@ -16,6 +16,7 @@
       --danger: #ef4444;
       --ring: rgba(37, 99, 235, 0.15);
     }
+    
 
     * { box-sizing: border-box; }
     body {
@@ -658,6 +659,66 @@
       }catch(_){ return null; }
     }
 
+    // ---------- TTS helpers (multi-chunk up to ~10MB) ----------
+    function splitTextForTts(t){
+      const maxChunkChars = 1000;
+      const seps = /([\.\!\?\n]|[\u061F\u06D4])+/;
+      const parts = t.split(seps).reduce((acc,p)=>{ if(!p) return acc; if(seps.test(p)){ if(acc.length) acc[acc.length-1]+=p; else acc.push(p); } else { acc.push(p); } return acc; }, []);
+      const out=[]; let buf='';
+      for(const p of parts){ if((buf+p).length>maxChunkChars){ if(buf) out.push(buf.trim()); buf=p; } else { buf+=p; } }
+      if(buf.trim()) out.push(buf.trim());
+      return out;
+    }
+    async function responseToArrayBuffer(j){
+      let src = j?.audio || j?.audioUrl || j?.url || '';
+      if(j?.base64){ const b=atob(j.base64); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u.buffer; }
+      if(!src) return null; const r = await fetch(src); if(!r.ok) return null; return await r.arrayBuffer();
+    }
+    function concatArrayBuffers(buffers){
+      const total = buffers.reduce((s,b)=> s + (b?.byteLength||0), 0);
+      const out = new Uint8Array(total); let off=0;
+      for(const b of buffers){ if(!b) continue; const u=new Uint8Array(b); out.set(u,off); off+=u.byteLength; }
+      return out.buffer;
+    }
+    async function synthesizeLargeTts(text, maxBytes){
+      const chunks = splitTextForTts(text);
+      const bufs=[]; let total=0;
+      for(const c of chunks){
+        const r = await fetch(`${API_BASE}/api/tts`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: c }) });
+        if(!r.ok) continue; const j = await r.json(); const buf = await responseToArrayBuffer(j); if(!buf) continue;
+        total += buf.byteLength; if(total>maxBytes) break; bufs.push(buf);
+      }
+      if(!bufs.length) return '';
+      const merged = concatArrayBuffers(bufs);
+      const blob = new Blob([merged], { type:'audio/mpeg' });
+      return URL.createObjectURL(blob);
+    }
+
+    // ---------- Full-dialogue explain over entire lecture (map-reduce) ----------
+    async function buildDialogueExplain(fullText){
+      try{
+        const maxChunk = 12000;
+        const chunks=[]; for(let i=0;i<fullText.length;i+=maxChunk){ chunks.push(fullText.slice(i,i+maxChunk)); }
+        if(chunks.length<=1){
+          const prompt = `اشرح المحتوى التالي شرحاً تعليمياً كاملاً على شكل مناقشة بين شخصين: "المحاور أ" و"المحاور ب". يجب أن يغطي الحوار كل المحاور المهمة ويطرح أسئلة واعتراضات قصيرة وردود واضحة، مع أمثلة مركزة أينما لزم، وبعربية فصحى مبسطة، وبدون حشو.`;
+          const resp = await askGemini(prompt + "\n\n" + fullText);
+          return resp || '';
+        }
+        // phase 1: outlines per chunk
+        const outlines=[];
+        for(const c of chunks){
+          const p = `استخرج مخططاً تعليمياً موجزاً بالنقاط للمفاهيم والمحاور الأساسية من هذا الجزء.`;
+          const r = await askGemini(p + "\n\n" + c);
+          if(r) outlines.push(r);
+        }
+        const merged = outlines.join('\n');
+        // phase 2: final dialogue
+        const finalPrompt = `اعتماداً على المخطط التالي، اكتب الشرح كاملاً على هيئة حوار تعليمي بين شخصين: "المحاور أ" و"المحاور ب". ليكن الحوار متدرجاً يغطي جميع المحاور، مع أسئلة واعتراضات وجوابها، وأمثلة قصيرة حيث يلزم، وبلا مقدمات أو خاتمة مطولة. استخدم صيغاً مثل:\nالمحاور أ: ...\nالمحاور ب: ...\nالمحاور أ: ...`;
+        const finalResp = await askGemini(finalPrompt + "\n\n" + merged);
+        return finalResp || merged;
+      }catch(_){ return ''; }
+    }
+
     // Streaming via SSE (fetch + manual SSE parse)
     async function askGeminiStream(question, onDelta){
       const tok = await ensureSession().catch(()=>null);
@@ -706,19 +767,14 @@
 
     async function explainLecture(){
       const content = getLecture();
-      if(!content || content.length < 30){
-        appendMsg('ai', `${persona.prefix} محتاج نص كفاية من المحاضرة عشان أشرح.`);
-        speak('محتاج نص كفاية من المحاضرة عشان أشرح.');
-        return;
-      }
-      const prompt = `اشرح المحاضرة التالية بشكل مبسّط وبالعربية، ركّز على الفكرة الأساسية أولاً ثم نقطتين أو ثلاث من أهم المفاهيم مع مثال عملي صغير لكل نقطة، بدون أسئلة متابعة.`;
-      let replyText = await askGemini(prompt);
+      if(!content || content.length < 30){ appendMsg('ai', `${persona.prefix} محتاج نص كفاية من المحاضرة عشان أشرح.`); speak('محتاج نص كفاية من المحاضرة عشان أشرح.'); return; }
+      // Full dialogue covering entire lecture
+      let replyText = await buildDialogueExplain(content);
       if(!replyText){
         const sents = splitSentences(content);
-        const take = sents.slice(0,3).join(' ');
-        replyText = `الخلاصة: ${take}`;
+        const take = sents.slice(0,6).join(' ');
+        replyText = `المحاور أ: لنلخّص سريعاً. ${take}\nالمحاور ب: ممتاز، نكمل؟`;
       }
-      replyText = `${persona.prefix} ${replyText}`;
       appendMsg('ai', replyText);
       speak(replyText);
     }
@@ -727,35 +783,25 @@
     async function generateAudioFromLecture(){
       try{
         const content = getLecture();
-        if(!content || content.length < 30){
-          appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة الأول (ارفع PDF أو الصق النص).`);
-          return;
+        if(!content || content.length < 30){ appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة الأول (ارفع PDF أو الصق النص).`); return; }
+        appendMsg('ai', 'جاري إنشاء شرح حواري كامل وتحويله إلى صوت...');
+        let explanation = await buildDialogueExplain(content);
+        if(!explanation || explanation.length < 60){ explanation = content.slice(0, 1600); }
+        // TTS: single call for short text, else multi-chunk up to ~10MB
+        let url = '';
+        if (explanation.length <= 1200){
+          const r = await fetch(`${API_BASE}/api/tts`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: explanation }) });
+          if (r.ok){ const j = await r.json(); url = (j && (j.audio || j.audioUrl || j.url)) || ''; if(!url && j && j.base64){ url = `data:audio/mpeg;base64,${j.base64}`; } }
         }
-        appendMsg('ai', 'جاري إنشاء شرح موجز وتحويله إلى صوت...');
-        const prompt = `اقرأ نص المحاضرة وقدّم شرحًا مبسّطًا بالعربية في فقرتين إلى ثلاث فقرات قصيرة مع أمثلة سريعة يمكن سماعها في أقل من 5 دقائق.`;
-        const explanation = await askGemini(prompt) || content.slice(0, 1200);
-        // Request backend TTS (returns data URL)
-        const headers = { 'Content-Type':'application/json' };
-        const r = await fetch(`${API_BASE}/api/tts`, { method:'POST', headers, body: JSON.stringify({ text: explanation }) });
-        if(!r.ok){
-          // Fallback: استخدم متصفحك لقراءة الملخّص بصوت إذا تعذّر إنشاء ملف MP3
-          appendMsg('ai', 'تعذّر توليد ملف MP3 (تحقق من OPENAI_API_KEY على الخادم). سأقرأ الملخص بصوت الآن كحل بديل.');
-          try{ speak(explanation); }catch(_){ }
-          return;
-        }
-        const j = await r.json();
-        const url = j && j.audio;
-        if(!url){ appendMsg('ai', 'لم يصلني الصوت من الخادم.'); return; }
-        // Show custom player styled like the screenshot
+        if(!url){ url = await synthesizeLargeTts(explanation, 10 * 1024 * 1024); }
+        if(!url){ appendMsg('ai', 'تعذّر توليد ملف الصوت. سأقرأ الملخص كحل بديل.'); try{ speak(explanation); }catch(_){ } return; }
         const audio = document.getElementById('aiAudio');
         const link = document.getElementById('audioDownload');
         if(audio){ audio.src = url; audio.style.display='none'; }
-        if(link){ link.href = url; link.style.display='none'; }
+        if(link){ link.href = url; link.style.display=''; }
         setupCustomPlayer(url);
-        appendMsg('ai', 'تم إنشاء مُلخّص صوتي. يمكنك تشغيله أو تحميله من المشغّل أدناه.');
-      }catch(_){
-        appendMsg('ai', 'حدث خطأ أثناء إنشاء الصوت.');
-      }
+        appendMsg('ai', 'تم إنشاء مُلخّص صوتي طويل يغطي كامل المحاضرة. يمكنك تشغيله أو تحميله.');
+      }catch(_){ appendMsg('ai', 'حدث خطأ أثناء إنشاء الصوت.'); }
     }
 
     // ---------------- Custom Audio Player ----------------
