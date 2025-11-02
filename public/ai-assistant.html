@@ -30,6 +30,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       }
     </script>
+    <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -39,6 +40,7 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
         .quiz-card { transition: all 0.3s ease; }
         .quiz-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
         .typing-indicator {
@@ -131,24 +133,22 @@
                         <option value="" data-i18n="ai.qa.placeholder_option">-- اختر محاضرة --</option>
                     </select>
                     <div class="mt-2">
-                        <button type="button" onclick="addCurrentLectureToQaUploads()" class="px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
-                            إضافة هذه المحاضرة إلى "الملفات المرفوعة" للمحادثة
-                        </button>
+                        <button type="button" onclick="addCurrentLectureToQaUploads()" class="px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200" data-i18n="ai.qa.add_current_to_uploads">إضافة هذه المحاضرة إلى "الملفات المرفوعة" للمحادثة</button>
                     </div>
                     <div class="mt-3 grid grid-cols-1 gap-3">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">أو ارفع ملفات (PDF, TXT, MD)</label>
-                            <input id="qaFiles" type="file" multiple accept=".pdf,.txt,.md" class="block w-full text-sm text-gray-700"
+                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="ai.qa.upload_files_label">أو ارفع ملفات (PDF, DOCX, TXT, MD)</label>
+                            <input id="qaFiles" type="file" multiple accept=".pdf,.docx,.txt,.md" class="block w-full text-sm text-gray-700"
                                    onchange="handleQaFilesChange(this.files)">
-                            <p class="text-xs text-gray-500 mt-1">اختر من القائمة: المحاضرات أو "الملفات المرفوعة" أو "المنصة (عام)"</p>
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.qa.select_hint">اختر من القائمة: المحاضرات أو "الملفات المرفوعة" أو "المنصة (عام)"</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">أو أدخل رابط مباشر (PDF أو TXT/MD)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="ai.qa.url_label">أو أدخل رابط مباشر (PDF أو TXT/MD)</label>
                             <div class="flex gap-2">
                                 <input id="qaUrl" type="url" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-i18n-attr="placeholder:home.mynotes.open_page" placeholder="https://example.com/lecture.pdf">
-                                <button type="button" onclick="handleQaUrl()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">استخدام الرابط</button>
+                                <button type="button" onclick="handleQaUrl()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600" data-i18n="ai.qa.use_url">استخدام الرابط</button>
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">قد تمنع بعض المواقع الوصول بسبب CORS. يفضّل رابط مباشر للملف.</p>
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.qa.cors_hint">قد تمنع بعض المواقع الوصول بسبب CORS. يفضّل رابط مباشر للملف.</p>
                         </div>
                     </div>
                 </div>
@@ -158,6 +158,19 @@
                         <i class="fas fa-robot text-4xl mb-2"></i>
                         <p data-i18n="ai.qa.empty">مرحباً! اختر محاضرة واسأل أي سؤال تريد</p>
                     </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm" onclick="explainFullSource()">
+                        <i class="fas fa-chalkboard-teacher ml-1"></i> شرح كامل
+                    </button>
+                    <button class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm" onclick="summarizeFullSource()">
+                        <i class="fas fa-list ml-1"></i> تلخيص كامل
+                    </button>
+                    <button class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg text-sm" onclick="audioSummaryFullSource()">
+                        <i class="fas fa-headphones ml-1"></i> ملخص صوتي
+                    </button>
+                    <audio id="aiSummaryAudio" class="hidden" controls></audio>
                 </div>
 
                 <div class="flex space-x-2 space-x-reverse">
@@ -186,30 +199,28 @@
                     <!-- Quiz Settings -->
                     <div class="space-y-4 mb-6">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">اختر المحاضرات</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="ai.quiz.choose_lectures">اختر المحاضرات</label>
                             <select id="quizLectureSelect" multiple class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent h-32">
                             </select>
-                            <p class="text-xs text-gray-500 mt-1">يمكنك اختيار عدة محاضرات بالضغط مع Ctrl</p>
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.quiz.multi_hint">يمكنك اختيار عدة محاضرات بالضغط مع Ctrl</p>
                             <div class="mt-2">
-                                <button type="button" onclick="addSelectedLecturesToQuizUploads()" class="px-3 py-2 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200">
-                                    إضافة المحاضرات المحددة إلى "الملفات المرفوعة" للاختبار
-                                </button>
+                                <button type="button" onclick="addSelectedLecturesToQuizUploads()" class="px-3 py-2 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200" data-i18n="ai.quiz.add_selected_to_uploads">إضافة المحاضرات المحددة إلى "الملفات المرفوعة" للاختبار</button>
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">أو ارفع ملفات لإنشاء اختبار منها (PDF, TXT, MD)</label>
-                            <input id="quizFiles" type="file" multiple accept=".pdf,.txt,.md" class="block w-full text-sm text-gray-700"
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="ai.quiz.upload_label">أو ارفع ملفات لإنشاء اختبار منها (PDF, DOCX, TXT, MD)</label>
+                            <input id="quizFiles" type="file" multiple accept=".pdf,.docx,.txt,.md" class="block w-full text-sm text-gray-700"
                                    onchange="handleQuizFilesChange(this.files)">
-                            <p class="text-xs text-gray-500 mt-1">إذا رُفعت ملفات هنا سيتم استخدامها كمصدر رئيسي للأسئلة</p>
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.quiz.upload_hint">إذا رُفعت ملفات هنا سيتم استخدامها كمصدر رئيسي للأسئلة</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">أو أدخل رابط مباشر لملف المحتوى (PDF أو TXT/MD)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="ai.quiz.url_label">أو أدخل رابط مباشر لملف المحتوى (PDF أو TXT/MD)</label>
                             <div class="flex gap-2">
                                 <input id="quizUrl" type="url" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="https://example.com/file.pdf">
-                                <button type="button" onclick="handleQuizUrl()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">استخدام الرابط</button>
+                                <button type="button" onclick="handleQuizUrl()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600" data-i18n="ai.quiz.use_url">استخدام الرابط</button>
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">ملاحظة: يجب أن يكون الرابط مباشراً. بعض الروابط قد تُحجب (CORS).</p>
+                            <p class="text-xs text-gray-500 mt-1" data-i18n="ai.quiz.url_hint">ملاحظة: يجب أن يكون الرابط مباشراً. بعض الروابط قد تُحجب (CORS).</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -257,7 +268,7 @@
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                 <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 p-6">
                     <h2 class="text-xl font-bold text-white flex items-center">
-                        <i class="fas fa-trophy ml-3"></i>نتائج الاختبار
+                        <i class="fas fa-trophy ml-3"></i><span data-i18n="ai.quiz.results_title">نتائج الاختبار</span>
                     </h2>
                 </div>
                 
@@ -314,8 +325,7 @@
                 const loadingTask = pdfjsLib.getDocument({ url, withCredentials: false });
                 const pdf = await loadingTask.promise;
                 let fullText = '';
-                const maxPages = Math.min(pdf.numPages, 30);
-                for (let p = 1; p <= maxPages; p++) {
+                for (let p = 1; p <= pdf.numPages; p++) {
                     const page = await pdf.getPage(p);
                     const content = await page.getTextContent();
                     const strings = content.items.map(it => it.str).filter(Boolean);
@@ -333,8 +343,7 @@
                 const loadingTask = pdfjsLib.getDocument({ data: buffer });
                 const pdf = await loadingTask.promise;
                 let fullText = '';
-                const maxPages = Math.min(pdf.numPages, 30);
-                for (let p = 1; p <= maxPages; p++) {
+                for (let p = 1; p <= pdf.numPages; p++) {
                     const page = await pdf.getPage(p);
                     const content = await page.getTextContent();
                     const strings = content.items.map(it => it.str).filter(Boolean);
@@ -342,6 +351,15 @@
                 }
                 return fullText.trim();
             } catch (e) { console.warn('Local PDF extraction failed:', e); return ''; }
+        }
+
+        async function extractTextFromLocalDocx(file) {
+            try {
+                if (!window.mammoth || !window.mammoth.extractRawText) return '';
+                const buffer = await file.arrayBuffer();
+                const result = await window.mammoth.extractRawText({ arrayBuffer: buffer });
+                return (result && result.value) ? result.value.trim() : '';
+            } catch (e) { console.warn('Local DOCX extraction failed:', e); return ''; }
         }
 
         // Handlers to read uploaded files and build concatenated text content
@@ -356,6 +374,9 @@
                 const name = file.name || 'ملف';
                 if (/\.pdf$/i.test(name)) {
                     const t = await extractTextFromLocalPdf(file);
+                    if (t) parts.push(`-- ${name} --\n${t}`);
+                } else if (/\.docx$/i.test(name)) {
+                    const t = await extractTextFromLocalDocx(file);
                     if (t) parts.push(`-- ${name} --\n${t}`);
                 } else if (/\.(txt|md)$/i.test(name)) {
                     try { const t = await file.text(); if (t) parts.push(`-- ${name} --\n${t}`); } catch(_) {}
@@ -374,7 +395,7 @@
             if (!opt) {
                 opt = document.createElement('option');
                 opt.value = '__uploaded__';
-                opt.textContent = 'الملفات المرفوعة';
+                opt.textContent = t('subjects.stats.files');
                 sel?.insertBefore(opt, sel.firstChild?.nextSibling);
             }
             opt.disabled = false;
@@ -413,7 +434,7 @@
             if (!opt) {
                 opt = document.createElement('option');
                 opt.value = '__uploaded__';
-                opt.textContent = 'الملفات المرفوعة';
+                opt.textContent = t('subjects.stats.files');
                 sel?.insertBefore(opt, sel.firstChild);
             }
             opt.disabled = false;
@@ -460,7 +481,7 @@
                 if (!opt) {
                     opt = document.createElement('option');
                     opt.value = '__uploaded__';
-                    opt.textContent = 'الملفات المرفوعة';
+                    opt.textContent = t('subjects.stats.files');
                     sel?.insertBefore(opt, sel.firstChild?.nextSibling);
                 }
                 opt.disabled = false;
@@ -507,7 +528,7 @@
                 if (!opt) {
                     opt = document.createElement('option');
                     opt.value = '__uploaded__';
-                    opt.textContent = 'الملفات المرفوعة';
+                    opt.textContent = t('subjects.stats.files');
                     sel.insertBefore(opt, sel.firstChild?.nextSibling);
                 }
                 opt.disabled = false;
@@ -561,7 +582,7 @@
                 if (!opt) {
                     opt = document.createElement('option');
                     opt.value = '__uploaded__';
-                    opt.textContent = 'الملفات المرفوعة';
+                    opt.textContent = t('subjects.stats.files');
                     sel.insertBefore(opt, sel.firstChild);
                 }
                 opt.disabled = false;
@@ -1176,6 +1197,127 @@ ${lectureContent}
                 typingDiv.remove();
                 addMessage('عذراً، حدث خطأ في معالجة سؤالك. يرجى المحاولة مرة أخرى.', 'ai');
             }
+        }
+
+        async function resolveCurrentSource() {
+            const lectureSelect = document.getElementById('qaLectureSelect');
+            const selVal = lectureSelect?.value || '';
+            if (selVal === '__platform__') {
+                return { title: 'منصة الطالب الذكي', content: platformContext };
+            } else if (selVal === '__uploaded__') {
+                if (!uploadedQaText) throw new Error('لم يتم رفع ملفات بعد');
+                return { title: 'ملفات مرفوعة', content: uploadedQaText };
+            } else if (selVal) {
+                const lectureResult = await window.supabaseDB.lectures.getWithContent(selVal);
+                const lecture = lectureResult?.data;
+                if (!lecture) throw new Error('لم يتم العثور على المحاضرة');
+                let content = '';
+                try { content = await buildLectureContentFallback(lecture); } catch(_) {}
+                const merged = content || lecture.full_content || lecture.file_content || '';
+                return { title: lecture.title || 'محاضرة', content: merged };
+            }
+            throw new Error('يرجى اختيار محاضرة أو رفع ملفات أو تفعيل وضع المنصة');
+        }
+
+        const API_BASE_FALLBACK = 'https://student-platform-backend-one.vercel.app';
+        async function postJsonWithFallback(path, payload){
+            const onDevStatic = (()=>{
+                try{ return location && (location.port === '5500' || location.protocol === 'file:'); }catch(_){ return false; }
+            })();
+            if (onDevStatic) {
+                try {
+                    const r2 = await fetch(`${API_BASE_FALLBACK}${path}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                    if (r2.ok) return await r2.json();
+                } catch(_) { return null; }
+                return null;
+            }
+            try{
+                const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                if (r.ok) return await r.json();
+                if (r.status === 404 || r.status === 405) {
+                    const r2 = await fetch(`${API_BASE_FALLBACK}${path}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                    if (r2.ok) return await r2.json();
+                }
+                return null;
+            }catch(_){
+                try{
+                    const r2 = await fetch(`${API_BASE_FALLBACK}${path}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                    if (r2.ok) return await r2.json();
+                }catch(__){ return null; }
+                return null;
+            }
+        }
+        async function backendAsk(question, context){
+            const j = await postJsonWithFallback('/api/ai/ask', { question, context });
+            return j && j.response ? j.response : '';
+        }
+
+        async function explainFullSource(){
+            try{
+                const { title, content } = await resolveCurrentSource();
+                if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للشرح', 'warning'); return; }
+                addMessage('أشرح المحاضرة بالكامل: ' + title, 'user');
+                const system = 'اشرح المحتوى التالي شرحاً تعليمياً منظماً بالعربية الفصحى المبسطة مع أمثلة مركزة عند الحاجة، بدون حشو.';
+                const reply = await backendAsk(system, content);
+                addMessage(reply || 'تعذر إنشاء الشرح الآن', 'ai');
+            }catch(e){ showNotification('حدث خطأ أثناء الشرح', 'error'); }
+        }
+
+        async function summarizeFullSource(){
+            try{
+                const { content } = await resolveCurrentSource();
+                if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للتلخيص', 'warning'); return; }
+                addMessage('ألخّص المحاضرة بالكامل.', 'user');
+                const system = 'لخّص المحتوى التالي في نقاط عربية واضحة ومختصرة جداً (5-9 نقاط)، بدون مقدمات أو ختام.';
+                let reply = await backendAsk(system, content);
+                if (!reply || reply.trim().length < 10) {
+                    try {
+                        const fallback = await clientSummarizeLarge(content);
+                        reply = fallback || reply;
+                    } catch(_) {}
+                }
+                addMessage(reply || 'تعذر إنشاء التلخيص الآن', 'ai');
+            }catch(e){ showNotification('حدث خطأ أثناء التلخيص', 'error'); }
+        }
+
+        async function clientSummarizeLarge(fullText){
+            try{
+                const maxChunk = 12000;
+                const chunks = [];
+                for (let i=0; i<fullText.length; i+=maxChunk){ chunks.push(fullText.slice(i, i+maxChunk)); }
+                if (chunks.length <= 1){
+                    const p = 'لخّص المحتوى التالي في نقاط عربية واضحة ومختصرة جداً (5-9 نقاط)، بدون مقدمات أو ختام.';
+                    return await getGeminiQaResponse(p, { title: 'محاضرة', full_content: fullText });
+                }
+                const partials = [];
+                for (const c of chunks){
+                    const p = 'لخّص بإيجاز أبرز النقاط التعليمية من هذا الجزء في 3-5 نقاط عربية.';
+                    const r = await getGeminiQaResponse(p, { title: 'جزء محاضرة', full_content: c });
+                    if (r) partials.push(r);
+                }
+                const merged = partials.join('\n');
+                const finalPrompt = 'ادمج الملخصات الجزئية التالية في نقاط نهائية موجزة (5-9 نقاط) بالعربية الواضحة بدون أي مقدمة أو خاتمة:';
+                return await getGeminiQaResponse(finalPrompt + '\n\n' + merged, { title: 'ملخصات جزئية', full_content: '' });
+            }catch(_){ return ''; }
+        }
+
+        async function audioSummaryFullSource(){
+            try{
+                const { content } = await resolveCurrentSource();
+                if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للملخص الصوتي', 'warning'); return; }
+                addMessage('أنشئ ملخصاً صوتياً.', 'user');
+                const system = 'لخّص المحتوى التالي في فقرة عربية قصيرة مفهومة للاستماع (3-6 جمل).';
+                const text = await backendAsk(system, content);
+                if (!text) { addMessage('تعذر إنشاء نص الملخص الصوتي', 'ai'); return; }
+                const j = await postJsonWithFallback('/api/tts', { text });
+                const audioEl = document.getElementById('aiSummaryAudio');
+                if (audioEl && j && j.audio) {
+                    audioEl.classList.remove('hidden');
+                    audioEl.src = j.audio;
+                    try { await audioEl.play(); } catch(_) {}
+                }
+                addMessage(text, 'ai');
+            }catch(e){ showNotification('حدث خطأ أثناء إنشاء الملخص الصوتي', 'error'); }
         }
 
         // Generate quiz
