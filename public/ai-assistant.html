@@ -1244,7 +1244,12 @@ ${lectureContent}
                 if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للشرح', 'warning'); return; }
                 addMessage('أشرح المحاضرة بالكامل: ' + title, 'user');
                 const system = 'اشرح المحتوى التالي شرحاً تعليمياً منظماً بالعربية الفصحى المبسطة مع أمثلة مركزة عند الحاجة، بدون حشو.';
-                const reply = await backendAsk(system, content);
+                let reply = await backendAsk(system, content);
+                if (!reply || reply.trim().length < 10) {
+                    try {
+                        reply = await clientExplainLarge(content);
+                    } catch(_) {}
+                }
                 addMessage(reply || 'تعذر إنشاء الشرح الآن', 'ai');
             }catch(e){ showNotification('حدث خطأ أثناء الشرح', 'error'); }
         }
@@ -1293,17 +1298,68 @@ ${lectureContent}
                 if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للملخص الصوتي', 'warning'); return; }
                 addMessage('أنشئ ملخصاً صوتياً.', 'user');
                 const system = 'لخّص المحتوى التالي في فقرة عربية قصيرة مفهومة للاستماع (3-6 جمل).';
-                const text = await backendAsk(system, content);
-                if (!text) { addMessage('تعذر إنشاء نص الملخص الصوتي', 'ai'); return; }
+                let text = await backendAsk(system, content);
+                if (!text || text.trim().length < 10) {
+                    try {
+                        text = await clientAudioSummaryLarge(content);
+                    } catch(_) {}
+                }
+                if (!text || text.trim().length < 10) { addMessage('تعذر إنشاء نص الملخص الصوتي', 'ai'); return; }
+                // Safety trim for TTS providers
+                if (text.length > 1200) text = text.slice(0, 1200);
                 const j = await postJsonWithFallback('/api/tts', { text });
                 const audioEl = document.getElementById('aiSummaryAudio');
-                if (audioEl && j && j.audio) {
-                    audioEl.classList.remove('hidden');
-                    audioEl.src = j.audio;
-                    try { await audioEl.play(); } catch(_) {}
+                if (audioEl && j) {
+                    let src = j.audio || j.audioUrl || j.url || '';
+                    if (!src && j.base64) {
+                        src = `data:audio/mpeg;base64,${j.base64}`;
+                    }
+                    if (src) {
+                        audioEl.classList.remove('hidden');
+                        audioEl.src = src;
+                        try { await audioEl.play(); } catch(_) {}
+                    }
                 }
                 addMessage(text, 'ai');
             }catch(e){ showNotification('حدث خطأ أثناء إنشاء الملخص الصوتي', 'error'); }
+        }
+
+        async function clientExplainLarge(fullText){
+            const maxChunk = 12000;
+            const chunks = [];
+            for (let i=0; i<fullText.length; i+=maxChunk){ chunks.push(fullText.slice(i, i+maxChunk)); }
+            if (chunks.length <= 1){
+                const p = 'اشرح المحتوى التالي شرحاً تعليمياً منظماً بالعربية الفصحى المبسطة مع أمثلة مركزة عند الحاجة، بدون حشو.';
+                return await getGeminiQaResponse(p, { title: 'محاضرة', full_content: fullText });
+            }
+            const outlines = [];
+            for (const c of chunks){
+                const p = 'استخرج مخططاً تعليمياً موجزاً بالنقاط للمفاهيم والمحاور الأساسية من هذا الجزء.';
+                const r = await getGeminiQaResponse(p, { title: 'جزء محاضرة', full_content: c });
+                if (r) outlines.push(r);
+            }
+            const mergedOutline = outlines.join('\n');
+            const finalPrompt = 'اعتماداً على المخطط التالي، اكتب شرحاً تعليمياً عربياً واضحاً ومبنياً بالأقسام مع أمثلة مركزة وقائمة نقاط حيث يلزم، بدون حشو:';
+            return await getGeminiQaResponse(finalPrompt + '\n\n' + mergedOutline, { title: 'مخطط مجمّع', full_content: '' });
+        }
+
+        async function clientAudioSummaryLarge(fullText){
+            const maxChunk = 12000;
+            const chunks = [];
+            for (let i=0; i<fullText.length; i+=maxChunk){ chunks.push(fullText.slice(i, i+maxChunk)); }
+            if (chunks.length <= 1){
+                const p = 'لخّص المحتوى التالي في فقرة عربية قصيرة مفهومة للاستماع (3-6 جمل).';
+                return await getGeminiQaResponse(p, { title: 'ملفات', full_content: fullText });
+            }
+            const partials = [];
+            for (const c of chunks){
+                const p = 'قدّم خلاصة موجزة جداً لهذا الجزء في جملتين عربيتين كحد أقصى.';
+                const r = await getGeminiQaResponse(p, { title: 'جزء', full_content: c });
+                if (r) partials.push(r);
+            }
+            const merged = partials.join(' ');
+            const finalPrompt = 'ادمج الخلاصات الجزئية التالية في فقرة عربية واحدة سلسة مناسبة للاستماع (3-6 جمل)، خالية من المقدمات والخواتيم:';
+            return await getGeminiQaResponse(finalPrompt + '\n\n' + merged, { title: 'خلاصات جزئية', full_content: '' });
         }
 
         // Generate quiz
