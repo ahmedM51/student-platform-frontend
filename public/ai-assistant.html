@@ -1317,7 +1317,7 @@ ${lectureContent}
                 const { title, content } = await resolveCurrentSource();
                 if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للشرح', 'warning'); return; }
                 addMessage('أشرح المحاضرة بالكامل: ' + title, 'user');
-                const system = 'اشرح المحتوى التالي شرحاً تعليمياً منظماً بالعربية الفصحى المبسطة مع أمثلة مركزة عند الحاجة، بدون حشو.';
+                const system = 'اشرح المحتوى التالي شرحاً تعليمياً كاملاً على شكل مناقشة بين شخصين: "المحاور أ" و"المحاور ب". يجب أن يغطي الحوار كل المحاور المهمة ويطرح أسئلة واعتراضات قصيرة وردود واضحة، مع أمثلة مركزة أينما لزم، وبعربية فصحى مبسطة، وبدون حشو.';
                 let reply = await backendAsk(system, content);
                 if (!reply || reply.trim().length < 10) {
                     try {
@@ -1420,7 +1420,7 @@ ${lectureContent}
                 if (r) outlines.push(r);
             }
             const mergedOutline = outlines.join('\n');
-            const finalPrompt = 'اعتماداً على المخطط التالي، اكتب شرحاً تعليمياً عربياً واضحاً ومبنياً بالأقسام مع أمثلة مركزة وقائمة نقاط حيث يلزم، بدون حشو:';
+            const finalPrompt = 'اعتماداً على المخطط التالي، اكتب الشرح كاملاً على هيئة حوار تعليمي بين شخصين: "المحاور أ" و"المحاور ب". ليكن الحوار متدرجاً يغطي جميع المحاور، مع أسئلة واعتراضات وجوابها، وأمثلة قصيرة حيث يلزم، وبلا مقدمات أو خاتمة مطولة. استخدم صيغاً مثل: المحاور أ: ...\nالمحاور ب: ...\nالمحاور أ: ...';
             return await getGeminiQaResponse(finalPrompt + '\n\n' + mergedOutline, { title: 'مخطط مجمّع', full_content: '' });
         }
 
