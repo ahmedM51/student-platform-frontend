@@ -922,8 +922,27 @@
             const safe = slugifyFileName(file.name || `lecture-${Date.now()}.bin`);
             const userPart = (currentUser && currentUser.id) ? currentUser.id : 'user';
             const path = `${userPart}/${subjectId}/${Date.now()}-${safe}`;
-            const { error: upErr } = await client.storage.from(bucket).upload(path, file, { upsert: true, cacheControl: '3600' });
+
+            // Ensure proper content type for correct rendering in iframe/viewers
+            const ext = (safe.split('.').pop() || '').toLowerCase();
+            const inferredType = (
+                file && file.type
+            ) || (
+                ext === 'pdf' ? 'application/pdf'
+                : ext === 'txt' ? 'text/plain'
+                : ext === 'md' ? 'text/markdown'
+                : ext === 'doc' ? 'application/msword'
+                : ext === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                : ext === 'ppt' ? 'application/vnd.ms-powerpoint'
+                : ext === 'pptx' ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                : 'application/octet-stream'
+            );
+
+            const { error: upErr } = await client.storage
+                .from(bucket)
+                .upload(path, file, { upsert: true, cacheControl: '3600', contentType: inferredType });
             if (upErr) throw upErr;
+
             const { data: pub } = client.storage.from(bucket).getPublicUrl(path);
             if (pub && pub.publicUrl) return pub.publicUrl;
             // Fallback: signed URL 7 days
