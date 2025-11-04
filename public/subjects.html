@@ -99,7 +99,7 @@
             display: flex;
         }
     </style>
-    <script src="js/i18n.js"></script>
+    <script src="js/i18n.js?v=2"></script>
 </head>
 <body class="min-h-screen bg-gray-50">
     <!-- Loading Overlay -->
@@ -208,6 +208,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js?v=2"></script>
 
     <script>
         // Global variables
@@ -217,20 +218,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(async () => {
                 try {
-                    // Load Supabase configuration first (idempotent)
-                    if (!window.supabaseClient) {
-                        // If not already in DOM, inject once
-                        if (!document.querySelector('script[data-supabase-config]')) {
-                            await new Promise((resolve) => {
-                                const script = document.createElement('script');
-                                script.src = 'js/supabase-config.js';
-                                script.setAttribute('data-supabase-config', 'true');
-                                script.onload = resolve;
-                                document.head.appendChild(script);
-                            });
-                        }
-                        // Wait for initialization
-                        await new Promise(resolve => setTimeout(resolve, 300));
+                    // Ensure Supabase is initialized (without dynamic script injection)
+                    if (!window.supabaseClient && typeof window.initializeSupabase === 'function') {
+                        await window.initializeSupabase();
                     }
 
                     if (!window.supabaseAuth) {
@@ -345,19 +335,30 @@
         };
 
         // Preview lecture inside a modal using Google Drive viewer
-        window.previewLecture = function(url, title = t('subjects.preview.default_lecture')) {
-            if (!url) return;
+        window.previewLecture = function(openUrl, title = t('subjects.preview.default_lecture')) {
+            if (!openUrl) return;
+            const embedUrl = (typeof window.getDriveViewUrl === 'function') ? window.getDriveViewUrl(openUrl) : openUrl;
+            let canEmbed = true;
+            try {
+                const h = new URL(embedUrl).hostname;
+                if (h.includes('drive.google.com') || h.includes('docs.google.com')) {
+                    canEmbed = false;
+                }
+            } catch(_) {}
+            const iframeSection = (embedUrl && canEmbed)
+                ? `<div class="w-full h-[70vh]">
+                        <iframe src="${embedUrl}" class="w-full h-full border rounded-lg" allowfullscreen></iframe>
+                   </div>`
+                : `<div class="w-full h-[30vh] flex items-center justify-center text-gray-400 text-sm">${t('subjects.view.no_url')}</div>`;
             const content = `
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <div class="text-gray-700 text-sm">${title}</div>
-                        <a href="${url}" target="_blank" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                        <a href="${openUrl}" target="_blank" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
                             <i class=\"fas fa-external-link-alt ml-2\"></i>${t('subjects.preview.open_new_tab')}
                         </a>
                     </div>
-                    <div class="w-full h-[70vh]">
-                        <iframe src="${url}" class="w-full h-full border rounded-lg" allowfullscreen></iframe>
-                    </div>
+                    ${iframeSection}
                 </div>
             `;
             window.createModal(t('subjects.preview.modal_title'), content);
@@ -371,24 +372,14 @@
                 const href = u.href;
                 const isPdf = /\.pdf(?:[?#].*)?$/i.test(href);
 
-                // Google Drive file links
-                if (u.hostname.includes('drive.google.com')) {
-                    // Normalize patterns: /file/d/{id} or /open?id=...
-                    const idMatch = href.match(/\/file\/d\/([^/]+)\//);
-                    const idFromQuery = u.searchParams.get('id');
-                    const fileId = idMatch ? idMatch[1] : idFromQuery;
-                    if (fileId) {
-                        // Use preview for embedding
-                        return `https://drive.google.com/file/d/${fileId}/preview`;
-                    }
-                    // If it's a view/preview already, just return it
+                // Google Drive/Docs links: keep original and let preview open in new tab
+                if (u.hostname.includes('drive.google.com') || u.hostname.includes('docs.google.com')) {
                     return href;
                 }
 
-                // If direct PDF: use Google viewer for consistent embed
+                // If direct PDF: return as-is for native PDF viewer
                 if (isPdf) {
-                    const enc = encodeURIComponent(href);
-                    return `https://drive.google.com/viewerng/viewer?embedded=1&url=${enc}`;
+                    return href;
                 }
 
                 // For any other URL, use it directly (no wrapping)
@@ -738,7 +729,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2 space-x-reverse">
-                                ${`<button type="button" ${url ? `onclick=\"event.stopPropagation(); previewLecture(${JSON.stringify(driveUrl)}, ${JSON.stringify(lec.title || '')})\"` : 'disabled aria-disabled="true"'} class="px-3 py-2 rounded-md text-sm ${url ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}"><i class=\"fas fa-external-link-alt ml-2\"></i>${t('subjects.view.preview')}</button>`}
+                                ${`<button type="button" ${url ? `onclick=\"event.stopPropagation(); previewLecture(${JSON.stringify(url)}, ${JSON.stringify(lec.title || '')})\"` : 'disabled aria-disabled="true"'} class="px-3 py-2 rounded-md text-sm ${url ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}"><i class=\"fas fa-external-link-alt ml-2\"></i>${t('subjects.view.preview')}</button>`}
                                 ${url ? `<a href="${url}" download onclick="event.stopPropagation()" class="px-3 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 text-sm"><i class=\"fas fa-download ml-2\"></i>${t('subjects.view.download')}</a>` : `<button type="button" disabled aria-disabled="true" class="px-3 py-2 bg-gray-200 text-gray-400 rounded-md text-sm cursor-not-allowed"><i class=\"fas fa-download ml-2\"></i>${t('subjects.view.download')}</button>`}
                                 <button type="button" onclick="event.stopPropagation(); confirmDeleteLecture('${lec.id}', '${subjectId}')" class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"><i class="fas fa-trash ml-2"></i>${t('subjects.view.delete')}</button>
                             </div>
@@ -746,7 +737,7 @@
                         `;
                         if (url) {
                             card.classList.add('cursor-pointer');
-                            card.setAttribute('onclick', `previewLecture(${JSON.stringify(driveUrl)}, ${JSON.stringify(lec.title || '')})`);
+                            card.setAttribute('onclick', `previewLecture(${JSON.stringify(url)}, ${JSON.stringify(lec.title || '')})`);
                         }
                         list.appendChild(card);
                     });
