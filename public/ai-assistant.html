@@ -41,6 +41,8 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        
+
         .quiz-card { transition: all 0.3s ease; }
         .quiz-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
         .typing-indicator {
@@ -65,7 +67,7 @@
             border-radius: 1rem 1rem 0.25rem 1rem;
             margin-left: 2rem;
             text-align: right;
-            max-width: 85%;
+            max-width: 95%;
             word-wrap: break-word;
         }
         .ai-message {
@@ -74,7 +76,7 @@
             padding: 0.75rem 1rem;
             border-radius: 1rem 1rem 1rem 0.25rem;
             margin-right: 2rem;
-            max-width: 85%;
+            max-width: 95%;
             word-wrap: break-word;
         }
         /* Custom scrollbar for chat area */
@@ -153,7 +155,7 @@
                     </div>
                 </div>
 
-                <div id="chatArea" class="bg-gray-50 rounded-lg p-4 h-96 overflow-y-auto mb-4 border">
+                <div id="chatArea" class="bg-gray-50 rounded-lg p-4 h-[70vh] resize-y overflow-y-auto mb-4 border">
                     <div class="text-center text-gray-500 py-8">
                         <i class="fas fa-robot text-4xl mb-2"></i>
                         <p data-i18n="ai.qa.empty">مرحباً! اختر محاضرة واسأل أي سؤال تريد</p>
@@ -171,6 +173,24 @@
                         <i class="fas fa-headphones ml-1"></i> ملخص صوتي
                     </button>
                     <audio id="aiSummaryAudio" class="hidden" controls></audio>
+                </div>
+
+                <div class="mt-2">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">قوالب جاهزة</h4>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm" onclick="openTemplate('research')">
+                            بحث شامل
+                        </button>
+                        <button type="button" class="px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm" onclick="openTemplate('paper')">
+                            تحليل ورقة PDF
+                        </button>
+                        <button type="button" class="px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm" onclick="openTemplate('paraphrase')">
+                            إعادة صياغة
+                        </button>
+                        <button type="button" class="px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm" onclick="openTemplate('topics')">
+                            مواضيع وثغرات
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex space-x-2 space-x-reverse">
@@ -1126,6 +1146,61 @@ ${lectureContent}
             }
         }
 
+        function setQuestionValue(text){
+            const input = document.getElementById('questionInput');
+            if (!input) return;
+            input.value = text;
+            input.focus();
+        }
+
+        function openTemplate(id){
+            if (id === 'research'){
+                const topic = window.prompt('اكتب موضوعك الرئيسي هنا');
+                if (topic === null) return;
+                const term1 = window.prompt('اكتب مصطلح 1 (اختياري)');
+                const term2 = window.prompt('اكتب مصطلح 2 (اختياري)');
+                const style = window.prompt('تنسيق المراجع (مثال: APA 7). اتركه فارغاً لاستخدام APA 7');
+                const p = `يا مساعدي الذكي،
+أنا أبدأ بحثًا جديدًا حول "${topic}".
+أطلب منك تنفيذ المهام التالية:
+مراجعة الأدبيات: قم بإجراء مراجعة أدبيات شاملة ومنظمة للأبحاث المنشورة في آخر 5 سنوات (من 2020 إلى 2025) حول هذا الموضوع.
+تحديد الثغرات البحثية (Gaps): بناءً على المراجعة، ما هي الفجوات البحثية الرئيسية أو الأسئلة التي لم تتم الإجابة عليها بعد في هذا المجال؟
+شرح المفاهيم: اشرح لي بوضوح المفهومين التاليين: ${term1 && term1.trim() ? term1 : '[اكتب مصطلح 1]'} و ${term2 && term2.trim() ? term2 : '[اكتب مصطلح 2]'} في سياق هذا البحث.
+إنشاء المراجع: قم بإنشاء قائمة بجميع المراجع التي اعتمدت عليها في المراجعة بتنسيق ${style && style.trim() ? style : 'APA 7'}.
+أريد أن يكون التقرير النهائي منظمًا وسهل القراءة.`;
+                setQuestionValue(p);
+                return;
+            }
+            if (id === 'paper'){
+                const tableNo = window.prompt('رقم الجدول المطلوب شرحه (اختياري)');
+                const pageNo = window.prompt('رقم الصفحة للرسوم البيانية (اختياري)');
+                const p = `بناءً على الورقة التي قمت برفعها:
+ما هي المشكلة البحثية الرئيسية (Research Problem) التي يعالجها المؤلفون؟
+لخص لي المنهجية (Methodology) التي اتبعوها في 3 نقاط.
+استخرج لي أهم النتائج (Key Findings) التي توصلوا إليها.
+اشرح لي الجدول رقم ${tableNo && tableNo.trim() ? tableNo : '[رقم الجدول]'} والرسوم البيانية في الصفحة ${pageNo && pageNo.trim() ? pageNo : '[رقم الصفحة]'}.
+هل ذكر المؤلفون أي قيود (Limitations) على دراستهم؟ وما هي؟`;
+                setQuestionValue(p);
+                return;
+            }
+            if (id === 'paraphrase'){
+                const original = window.prompt('الصق الفقرة الأصلية هنا');
+                if (original === null) return;
+                const p = `أعد صياغة الفقرة التالية بأسلوب أكاديمي احترافي، مع الحفاظ على المعنى الأصلي. اجعل النص أقوى ورسميًا أكثر، وركز على توضيح العلاقة بين المتغيرات.
+${original}`;
+                setQuestionValue(p);
+                return;
+            }
+            if (id === 'topics'){
+                const field = window.prompt('اكتب المجال العام (مثال: الأمن السيبراني في أنظمة إنترنت الأشياء)');
+                if (field === null) return;
+                const p = `أنا مهتم بمجال "${field}".
+اقترح عليّ 5 مواضيع بحثية جديدة ومبتكرة في هذا المجال. يجب أن تكون هذه المواضيع مبنية على ثغرات بحثية حقيقية (Research Gaps) في الأدبيات الحالية. لكل موضوع، اذكر بإيجاز ما هي الثغرة التي يعالجها.`;
+                setQuestionValue(p);
+                return;
+            }
+        }
+
         // Send message
         async function sendMessage() {
             const input = document.getElementById('questionInput');
@@ -1184,7 +1259,13 @@ ${lectureContent}
                     }
                 } catch (_) {}
 
-                const response = await getGeminiQaResponse(message, lecture);
+                let response = '';
+                try {
+                    response = await backendAsk(message, lecture.full_content || lecture.file_content || '');
+                } catch(_) {}
+                if (!response || response.trim().length < 5) {
+                    response = await getGeminiQaResponse(message, lecture);
+                }
                 
                 // Remove typing indicator
                 typingDiv.remove();
@@ -1363,6 +1444,17 @@ ${lectureContent}
             return URL.createObjectURL(blob);
         }
 
+        // Keep dialogue length roughly under TTS budget (~10MB ~ ~10 min ~ ~12k chars)
+        function fitTextByLines(text, maxChars){
+            const lines = (text||'').split(/\r?\n/);
+            let out = '';
+            for (const ln of lines){
+                if ((out.length + ln.length + 1) > maxChars) break;
+                out += (out ? '\n' : '') + ln;
+            }
+            return out;
+        }
+
         async function explainFullSource(){
             try{
                 const { title, content } = await resolveCurrentSource();
@@ -1421,13 +1513,13 @@ ${lectureContent}
             try{
                 const { content } = await resolveCurrentSource();
                 if (!content || content.trim().length < 30) { showNotification('لا يوجد محتوى كافٍ للملخص الصوتي', 'warning'); return; }
-                // Create a full dialogue explanation (entire file) suitable for two voices (male/female)
-                let dialogue = await backendAsk('اشرح المحتوى التالي شرحاً كاملاً على هيئة حوار تعليمي بين "المدرّس" (رجل) و"الطالبة" (بنت). يجب أن يغطي الحوار جميع المحاور المهمة بتدرّج منطقي، مع أسئلة واعتراضات قصيرة من الطالبة وردود واضحة من المدرّس، وأمثلة مركزة عند الحاجة، وبعربية فصحى مبسطة وبدون حشو. استخدم صيغاً مثل: المدرّس: ...\nالطالبة: ...', content);
+                // Create a full dialogue explanation (entire file) suitable for two voices (male/female), concise enough for ~10MB audio
+                let dialogue = await backendAsk('اشرح المحتوى التالي شرحاً كاملاً على هيئة حوار تعليمي بين "المدرّس" (رجل) و"الطالبة" (بنت)، يُغطي كل المحاور باختصار ذكي ومركّز يناسب مدّة صوتية لا تتجاوز 10 دقائق تقريباً (حد أقصى ~12000 حرف). اجعل الحوار متدرّجاً مع أسئلة قصيرة من الطالبة وردود واضحة من المدرّس، وأمثلة موجزة عند الحاجة. استخدم الصيغة: المدرّس: ...\nالطالبة: ...', content);
                 if (!dialogue || dialogue.trim().length < 10){
                     try { dialogue = await clientExplainLarge(content); } catch(_) {}
                 }
                 if (!dialogue || dialogue.trim().length < 10){ showNotification('تعذر إنشاء نص الشرح الحواري الكامل', 'error'); return; }
-                dialogue = dialogue.trim();
+                dialogue = fitTextByLines(dialogue.trim(), 12000);
                 const audioEl = document.getElementById('aiSummaryAudio');
                 // Try alternating-voice synthesis up to ~10MB
                 let url = await synthesizeDialogueTts(dialogue, 10 * 1024 * 1024);
