@@ -2372,7 +2372,7 @@ ${original}`;
             const container = document.createElement('div');
             container.dir = 'rtl';
             container.style.padding = '24px';
-            container.style.paddingBottom = '40px';
+            container.style.paddingBottom = '0px';
             container.style.maxWidth = '794px';
             container.style.width = '794px';
             container.style.boxSizing = 'border-box';
@@ -2392,7 +2392,8 @@ ${original}`;
             preparePdfContent(content);
             container.appendChild(content);
             document.body.appendChild(container);
-            const opt = { margin: 12, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'], avoid: ['table','tr','td','th','p','li','ul','ol','pre','code','h1','h2','h3','h4'] } };
+            const margins = { top: 18, right: 12, bottom: 20, left: 12 };
+            const opt = { margin: margins, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, scrollY: 0, letterRendering: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'], avoid: ['table','tr','td','th','p','li','ul','ol','pre','code','h1','h2','h3','h4'] } };
             const worker = html2pdf().set(opt).from(container).toPdf();
             const blob = await worker.get('pdf').then(pdf => {
                 const total = pdf.internal.getNumberOfPages();
@@ -2402,11 +2403,11 @@ ${original}`;
                     pdf.setPage(i);
                     // draw white footer bar to avoid visual overlap
                     pdf.setFillColor(255, 255, 255);
-                    pdf.rect(0, pageHeight - 14, pageWidth, 14, 'F');
+                    pdf.rect(0, pageHeight - margins.bottom, pageWidth, margins.bottom, 'F');
                     // page number on top of footer bar
                     pdf.setTextColor(17, 24, 39);
                     pdf.setFontSize(12);
-                    pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+                    pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - (margins.bottom / 2), { align: 'center' });
                 }
                 return pdf.output('blob');
             });
