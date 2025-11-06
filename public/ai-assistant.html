@@ -2115,30 +2115,32 @@ ${original}`;
                 const msg = messageDiv.querySelector('.ai-message') || messageDiv;
                 const container = document.createElement('div');
                 container.dir = 'rtl';
-                container.style.padding = '16px';
+                container.style.padding = '20px';
                 container.style.maxWidth = '794px';
+                container.style.background = '#ffffff';
                 container.style.color = '#111827';
-                const h = document.createElement('div');
-                h.style.fontSize = '20px';
-                h.style.fontWeight = '700';
-                h.style.marginBottom = '8px';
-                h.textContent = 'إجابة المساعد';
-                const q = document.createElement('div');
-                q.style.fontSize = '14px';
-                q.style.marginBottom = '12px';
-                q.textContent = lastUserQuestion ? ('السؤال: ' + lastUserQuestion) : '';
+                container.style.fontFamily = "'Cairo', Arial, sans-serif";
                 const content = document.createElement('div');
-                content.innerHTML = msg.innerHTML;
-                content.style.background = '#f9fafb';
-                content.style.border = '1px solid #e5e7eb';
-                content.style.borderRadius = '10px';
-                content.style.padding = '12px';
-                container.appendChild(h);
-                container.appendChild(q);
+                content.style.whiteSpace = 'pre-wrap';
+                content.style.textAlign = 'justify';
+                content.style.lineHeight = '1.9';
+                content.style.fontSize = '16pt';
+                content.textContent = (msg.innerText || '').trim();
                 container.appendChild(content);
                 document.body.appendChild(container);
-                const opt = { margin: 10, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-                await html2pdf().set(opt).from(container).save();
+                const opt = { margin: 12, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+                const worker = html2pdf().set(opt).from(container).toPdf();
+                await worker.get('pdf').then(pdf => {
+                    const total = pdf.internal.getNumberOfPages();
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    pdf.setFontSize(12);
+                    for (let i = 1; i <= total; i++) {
+                        pdf.setPage(i);
+                        pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+                    }
+                });
+                await worker.save();
                 container.remove();
             } catch(_) { showNotification('تعذر إنشاء PDF', 'error'); }
         }
@@ -2150,19 +2152,49 @@ ${original}`;
                 const n = ln.match(/^\d+\s*[\)\.\-\:]\s*(.*)$/i); if (n && n[1]) { bullets.push(n[1]); continue; }
             }
             if (!bullets.length) {
-                const sentences = (text || '').split(/[\.\!\?\u061F]+/).map(s=>s.trim()).filter(s=>s.length>0);
+                const sentences = (text || '').split(/[\.!?\u061F]+/).map(s=>s.trim()).filter(s=>s.length>0);
                 for (const s of sentences) { if (s.length > 2) bullets.push(s); }
             }
             return bullets;
+        }
+        async function buildPdfBlobFromMessage(messageDiv){
+            if (!window.html2pdf) return null;
+            const msg = messageDiv.querySelector('.ai-message') || messageDiv;
+            const container = document.createElement('div');
+            container.dir = 'rtl';
+            container.style.padding = '20px';
+            container.style.maxWidth = '794px';
+            container.style.background = '#ffffff';
+            container.style.color = '#111827';
+            container.style.fontFamily = "'Cairo', Arial, sans-serif";
+            const content = document.createElement('div');
+            content.style.whiteSpace = 'pre-wrap';
+            content.style.textAlign = 'justify';
+            content.style.lineHeight = '1.9';
+            content.style.fontSize = '16pt';
+            content.textContent = (msg.innerText || '').trim();
+            container.appendChild(content);
+            document.body.appendChild(container);
+            const opt = { margin: 12, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+            const worker = html2pdf().set(opt).from(container).toPdf();
+            const blob = await worker.get('pdf').then(pdf => {
+                const total = pdf.internal.getNumberOfPages();
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                pdf.setFontSize(12);
+                for (let i = 1; i <= total; i++) {
+                    pdf.setPage(i);
+                    pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+                }
+                return pdf.output('blob');
+            });
+            container.remove();
+            return blob;
         }
         async function exportMessageToPpt(aiText, fileName) {
             try {
                 if (typeof PptxGenJS === 'undefined') { showNotification('ميزة PowerPoint غير متاحة حالياً', 'error'); return; }
                 const pptx = new PptxGenJS();
-                const title = (lastUserQuestion && lastUserQuestion.trim().length <= 80) ? lastUserQuestion.trim() : 'إجابة المساعد';
-                const s1 = pptx.addSlide();
-                s1.addText('ملخص الإجابة', { x: 0.5, y: 0.6, w: 9, h: 1, fontSize: 28, bold: true, align: 'center', color: '363636' });
-                s1.addText(title, { x: 0.8, y: 1.6, w: 8, h: 1.2, fontSize: 20, align: 'center', color: '111827' });
                 const bullets = splitToBullets(aiText);
                 if (!bullets.length) {
                     const s = pptx.addSlide();
@@ -2179,46 +2211,9 @@ ${original}`;
                 await pptx.writeFile({ fileName });
             } catch(_) { showNotification('تعذر إنشاء العرض التقديمي', 'error'); }
         }
-        async function buildPdfBlobFromMessage(messageDiv){
-            if (!window.html2pdf) return null;
-            const msg = messageDiv.querySelector('.ai-message') || messageDiv;
-            const container = document.createElement('div');
-            container.dir = 'rtl';
-            container.style.padding = '16px';
-            container.style.maxWidth = '794px';
-            container.style.color = '#111827';
-            const h = document.createElement('div');
-            h.style.fontSize = '20px';
-            h.style.fontWeight = '700';
-            h.style.marginBottom = '8px';
-            h.textContent = 'إجابة المساعد';
-            const q = document.createElement('div');
-            q.style.fontSize = '14px';
-            q.style.marginBottom = '12px';
-            q.textContent = lastUserQuestion ? ('السؤال: ' + lastUserQuestion) : '';
-            const content = document.createElement('div');
-            content.innerHTML = msg.innerHTML;
-            content.style.background = '#f9fafb';
-            content.style.border = '1px solid #e5e7eb';
-            content.style.borderRadius = '10px';
-            content.style.padding = '12px';
-            container.appendChild(h);
-            container.appendChild(q);
-            container.appendChild(content);
-            document.body.appendChild(container);
-            const opt = { margin: 10, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-            const worker = html2pdf().set(opt).from(container).toPdf();
-            const blob = await worker.get('pdf').then(pdf => pdf.output('blob'));
-            container.remove();
-            return blob;
-        }
         async function buildPptBlobFromText(aiText){
             if (typeof PptxGenJS === 'undefined') return null;
             const pptx = new PptxGenJS();
-            const title = (lastUserQuestion && lastUserQuestion.trim().length <= 80) ? lastUserQuestion.trim() : 'إجابة المساعد';
-            const s1 = pptx.addSlide();
-            s1.addText('ملخص الإجابة', { x: 0.5, y: 0.6, w: 9, h: 1, fontSize: 28, bold: true, align: 'center', color: '363636' });
-            s1.addText(title, { x: 0.8, y: 1.6, w: 8, h: 1.2, fontSize: 20, align: 'center', color: '111827' });
             const bullets = splitToBullets(aiText);
             if (!bullets.length) {
                 const s = pptx.addSlide();
