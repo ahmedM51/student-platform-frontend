@@ -2131,7 +2131,7 @@ ${original}`;
                 content.style.wordBreak = 'break-word';
                 content.style.overflowWrap = 'anywhere';
                 content.style.margin = '0';
-                content.textContent = (msg.innerText || '').trim();
+                content.innerHTML = sanitizeForPdf(msg.innerHTML || '');
                 container.appendChild(content);
                 document.body.appendChild(container);
                 const opt = { margin: 12, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
@@ -2140,10 +2140,15 @@ ${original}`;
                     const total = pdf.internal.getNumberOfPages();
                     const pageWidth = pdf.internal.pageSize.getWidth();
                     const pageHeight = pdf.internal.pageSize.getHeight();
-                    pdf.setFontSize(12);
                     for (let i = 1; i <= total; i++) {
                         pdf.setPage(i);
-                        pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+                        // draw white footer bar to avoid visual overlap
+                        pdf.setFillColor(255, 255, 255);
+                        pdf.rect(0, pageHeight - 14, pageWidth, 14, 'F');
+                        // page number on top of footer bar
+                        pdf.setTextColor(17, 24, 39);
+                        pdf.setFontSize(12);
+                        pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
                     }
                 });
                 await worker.save();
@@ -2162,6 +2167,29 @@ ${original}`;
                 for (const s of sentences) { if (s.length > 2) bullets.push(s); }
             }
             return bullets;
+        }
+        function sanitizeForPdf(html) {
+            try{
+                const root = document.createElement('div');
+                root.innerHTML = html || '';
+                const allowed = new Set(['BR','B','STRONG','I','EM','U','UL','OL','LI','P','SPAN']);
+                const walk = (node) => {
+                    const children = Array.from(node.children);
+                    for (const el of children) {
+                        if (!allowed.has(el.tagName)) {
+                            const parent = el.parentNode;
+                            while (el.firstChild) parent.insertBefore(el.firstChild, el);
+                            parent.removeChild(el);
+                            continue;
+                        }
+                        const attrs = Array.from(el.attributes);
+                        for (const a of attrs) { if (a.name.toLowerCase() !== 'style') el.removeAttribute(a.name); }
+                        walk(el);
+                    }
+                };
+                walk(root);
+                return root.innerHTML;
+            }catch(_){ return html || ''; }
         }
         async function buildPdfBlobFromMessage(messageDiv){
             if (!window.html2pdf) return null;
@@ -2184,7 +2212,7 @@ ${original}`;
             content.style.wordBreak = 'break-word';
             content.style.overflowWrap = 'anywhere';
             content.style.margin = '0';
-            content.textContent = (msg.innerText || '').trim();
+            content.innerHTML = sanitizeForPdf(msg.innerHTML || '');
             container.appendChild(content);
             document.body.appendChild(container);
             const opt = { margin: 12, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
@@ -2193,10 +2221,15 @@ ${original}`;
                 const total = pdf.internal.getNumberOfPages();
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const pageHeight = pdf.internal.pageSize.getHeight();
-                pdf.setFontSize(12);
                 for (let i = 1; i <= total; i++) {
                     pdf.setPage(i);
-                    pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+                    // draw white footer bar to avoid visual overlap
+                    pdf.setFillColor(255, 255, 255);
+                    pdf.rect(0, pageHeight - 14, pageWidth, 14, 'F');
+                    // page number on top of footer bar
+                    pdf.setTextColor(17, 24, 39);
+                    pdf.setFontSize(12);
+                    pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
                 }
                 return pdf.output('blob');
             });
