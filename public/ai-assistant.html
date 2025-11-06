@@ -408,6 +408,7 @@
             }
             const newChunk = parts.join('\n\n');
             uploadedQaText = uploadedQaText ? (uploadedQaText + '\n\n' + newChunk) : newChunk;
+            try { const f = fileList[0]; if (f && f.name) { currentExportBaseName = (f.name || 'ملفات مرفوعة').replace(/\.[^.]+$/, ''); } } catch(_){ }
             if (uploadedQaText && uploadedQaText.length > 50) {
                 showNotification('تم تجهيز محتوى الملفات للمحادثة', 'success');
             }
@@ -496,6 +497,7 @@
                 }
 
                 uploadedQaText = `-- URL --\n${text}`;
+                try { currentExportBaseName = deriveNameFromUrl(url); } catch(_){ }
 
                 // select uploaded option and enable QA
                 const sel = document.getElementById('qaLectureSelect');
@@ -542,6 +544,7 @@
                 }
 
                 const title = lecture.title || 'محاضرة';
+                try { currentExportBaseName = title; } catch(_){ }
                 const chunk = `-- ${title} --\n${content}`;
                 uploadedQaText = uploadedQaText ? (uploadedQaText + "\n\n" + chunk) : chunk;
 
@@ -710,6 +713,7 @@
         let uploadedQaText = '';
         let uploadedQuizText = '';
         let lastUserQuestion = "";
+        let currentExportBaseName = "";
 
         function detectLanguage(text) {
             try {
@@ -1261,6 +1265,18 @@ ${original}`;
                         }
                     }
                 } catch (_) {}
+
+                // Set export base name from current source selection
+                try {
+                    if (selVal === '__platform__') {
+                        currentExportBaseName = 'منصة الطالب الذكي';
+                    } else if (selVal === '__uploaded__') {
+                        // keep currentExportBaseName as set by upload/url handlers
+                        if (!currentExportBaseName) currentExportBaseName = 'ملفات مرفوعة';
+                    } else if (lecture && lecture.title) {
+                        currentExportBaseName = lecture.title;
+                    }
+                } catch(_) {}
 
                 let response = '';
                 try {
@@ -2083,7 +2099,10 @@ ${original}`;
             actions.appendChild(btnPpt);
             actions.appendChild(btnCloud);
             messageDiv.appendChild(actions);
-            const baseName = sanitizeFileName((lastUserQuestion && lastUserQuestion.trim()) ? lastUserQuestion : 'إجابة المساعد') + '_' + currentStamp();
+            const sourceName = (currentExportBaseName && currentExportBaseName.trim())
+                ? currentExportBaseName
+                : ((lastUserQuestion && lastUserQuestion.trim()) ? lastUserQuestion : 'إجابة المساعد');
+            const baseName = sanitizeFileName(sourceName) + '_' + currentStamp();
             btnPro.onclick = () => window.openProReport && window.openProReport(aiText);
             btnPdf.onclick = () => exportMessageToPdf(messageDiv, baseName + '.pdf');
             btnPpt.onclick = () => exportMessageToPpt(aiText, baseName + '.pptx');
@@ -2126,12 +2145,14 @@ ${original}`;
                 const content = document.createElement('div');
                 content.style.whiteSpace = 'pre-wrap';
                 content.style.textAlign = 'justify';
+                content.style.textJustify = 'inter-word';
                 content.style.lineHeight = '1.9';
                 content.style.fontSize = '16pt';
                 content.style.wordBreak = 'break-word';
                 content.style.overflowWrap = 'anywhere';
                 content.style.margin = '0';
                 content.innerHTML = sanitizeForPdf(msg.innerHTML || '');
+                preparePdfContent(content);
                 container.appendChild(content);
                 document.body.appendChild(container);
                 const opt = { margin: 12, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
@@ -2191,6 +2212,62 @@ ${original}`;
                 return root.innerHTML;
             }catch(_){ return html || ''; }
         }
+        function preparePdfContent(root){
+            try{
+                root.setAttribute('lang','ar');
+                root.style.direction = 'rtl';
+                root.style.unicodeBidi = 'plaintext';
+                const blocks = root.querySelectorAll('p, li');
+                blocks.forEach(el => {
+                    el.style.pageBreakInside = 'avoid';
+                    el.style.breakInside = 'avoid';
+                    el.style.webkitColumnBreakInside = 'avoid';
+                    el.style.lineHeight = '1.9';
+                    el.style.margin = (el.tagName === 'LI') ? '0 0 6px 0' : '0 0 10px 0';
+                });
+                // Wrap Latin segments to avoid bidi artifacts
+                wrapLatinSegments(root);
+            }catch(_){ }
+        }
+        function wrapLatinSegments(root){
+            try{
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+                const nodes = [];
+                let n;
+                while ((n = walker.nextNode())) { nodes.push(n); }
+                const latinRe = /([A-Za-z0-9@#%&*+_=\-\/\\:.]+(?:\s+[A-Za-z0-9@#%&*+_=\-\/\\:.]+)*)/g;
+                for (const textNode of nodes){
+                    const txt = textNode.nodeValue;
+                    if (!latinRe.test(txt)) continue;
+                    latinRe.lastIndex = 0;
+                    const frag = document.createDocumentFragment();
+                    let lastIndex = 0;
+                    let m;
+                    while ((m = latinRe.exec(txt))){
+                        const before = txt.slice(lastIndex, m.index);
+                        if (before) frag.appendChild(document.createTextNode(before));
+                        const span = document.createElement('span');
+                        span.dir = 'ltr';
+                        span.style.unicodeBidi = 'isolate';
+                        span.style.wordBreak = 'normal';
+                        span.textContent = m[0];
+                        frag.appendChild(span);
+                        lastIndex = m.index + m[0].length;
+                    }
+                    const after = txt.slice(lastIndex);
+                    if (after) frag.appendChild(document.createTextNode(after));
+                    textNode.parentNode.replaceChild(frag, textNode);
+                }
+            }catch(_){ }
+        }
+        function deriveNameFromUrl(u){
+            try{
+                const a = new URL(u);
+                const last = a.pathname.split('/').filter(Boolean).pop() || '';
+                const n = decodeURIComponent(last).replace(/\.[^.]+$/, '');
+                return n || 'رابط';
+            }catch(_){ return 'رابط'; }
+        }
         async function buildPdfBlobFromMessage(messageDiv){
             if (!window.html2pdf) return null;
             const msg = messageDiv.querySelector('.ai-message') || messageDiv;
@@ -2207,12 +2284,14 @@ ${original}`;
             const content = document.createElement('div');
             content.style.whiteSpace = 'pre-wrap';
             content.style.textAlign = 'justify';
+            content.style.textJustify = 'inter-word';
             content.style.lineHeight = '1.9';
             content.style.fontSize = '16pt';
             content.style.wordBreak = 'break-word';
             content.style.overflowWrap = 'anywhere';
             content.style.margin = '0';
             content.innerHTML = sanitizeForPdf(msg.innerHTML || '');
+            preparePdfContent(content);
             container.appendChild(content);
             document.body.appendChild(container);
             const opt = { margin: 12, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
