@@ -1276,14 +1276,15 @@ ${original}`;
                     } else if (lecture && lecture.title) {
                         currentExportBaseName = lecture.title;
                     }
-                } catch(_) {}
+                } catch (_) {}
 
+                const comprehensive = buildComprehensivePrompt(message);
                 let response = '';
                 try {
-                    response = await backendAsk(message, lecture.full_content || lecture.file_content || '');
+                    response = await backendAsk(comprehensive, lecture.full_content || lecture.file_content || '');
                 } catch(_) {}
                 if (!response || response.trim().length < 5) {
-                    response = await getGeminiQaResponse(message, lecture);
+                    response = await getGeminiQaResponse(comprehensive, lecture);
                 }
                 
                 // Remove typing indicator
@@ -1336,6 +1337,13 @@ ${original}`;
         async function backendAsk(question, context){
             const j = await postJsonWithFallback('/api/ai/ask', { question, context });
             return j && j.response ? j.response : '';
+        }
+        function buildComprehensivePrompt(q){
+            try{
+                const base = (q || '').trim();
+                const addon = `\n\nرجاءً قدّم الإجابة مقسّمة ومنظمة بالعناوين التالية (إن وُجدت معلومات لكل جزء):\n\nشرح:\n[شرح مفصل ومبسّط للنص/الموضوع]\n\nملخص:\n[تلخيص واضح بالنقاط]\n\nبحث شامل:\n[عرض موسّع مع معلومات داعمة ومراجع إن أمكن]\n\nتحليل الورقة (إن وُجدت ورقة PDF):\n[تحليل المنهجية والنتائج والنقاش]\n\nإعادة صياغة:\n[إعادة صياغة محكمة للفقرة/النص]\n\nثغرات بحثية:\n[قائمة بالثغرات والفرص البحثية]\n\nتوصيات:\n[نصائح عملية وخطوات تالية]`;
+                return base + addon;
+            }catch(_){ return q || ''; }
         }
 
         // --- TTS helpers ---
@@ -2053,7 +2061,11 @@ ${original}`;
             innerDiv.className = `${sender}-message chat-message`;
             
             // Apply line breaks for formatting
-            innerDiv.innerHTML = `<p>${message.replace(/\n/g, '<br>')}</p>`;
+            const paragraphized = (message || '')
+                .split(/\r?\n\r?\n/g)
+                .map(b => `<p>${b.replace(/\n/g, '<br>')}</p>`) 
+                .join('');
+            innerDiv.innerHTML = paragraphized || '<p></p>';
             
             messageDiv.appendChild(innerDiv);
             chatArea.appendChild(messageDiv);
@@ -2155,7 +2167,7 @@ ${original}`;
                 preparePdfContent(content);
                 container.appendChild(content);
                 document.body.appendChild(container);
-                const opt = { margin: 12, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+                const opt = { margin: 12, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'], avoid: ['table','tr','td','th','p','li','ul','ol','pre','code','h1','h2','h3','h4'] } };
                 const worker = html2pdf().set(opt).from(container).toPdf();
                 await worker.get('pdf').then(pdf => {
                     const total = pdf.internal.getNumberOfPages();
@@ -2193,7 +2205,7 @@ ${original}`;
             try{
                 const root = document.createElement('div');
                 root.innerHTML = html || '';
-                const allowed = new Set(['BR','B','STRONG','I','EM','U','UL','OL','LI','P','SPAN']);
+                const allowed = new Set(['BR','B','STRONG','I','EM','U','UL','OL','LI','P','SPAN','H1','H2','H3','H4','HR','BLOCKQUOTE','PRE','CODE','A','TABLE','THEAD','TBODY','TFOOT','TR','TH','TD']);
                 const walk = (node) => {
                     const children = Array.from(node.children);
                     for (const el of children) {
@@ -2204,7 +2216,16 @@ ${original}`;
                             continue;
                         }
                         const attrs = Array.from(el.attributes);
-                        for (const a of attrs) { if (a.name.toLowerCase() !== 'style') el.removeAttribute(a.name); }
+                        for (const a of attrs) {
+                            const an = a.name.toLowerCase();
+                            if (an === 'style') continue;
+                            if (el.tagName === 'A' && an === 'href') {
+                                // keep safe href only
+                                try { if ((a.value || '').trim().toLowerCase().startsWith('javascript:')) el.removeAttribute(a.name); } catch(_) {}
+                                continue;
+                            }
+                            el.removeAttribute(a.name);
+                        }
                         walk(el);
                     }
                 };
@@ -2217,6 +2238,7 @@ ${original}`;
                 root.setAttribute('lang','ar');
                 root.style.direction = 'rtl';
                 root.style.unicodeBidi = 'plaintext';
+                // avoid page breaks inside paragraphs and list items
                 const blocks = root.querySelectorAll('p, li');
                 blocks.forEach(el => {
                     el.style.pageBreakInside = 'avoid';
@@ -2224,6 +2246,82 @@ ${original}`;
                     el.style.webkitColumnBreakInside = 'avoid';
                     el.style.lineHeight = '1.9';
                     el.style.margin = (el.tagName === 'LI') ? '0 0 6px 0' : '0 0 10px 0';
+                });
+                // also avoid breaks for entire lists
+                root.querySelectorAll('ul, ol').forEach(list => {
+                    list.style.pageBreakInside = 'avoid';
+                    list.style.breakInside = 'avoid';
+                    list.style.webkitColumnBreakInside = 'avoid';
+                    list.style.margin = '0 0 10px 0';
+                    list.style.paddingRight = '18px';
+                });
+                // style tables if present
+                root.querySelectorAll('table').forEach(table => {
+                    table.style.width = '100%';
+                    table.style.borderCollapse = 'collapse';
+                    table.style.margin = '8px 0 12px 0';
+                    table.style.pageBreakInside = 'avoid';
+                });
+                root.querySelectorAll('th, td').forEach(cell => {
+                    cell.style.border = '1px solid #e5e7eb';
+                    cell.style.padding = '6px 8px';
+                    cell.style.verticalAlign = 'top';
+                    cell.style.lineHeight = '1.7';
+                });
+                // Convert bullet-like paragraphs to lists
+                const paragraphs = Array.from(root.querySelectorAll('p'));
+                const bulletRe = /^[\-\*•\u2022\u25CF\u25AA\u25E6\u2043▪◦]\s+/;
+                const numRe = /^(?:\d+|[٠-٩]+)\s*[\)\.\-\:]/;
+                paragraphs.forEach(p => {
+                    const html = p.innerHTML;
+                    if (!/<br\s*\/?/i.test(html)) return;
+                    const lines = html.split(/<br\s*\/?\s*>/i).map(s => s.replace(/&nbsp;/g,' ').trim()).filter(Boolean);
+                    if (lines.length < 2) return;
+                    const bCount = lines.filter(l => bulletRe.test(l)).length;
+                    const nCount = lines.filter(l => numRe.test(l)).length;
+                    if (bCount >= 2 || nCount >= 2) {
+                        const tag = nCount > bCount ? 'ol' : 'ul';
+                        const list = document.createElement(tag);
+                        list.style.pageBreakInside = 'avoid';
+                        list.style.breakInside = 'avoid';
+                        list.style.webkitColumnBreakInside = 'avoid';
+                        list.style.margin = '0 0 10px 0';
+                        list.style.paddingRight = '18px';
+                        lines.forEach(l => {
+                            const text = l.replace(bulletRe, '').replace(numRe, '').trim();
+                            if (!text) return;
+                            const li = document.createElement('li');
+                            li.textContent = text;
+                            list.appendChild(li);
+                        });
+                        p.replaceWith(list);
+                    }
+                });
+                // Promote section headings (Arabic keywords) into h3
+                const headingKeywords = ['شرح','الشرح','ملخص','التلخيص','بحث شامل','تحليل','تحليل الورقة','إعادة صياغة','إعادة الصياغة','ثغرات','ثغرات بحثية','المصادر','المراجع','الخاتمة','المقدمة','المنهجية','المشكلة','الأهداف','النتائج','الاستنتاجات'];
+                const kwRe = new RegExp('^(' + headingKeywords.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|') + ')\\s*[:：\\-—]');
+                Array.from(root.querySelectorAll('p')).forEach(p => {
+                    const t = (p.textContent || '').trim();
+                    if (!t) return;
+                    if (kwRe.test(t) || /^#{1,3}\s+/.test(t)) {
+                        let label = t.replace(/^#{1,3}\s+/, '');
+                        let rest = '';
+                        const m = label.match(/^([^:：\\-—]+)\s*[:：\\-—]\s*(.*)$/);
+                        if (m) { label = m[1].trim(); rest = (m[2] || '').trim(); }
+                        const h = document.createElement('h3');
+                        h.textContent = label;
+                        h.style.fontWeight = '700';
+                        h.style.fontSize = '18pt';
+                        h.style.margin = '12px 0 8px 0';
+                        if (rest) {
+                            const np = document.createElement('p');
+                            np.textContent = rest;
+                            p.replaceWith(h);
+                            h.parentNode.insertBefore(np, h.nextSibling);
+                        } else {
+                            p.replaceWith(h);
+                        }
+                    }
                 });
                 // Wrap Latin segments to avoid bidi artifacts
                 wrapLatinSegments(root);
@@ -2294,7 +2392,7 @@ ${original}`;
             preparePdfContent(content);
             container.appendChild(content);
             document.body.appendChild(container);
-            const opt = { margin: 12, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+            const opt = { margin: 12, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'], avoid: ['table','tr','td','th','p','li','ul','ol','pre','code','h1','h2','h3','h4'] } };
             const worker = html2pdf().set(opt).from(container).toPdf();
             const blob = await worker.get('pdf').then(pdf => {
                 const total = pdf.internal.getNumberOfPages();
