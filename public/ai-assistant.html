@@ -33,6 +33,8 @@
     <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.14.0/dist/pptxgen.bundle.js"></script>
     <style>
         body { font-family: 'Cairo', sans-serif; }
         .chat-message { animation: fadeInUp 0.3s ease-out; }
@@ -549,7 +551,7 @@
                     opt = document.createElement('option');
                     opt.value = '__uploaded__';
                     opt.textContent = t('subjects.stats.files');
-                    sel.insertBefore(opt, sel.firstChild?.nextSibling);
+                    sel?.insertBefore(opt, sel.firstChild?.nextSibling);
                 }
                 opt.disabled = false;
                 sel.value = '__uploaded__';
@@ -603,7 +605,7 @@
                     opt = document.createElement('option');
                     opt.value = '__uploaded__';
                     opt.textContent = t('subjects.stats.files');
-                    sel.insertBefore(opt, sel.firstChild);
+                    sel?.insertBefore(opt, sel.firstChild);
                 }
                 opt.disabled = false;
                 sel.value = '__uploaded__';
@@ -707,6 +709,7 @@
         let userAnswers = [];
         let uploadedQaText = '';
         let uploadedQuizText = '';
+        let lastUserQuestion = "";
 
         function detectLanguage(text) {
             try {
@@ -898,7 +901,7 @@ Rules:
 **التعليمات:**
 - **المحتوى**: يجب أن تكون جميع الأسئلة والإجابات الصحيحة مستمدة **فقط** من محتوى المحاضرة المرفق أدناه.
 - **العدد والنوع**: ${questionTypeInstructions}
-- **التنسيق**: يجب أن يكون الإخراج بصيغة JSON صالح يتبع المخطط المحدد، ولا يجب أن يحتوي على أي نص إضافي قبل أو بعد الـ JSON.
+- **التنسيق**: يجب أن يغطي الإخراج جميع المحاور المهمة في المحتوى، مع أسئلة واضحة ومنظمة، وأجوبة صحيحة واضحة، وبدون مقدمات أو خواتيم.
 
 محتوى المحاضرة:
 ======================================
@@ -1382,8 +1385,7 @@ ${original}`;
                 const j = await postJsonWithFallback('/api/tts', { text: c });
                 const buf = await responseToArrayBuffer(j);
                 if (!buf) continue;
-                total += buf.byteLength;
-                if (total > maxBytes) break;
+                total += buf.byteLength; if (total > maxBytes) break;
                 buffers.push(buf);
             }
             if (!buffers.length) return '';
@@ -1410,12 +1412,12 @@ ${original}`;
                     if (r) outlines.push(r);
                 }
                 const merged = outlines.join('\n');
-                const finalPrompt = 'بناءً على النقاط التالية، اكتب ملخّصاً سمعياً قصيراً على هيئة حوار بين "المدرّس" (رجل) و"الطالبة" (بنت)، 4–8 تبادلات فقط، جمل قصيرة وواضحة، بلا مقدمات ولا خاتمة طويلة. استخدم الصيغة: المدرّس: ...\nالطالبة: ...';
-                return await getGeminiQaResponse(finalPrompt + '\n\n' + merged, { title: 'مخطط مجمع', full_content: '' });
+                const finalPrompt = 'ادمج الملخصات الجزئية التالية في نقاط نهائية موجزة (5-8 نقاط) بالعربية الواضحة بدون أي مقدمة أو خاتمة:';
+                return await getGeminiQaResponse(finalPrompt + '\n\n' + merged, { title: 'ملخصات جزئية', full_content: '' });
             }catch(_){ return ''; }
         }
 
-        // --- Alternating-voice TTS for dialogue ---
+        // Alternating-voice TTS for dialogue
         async function synthesizeDialogueTts(dialogueText, maxBytes){
             const lines = (dialogueText||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
             const utterances = [];
@@ -1554,7 +1556,7 @@ ${original}`;
                 if (r) outlines.push(r);
             }
             const mergedOutline = outlines.join('\n');
-            const finalPrompt = 'اعتماداً على المخطط التالي، اكتب الشرح كاملاً على هيئة حوار تعليمي بين "المدرّس" (رجل) و"الطالبة" (بنت). ليكن الحوار متدرّجاً يغطي جميع المحاور، مع أسئلة واعتراضات وجوابها، وأمثلة قصيرة حيث يلزم، وبدون مقدمات أو خاتمة مطوّلة. استخدم صيغاً مثل: المدرّس: ...\nالطالبة: ...';
+            const finalPrompt = 'اعتماداً على المخطط التالي، اكتب الشرح كاملاً على هيئة حوار تعليمي بين "المدرّس" (رجل) و"الطالبة" (بنت). ليكن الحوار متدرّجاً يغطي جميع المحاور، مع أسئلة واعتراضات وجوابها، وأمثلة قصيرة حيث يلزم، وبدون مقدمات أو ختام.';
             return await getGeminiQaResponse(finalPrompt + '\n\n' + mergedOutline, { title: 'مخطط مجمّع', full_content: '' });
         }
 
@@ -2043,16 +2045,230 @@ ${original}`;
             // Remove any old typing indicators if they somehow persisted
             document.querySelectorAll('.typing-indicator-wrapper').forEach(el => el.remove());
             
+            try { if (sender === 'user') { lastUserQuestion = message; } } catch(_) {}
+            try { if (sender === 'ai') { createExportActions(messageDiv, message); } } catch(_) {}
+            
             scrollToBottom();
+            return messageDiv;
         }
+
+        function sanitizeFileName(name) {
+            const base = (name || '').toString().slice(0, 80).replace(/[\/:*?"<>|]+/g, ' ').trim();
+            return base || 'ملف';
+        }
+        function currentStamp() {
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+        }
+        function createExportActions(messageDiv, aiText) {
+            const existing = messageDiv.querySelector('.export-actions');
+            if (existing) return;
+            const actions = document.createElement('div');
+            actions.className = 'export-actions flex gap-2 mt-2 mr-8';
+            const btnPro = document.createElement('button');
+            btnPro.className = 'px-3 py-1 text-sm bg-amber-600 hover:bg-amber-700 text-white rounded';
+            btnPro.innerHTML = '<i class="fas fa-file-alt ml-2"></i>تقرير احترافي';
+            const btnPdf = document.createElement('button');
+            btnPdf.className = 'px-3 py-1 text-sm bg-red-500 hover:bg-red-600 text-white rounded';
+            btnPdf.innerHTML = '<i class="fas fa-file-pdf ml-2"></i>تنزيل PDF';
+            const btnPpt = document.createElement('button');
+            btnPpt.className = 'px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded';
+            btnPpt.innerHTML = '<i class="fas fa-file-powerpoint ml-2"></i>تنزيل PowerPoint';
+            const btnCloud = document.createElement('button');
+            btnCloud.className = 'px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded';
+            btnCloud.innerHTML = '<i class="fas fa-cloud-upload-alt ml-2"></i>حفظ في السحابة';
+            actions.appendChild(btnPro);
+            actions.appendChild(btnPdf);
+            actions.appendChild(btnPpt);
+            actions.appendChild(btnCloud);
+            messageDiv.appendChild(actions);
+            const baseName = sanitizeFileName((lastUserQuestion && lastUserQuestion.trim()) ? lastUserQuestion : 'إجابة المساعد') + '_' + currentStamp();
+            btnPro.onclick = () => window.openProReport && window.openProReport(aiText);
+            btnPdf.onclick = () => exportMessageToPdf(messageDiv, baseName + '.pdf');
+            btnPpt.onclick = () => exportMessageToPpt(aiText, baseName + '.pptx');
+            btnCloud.onclick = async () => {
+                try{
+                    const choice = (window.prompt('اختر النوع للحفظ في السحابة: اكتب pdf أو ppt', 'pdf') || '').trim().toLowerCase();
+                    if (choice !== 'pdf' && choice !== 'ppt') return;
+                    let blob = null, fileName = '', ct = '';
+                    if (choice === 'pdf') { blob = await buildPdfBlobFromMessage(messageDiv); fileName = baseName + '.pdf'; ct = 'application/pdf'; }
+                    else { blob = await buildPptBlobFromText(aiText); fileName = baseName + '.pptx'; ct = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'; }
+                    if (!blob) { showNotification('تعذر إنشاء الملف', 'error'); return; }
+                    const url = await uploadBlobToSupabase(blob, fileName, ct);
+                    if (url) {
+                        showNotification('تم الحفظ في السحابة', 'success');
+                        const a = document.createElement('a');
+                        a.href = url; a.target = '_blank'; a.rel = 'noopener';
+                        a.className = 'px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded';
+                        a.textContent = 'فتح الملف';
+                        actions.appendChild(a);
+                    } else {
+                        showNotification('تعذر الرفع للسحابة', 'error');
+                    }
+                }catch(_){ showNotification('حدث خطأ أثناء الحفظ في السحابة', 'error'); }
+            };
+        }
+        async function exportMessageToPdf(messageDiv, fileName) {
+            try {
+                if (!window.html2pdf) { showNotification('ميزة PDF غير متاحة حالياً', 'error'); return; }
+                const msg = messageDiv.querySelector('.ai-message') || messageDiv;
+                const container = document.createElement('div');
+                container.dir = 'rtl';
+                container.style.padding = '16px';
+                container.style.maxWidth = '794px';
+                container.style.color = '#111827';
+                const h = document.createElement('div');
+                h.style.fontSize = '20px';
+                h.style.fontWeight = '700';
+                h.style.marginBottom = '8px';
+                h.textContent = 'إجابة المساعد';
+                const q = document.createElement('div');
+                q.style.fontSize = '14px';
+                q.style.marginBottom = '12px';
+                q.textContent = lastUserQuestion ? ('السؤال: ' + lastUserQuestion) : '';
+                const content = document.createElement('div');
+                content.innerHTML = msg.innerHTML;
+                content.style.background = '#f9fafb';
+                content.style.border = '1px solid #e5e7eb';
+                content.style.borderRadius = '10px';
+                content.style.padding = '12px';
+                container.appendChild(h);
+                container.appendChild(q);
+                container.appendChild(content);
+                document.body.appendChild(container);
+                const opt = { margin: 10, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+                await html2pdf().set(opt).from(container).save();
+                container.remove();
+            } catch(_) { showNotification('تعذر إنشاء PDF', 'error'); }
+        }
+        function splitToBullets(text) {
+            const lines = (text || '').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+            const bullets = [];
+            for (const ln of lines){
+                const m = ln.match(/^[-*•\u2022\u25CF]\s*(.*)$/i); if (m && m[1]) { bullets.push(m[1]); continue; }
+                const n = ln.match(/^\d+\s*[\)\.\-\:]\s*(.*)$/i); if (n && n[1]) { bullets.push(n[1]); continue; }
+            }
+            if (!bullets.length) {
+                const sentences = (text || '').split(/[\.\!\?\u061F]+/).map(s=>s.trim()).filter(s=>s.length>0);
+                for (const s of sentences) { if (s.length > 2) bullets.push(s); }
+            }
+            return bullets;
+        }
+        async function exportMessageToPpt(aiText, fileName) {
+            try {
+                if (typeof PptxGenJS === 'undefined') { showNotification('ميزة PowerPoint غير متاحة حالياً', 'error'); return; }
+                const pptx = new PptxGenJS();
+                const title = (lastUserQuestion && lastUserQuestion.trim().length <= 80) ? lastUserQuestion.trim() : 'إجابة المساعد';
+                const s1 = pptx.addSlide();
+                s1.addText('ملخص الإجابة', { x: 0.5, y: 0.6, w: 9, h: 1, fontSize: 28, bold: true, align: 'center', color: '363636' });
+                s1.addText(title, { x: 0.8, y: 1.6, w: 8, h: 1.2, fontSize: 20, align: 'center', color: '111827' });
+                const bullets = splitToBullets(aiText);
+                if (!bullets.length) {
+                    const s = pptx.addSlide();
+                    s.addText(aiText, { x: 0.7, y: 0.7, w: 8.6, h: 5, fontSize: 18, align: 'right' });
+                } else {
+                    const chunkSize = 8;
+                    for (let i=0;i<bullets.length;i+=chunkSize) {
+                        const s = pptx.addSlide();
+                        const group = bullets.slice(i, i+chunkSize);
+                        const items = group.map(t => ({ text: t, options: { bullet: true } }));
+                        s.addText(items, { x: 0.8, y: 0.9, w: 8.4, h: 5.2, fontSize: 18, align: 'right' });
+                    }
+                }
+                await pptx.writeFile({ fileName });
+            } catch(_) { showNotification('تعذر إنشاء العرض التقديمي', 'error'); }
+        }
+        async function buildPdfBlobFromMessage(messageDiv){
+            if (!window.html2pdf) return null;
+            const msg = messageDiv.querySelector('.ai-message') || messageDiv;
+            const container = document.createElement('div');
+            container.dir = 'rtl';
+            container.style.padding = '16px';
+            container.style.maxWidth = '794px';
+            container.style.color = '#111827';
+            const h = document.createElement('div');
+            h.style.fontSize = '20px';
+            h.style.fontWeight = '700';
+            h.style.marginBottom = '8px';
+            h.textContent = 'إجابة المساعد';
+            const q = document.createElement('div');
+            q.style.fontSize = '14px';
+            q.style.marginBottom = '12px';
+            q.textContent = lastUserQuestion ? ('السؤال: ' + lastUserQuestion) : '';
+            const content = document.createElement('div');
+            content.innerHTML = msg.innerHTML;
+            content.style.background = '#f9fafb';
+            content.style.border = '1px solid #e5e7eb';
+            content.style.borderRadius = '10px';
+            content.style.padding = '12px';
+            container.appendChild(h);
+            container.appendChild(q);
+            container.appendChild(content);
+            document.body.appendChild(container);
+            const opt = { margin: 10, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+            const worker = html2pdf().set(opt).from(container).toPdf();
+            const blob = await worker.get('pdf').then(pdf => pdf.output('blob'));
+            container.remove();
+            return blob;
+        }
+        async function buildPptBlobFromText(aiText){
+            if (typeof PptxGenJS === 'undefined') return null;
+            const pptx = new PptxGenJS();
+            const title = (lastUserQuestion && lastUserQuestion.trim().length <= 80) ? lastUserQuestion.trim() : 'إجابة المساعد';
+            const s1 = pptx.addSlide();
+            s1.addText('ملخص الإجابة', { x: 0.5, y: 0.6, w: 9, h: 1, fontSize: 28, bold: true, align: 'center', color: '363636' });
+            s1.addText(title, { x: 0.8, y: 1.6, w: 8, h: 1.2, fontSize: 20, align: 'center', color: '111827' });
+            const bullets = splitToBullets(aiText);
+            if (!bullets.length) {
+                const s = pptx.addSlide();
+                s.addText(aiText, { x: 0.7, y: 0.7, w: 8.6, h: 5, fontSize: 18, align: 'right' });
+            } else {
+                const chunkSize = 8;
+                for (let i=0;i<bullets.length;i+=chunkSize) {
+                    const s = pptx.addSlide();
+                    const group = bullets.slice(i, i+chunkSize);
+                    const items = group.map(t => ({ text: t, options: { bullet: true } }));
+                    s.addText(items, { x: 0.8, y: 0.9, w: 8.4, h: 5.2, fontSize: 18, align: 'right' });
+                }
+            }
+            const blob = await pptx.write('blob');
+            return blob;
+        }
+        async function uploadBlobToSupabase(blob, fileName, contentType){
+            try{
+                const client = window.supabaseClient || (window.initializeSupabase && window.initializeSupabase());
+                if (!client) return null;
+                const uid = (currentUser && currentUser.id) || localStorage.getItem('userId') || 'anonymous';
+                const path = `${uid}/${currentStamp()}/${fileName}`;
+                const buckets = ['exports','documents','files','uploads','pdfs'];
+                for (const b of buckets){
+                    try{
+                        const { error } = await client.storage.from(b).upload(path, blob, { contentType, upsert: true });
+                        if (!error){
+                            const { data } = client.storage.from(b).getPublicUrl(path);
+                            return data && data.publicUrl ? data.publicUrl : null;
+                        }
+                    }catch(_){ }
+                }
+                return null;
+            }catch(_){ return null; }
+        }
+
+        try{
+            window.openProReport = openProReport;
+            window.runProReportTask = runProReportTask;
+            window.closeProReport = closeProReport;
+            window.proReportToPdf = proReportToPdf;
+            window.proReportToPpt = proReportToPpt;
+            window.proReportUpload = proReportUpload;
+        }catch(_){ }
 
         // Scroll to bottom of chat area
         function scrollToBottom() {
             const chatArea = document.getElementById('chatArea');
             chatArea.scrollTop = chatArea.scrollHeight;
         }
-
-        // Show notification
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
             notification.className = `fixed top-4 right-4 p-4 rounded-lg text-white font-medium z-50 transition-all duration-300 transform translate-x-0 ${
