@@ -26,3 +26,27 @@ html.dark .card{background-color:#0b1220 !important;color:#e2e8f0 !important;bor
 html.dark .modal{background-color:#0b1220 !important;color:#e2e8f0 !important}
 html.dark .table{color:#e2e8f0 !important}
 html.dark .bg-white\/70{background-color:rgba(17,24,39,.7) !important}
+/* Planner specific dark styles */
+html.dark .dashboard-card{background-color:#111827 !important;color:#e5e7eb !important;border-color:#334155 !important}
+html.dark .task-card{background-color:#0b1220 !important}
+html.dark .task-card.completed{background-color:rgba(16,185,129,.15) !important}
+html.dark .calendar-day{background-color:#0b1220 !important;border-color:#334155 !important}
+html.dark .calendar-day:hover{background-color:#111827 !important}
+html.dark .calendar-day.today{background-color:#1f2937 !important;border-color:#3b82f6 !important}
+html.dark .calendar-day.has-tasks{background-color:#111827 !important}
+html.dark .modal-content{background-color:#111827 !important;color:#e5e7eb !important;border-color:#334155 !important}
+html.dark .bg-gradient-to-r{background-image:linear-gradient(135deg,#0b1220,#111827) !important}
+/* Preset buttons readability */
+html.dark .bg-blue-100{background-color:rgba(59,130,246,.15) !important}
+html.dark .bg-green-100{background-color:rgba(16,185,129,.15) !important}
+html.dark .bg-yellow-100{background-color:rgba(234,179,8,.15) !important}
+html.dark .bg-purple-100{background-color:rgba(139,92,246,.15) !important}
+html.dark .text-blue-800{color:#bfdbfe !important}
+html.dark .text-green-800{color:#bbf7d0 !important}
+html.dark .text-yellow-800{color:#fde68a !important}
+html.dark .text-purple-800{color:#e9d5ff !important}
+/* Timer display preset colors */
+html.dark #timeDisplay.preset-blue{color:#93c5fd !important}
+html.dark #timeDisplay.preset-green{color:#86efac !important}
+html.dark #timeDisplay.preset-yellow{color:#fde68a !important}
+html.dark #timeDisplay.preset-purple{color:#e9d5ff !important}
