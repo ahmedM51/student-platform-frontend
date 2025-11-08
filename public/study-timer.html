@@ -24,6 +24,8 @@
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://student-platform-frontend.vercel.app/study-timer.html">
+    <script>try{var t=localStorage.getItem('theme');var d=t?t==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark')}}catch(e){}</script>
+    <link href="css/dark-mode.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -76,6 +78,12 @@
         .stats-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
+    </style>
+    <style>
+        #timeDisplay.preset-blue{color:#1d4ed8}
+        #timeDisplay.preset-green{color:#16a34a}
+        #timeDisplay.preset-yellow{color:#b45309}
+        #timeDisplay.preset-purple{color:#7c3aed}
     </style>
     <script src="js/i18n.js"></script>
 </head>
@@ -281,6 +289,8 @@
         let completedSessions = 0;
         let currentSubject = null;
         let sessionStartTime = null;
+        let currentPresetKey = 'blue';
+        const presetColors = { blue:'#3b82f6', green:'#10b981', yellow:'#eab308', purple:'#8b5cf6' };
 
         // Timer settings
         let studyDuration = 25; // minutes
@@ -306,6 +316,7 @@
                 await loadSubjects();
                 await loadTodayStats();
                 await loadSessionHistory();
+                try{ document.getElementById('timeDisplay').classList.add('preset-blue'); }catch(_){ }
                 
             } catch (error) {
                 console.error('❌ Page initialization error:', error);
@@ -476,7 +487,8 @@
             const progress = ((totalTime - currentTime) / totalTime) * 360;
             const circle = document.getElementById('timerCircle');
             
-            const color = isBreakTime ? '#10b981' : '#3b82f6'; // Green for break, blue for study
+            const studyColor = presetColors[currentPresetKey] || '#3b82f6';
+            const color = isBreakTime ? '#10b981' : studyColor;
             circle.style.background = `conic-gradient(${color} ${progress}deg, #e5e7eb ${progress}deg)`;
         }
 
@@ -720,6 +732,15 @@
             } else {
                 currentTime = breakMinutes * 60;
             }
+            let key = 'blue';
+            if (studyMinutes===25 && breakMinutes===5) key='blue';
+            else if (studyMinutes===50 && breakMinutes===10) key='green';
+            else if (studyMinutes===15 && breakMinutes===3) key='yellow';
+            else if (studyMinutes===90 && breakMinutes===20) key='purple';
+            currentPresetKey = key;
+            const td = document.getElementById('timeDisplay');
+            ['preset-blue','preset-green','preset-yellow','preset-purple'].forEach(c=>td.classList.remove(c));
+            td.classList.add(`preset-${key}`);
             
             updateDisplay();
             updateCircleProgress();
@@ -835,5 +856,6 @@
       </div>
     </footer>
     <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
+    <script src="js/theme.js"></script>
 </body>
 </html>
