@@ -25,6 +25,9 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://student-platform-frontend.vercel.app/planner.html">
     
+    <script>try{var t=localStorage.getItem('theme');var d=t?t==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark')}}catch(e){}</script>
+    <link href="css/dark-mode.css" rel="stylesheet">
+
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -573,6 +576,40 @@
                     };
                     const result = await window.supabaseDB.tasks.create(payload);
                     if (result?.error) throw result.error;
+                    try {
+                        const created = result?.data;
+                        if (created && window.supabaseDB && window.supabaseDB.notifications && currentUser?.email) {
+                            const start = created.reminder_time || created.start_time || created.time || '09:00';
+                            if (created.due_date) {
+                                const mainDateTime = new Date(`${created.due_date}T${start}`);
+                                const dayBeforeDateTime = new Date(mainDateTime.getTime() - 24*60*60*1000);
+                                const subjectEmail = `تذكير بالمهمة: ${created.title}`;
+                                const bodyEmail = `لديك مهمة مجدولة اليوم.\nالعنوان: ${created.title}\nالوقت: ${created.start_time || created.time || ''} ${created.end_time ? `- ${created.end_time}` : ''}`.trim();
+                                // At task time
+                                await window.supabaseDB.notifications.create({
+                                    user_id: currentUser.id,
+                                    task_id: created.id,
+                                    email: currentUser.email,
+                                    subject: subjectEmail,
+                                    body: bodyEmail,
+                                    send_at: mainDateTime.toISOString(),
+                                    type: 'task_reminder',
+                                    status: 'pending'
+                                });
+                                // One day before
+                                await window.supabaseDB.notifications.create({
+                                    user_id: currentUser.id,
+                                    task_id: created.id,
+                                    email: currentUser.email,
+                                    subject: `تذكير مبكر: ${created.title}`,
+                                    body: `تذكير قبل يوم للمهمة: ${created.title}`,
+                                    send_at: dayBeforeDateTime.toISOString(),
+                                    type: 'task_reminder_pre',
+                                    status: 'pending'
+                                });
+                            }
+                        }
+                    } catch(_) { }
                 } else {
                     const task = {
                         id: Date.now().toString(),
@@ -1334,6 +1371,38 @@
                             
                             // Schedule notification for this task
                             scheduleTaskNotification(taskData);
+                            try {
+                                const created = result?.data;
+                                if (created && window.supabaseDB && window.supabaseDB.notifications && currentUser?.email) {
+                                    const start = created.reminder_time || created.start_time || created.time || '09:00';
+                                    if (created.due_date) {
+                                        const mainDateTime = new Date(`${created.due_date}T${start}`);
+                                        const dayBeforeDateTime = new Date(mainDateTime.getTime() - 24*60*60*1000);
+                                        const subjectEmail = `تذكير بالمهمة: ${created.title}`;
+                                        const bodyEmail = `لديك مهمة مجدولة اليوم.\nالعنوان: ${created.title}\nالوقت: ${created.start_time || created.time || ''} ${created.end_time ? `- ${created.end_time}` : ''}`.trim();
+                                        await window.supabaseDB.notifications.create({
+                                            user_id: currentUser.id,
+                                            task_id: created.id,
+                                            email: currentUser.email,
+                                            subject: subjectEmail,
+                                            body: bodyEmail,
+                                            send_at: mainDateTime.toISOString(),
+                                            type: 'task_reminder',
+                                            status: 'pending'
+                                        });
+                                        await window.supabaseDB.notifications.create({
+                                            user_id: currentUser.id,
+                                            task_id: created.id,
+                                            email: currentUser.email,
+                                            subject: `تذكير مبكر: ${created.title}`,
+                                            body: `تذكير قبل يوم للمهمة: ${created.title}`,
+                                            send_at: dayBeforeDateTime.toISOString(),
+                                            type: 'task_reminder_pre',
+                                            status: 'pending'
+                                        });
+                                    }
+                                }
+                            } catch(_) { }
                         }
                     }
                 }
@@ -1466,6 +1535,7 @@
       </div>
     </footer>
     <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
+<script src="js/theme.js"></script>
 </body>
 
 </html>
