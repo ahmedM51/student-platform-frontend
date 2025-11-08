@@ -316,10 +316,10 @@
     <main class="min-h-screen bg-gray-50 p-6">
         <!-- Header -->
         <header class="bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="w-full px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-20">
                     <!-- Brand -->
-                    <div class="flex items-center space-x-4 space-x-reverse">
+                    <div class="flex items-center space-x-4 space-x-reverse order-first">
                         <div class="bg-white bg-opacity-20 p-2 rounded-lg">
                             <i class="fas fa-graduation-cap text-2xl"></i>
                         </div>
@@ -329,47 +329,47 @@
                         </div>
                     </div>
 
-                    <!-- Desktop actions -->
-                    <div class="hidden md:flex items-center space-x-4 space-x-reverse">
-                        <div class="flex items-center bg-white bg-opacity-20 px-4 py-2 rounded-lg space-x-4 space-x-reverse">
-                            <button onclick="window.location.href='subjects.html'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                                <i class="fas fa-book ml-1"></i><span data-i18n="nav.subjects">المواد الدراسية</span>
-                            </button>
-                            <button onclick="window.location.href='planner.html'" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                                <i class="fas fa-calendar-alt ml-1"></i><span data-i18n="nav.planner">المخطط الدراسي</span>
-                            </button>
-                            <button onclick="window.location.href='study-timer.html'" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                                <i class="fas fa-clock ml-1"></i><span data-i18n="nav.timer">مؤقت المذاكرة</span>
-                            </button>
-                            <button onclick="window.location.href='ai-assistant.html'" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                                <i class="fas fa-robot ml-1"></i><span data-i18n="nav.ai">المساعد الذكي</span>
-                            </button>
-                            <button onclick="window.location.href='ai-voice.html'" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                                <i class="fas fa-microphone-lines ml-1"></i><span data-i18n="nav.voice">النسخة الصوتية</span>
-                            </button>
-                            <button onclick="window.location.href='my%20note.html'" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                                <i class="fas fa-microphone ml-1"></i><span data-i18n="nav.mynotes">ملاحظاتي الصوتية</span>
-                            </button>
-                            <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                                <i class="fas fa-headset ml-1"></i><span data-i18n="nav.contact">تواصل معانا</span>
-                            </button>
-                            <button onclick="window.location.href='privacy-policy.html'" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                                <i class="fas fa-shield-alt ml-1"></i><span data-i18n="nav.privacy">سياسة الخصوصية</span>
-                            </button>
-                        </div>
-                        <div class="flex items-center gap-2">
-                          <select id="langSelect" onchange="setLanguage(this.value)" class="bg-white bg-opacity-90 text-gray-800 px-2 py-2 rounded-lg text-sm">
-                            <option value="ar">العربية</option>
-                            <option value="en">English</option>
-                          </select>
-                          <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                              <i class="fas fa-sign-out-alt ml-2"></i><span data-i18n="nav.logout">تسجيل الخروج</span>
-                          </button>
-                        </div>
+                    <!-- Desktop actions (hidden to keep mobile look on desktop) -->
+                    <div class="hidden">
+                      <div class="flex items-center gap-2">
+                        <button onclick="window.location.href='subjects.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                          <i class="fas fa-book ml-1"></i><span data-i18n="nav.subjects">المواد الدراسية</span>
+                        </button>
+                        <button onclick="window.location.href='planner.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                          <i class="fas fa-calendar-alt ml-1"></i><span data-i18n="nav.planner">المخطط الدراسي</span>
+                        </button>
+                        <button onclick="window.location.href='study-timer.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                          <i class="fas fa-clock ml-1"></i><span data-i18n="nav.timer">مؤقت المذاكرة</span>
+                        </button>
+                        <button onclick="window.location.href='ai-assistant.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                          <i class="fas fa-robot ml-1"></i><span data-i18n="nav.ai">المساعد الذكي</span>
+                        </button>
+                        <button onclick="window.location.href='ai-voice.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                          <i class="fas fa-microphone-lines ml-1"></i><span data-i18n="nav.voice">النسخة الصوتية</span>
+                        </button>
+                        <button onclick="window.location.href='my%20note.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                          <i class="fas fa-microphone ml-1"></i><span data-i18n="nav.mynotes">ملاحظاتي الصوتية</span>
+                        </button>
+                        <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                          <i class="fas fa-headset ml-1"></i><span data-i18n="nav.contact">تواصل معانا</span>
+                        </button>
+                        <button onclick="window.location.href='privacy-policy.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
+                          <i class="fas fa-shield-alt ml-1"></i><span data-i18n="nav.privacy">سياسة الخصوصية</span>
+                        </button>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <select id="langSelect" onchange="setLanguage(this.value)" class="bg-white bg-opacity-90 text-gray-800 px-2 py-2 rounded-lg text-sm">
+                          <option value="ar">العربية</option>
+                          <option value="en">English</option>
+                        </select>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                          <i class="fas fa-sign-out-alt ml-2"></i><span data-i18n="nav.logout">تسجيل الخروج</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <!-- Mobile hamburger -->
-                    <button id="mobileMenuBtn" aria-label="فتح القائمة" class="md:hidden inline-flex items-center justify-center p-2 rounded-md bg-white bg-opacity-20 hover:bg-opacity-30 focus:outline-none">
+                    <!-- Mobile hamburger (visible on all screens) -->
+                    <button id="mobileMenuBtn" aria-label="فتح القائمة" class="order-last inline-flex items-center justify-center p-2 rounded-md bg-white bg-opacity-20 hover:bg-opacity-30 focus:outline-none">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
@@ -377,8 +377,8 @@
                 </div>
             </div>
 
-            <!-- Mobile menu -->
-            <div id="mobileMenu" class="md:hidden hidden border-t border-white border-opacity-10">
+            <!-- Mobile menu (enabled for all screens) -->
+            <div id="mobileMenu" class="hidden border-t border-white border-opacity-10">
                 <div class="px-4 pt-2 pb-4 space-y-2">
                     <button onclick="window.location.href='subjects.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
                         <i class="fas fa-book ml-2"></i> <span data-i18n="nav.subjects">المواد الدراسية</span>
