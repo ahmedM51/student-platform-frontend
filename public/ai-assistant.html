@@ -21,7 +21,10 @@
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://student-platform-frontend.vercel.app/ai-assistant.html">
-    
+
+    <script>try{var t=localStorage.getItem('theme');var d=t?t==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark')}}catch(e){}</script>
+    <link href="css/dark-mode.css" rel="stylesheet">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js for client-side PDF text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" referrerpolicy="no-referrer"></script>
@@ -2528,5 +2531,6 @@ ${original}`;
       </div>
     </footer>
     <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
+    <script src="js/theme.js"></script>
 </body>
 </html>
