@@ -16,6 +16,10 @@ html.dark .text-blue-600{color:#60a5fa !important}
 html.dark .text-green-600{color:#4ade80 !important}
 html.dark .text-red-600{color:#f87171 !important}
 html.dark .text-yellow-600{color:#facc15 !important}
+/* Indigo variants used across UI */
+html.dark .text-indigo-800, html.dark .text-indigo-700, html.dark .text-indigo-600{color:#e0e7ff !important}
+html.dark .bg-indigo-50{background-color:#0b1220 !important}
+html.dark .border-indigo-200{border-color:#334155 !important}
 html.dark .card{background-color:#0b1220 !important;color:#e2e8f0 !important;border-color:#334155 !important}
 html.dark .modal{background-color:#0b1220 !important;color:#e2e8f0 !important}
 html.dark .table{color:#e2e8f0 !important}
