@@ -1,6 +1,8 @@
 html{color-scheme:light}
 html.dark{color-scheme:dark}
 html.dark body{background-color:#0f172a !important;color:#e2e8f0 !important}
+html.dark body :where(h1,h2,h3,h4,h5,h6,p,li,span,div,em,strong,small,label,button,a,th,td){color:#e2e8f0 !important}
+html.dark img,html.dark video,html.dark iframe,html.dark canvas,html.dark svg{opacity:1 !important;filter:none !important}
 html.dark a{color:#93c5fd !important}
 html.dark .bg-white,html.dark .bg-gray-50,html.dark .bg-gray-100,html.dark .bg-slate-50,html.dark .bg-slate-100{background-color:#111827 !important;color:#e5e7eb !important}
 html.dark .text-black,html.dark .text-gray-900,html.dark .text-gray-800,html.dark .text-gray-700,html.dark .text-gray-600,html.dark .text-gray-500,html.dark .text-gray-400{color:#e5e7eb !important}
