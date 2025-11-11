@@ -2204,6 +2204,145 @@ ${original}`;
             }
             return bullets;
         }
+        function extractStructuredSlides(aiText){
+            try{
+                const t = (aiText || '').replace(/\r/g,'').trim();
+                if (!t) return [];
+                const hasMarkers = /(أولاً|اولاً|ثانيًا|ثانيا|ثالثًا|ثالثا|📋|الفكرة|⚙️|خطوات|⭐|المميزات|🏁)/.test(t);
+                if (!hasMarkers) return [];
+                const slides = [];
+                const lines = t.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+                const titleLine = lines[0]?.replace(/^[^\u0600-\u06FF0-9A-Za-z]+/,'') || '';
+                if (titleLine) slides.push({ type:'title', title: titleLine });
+                const secRegex = /(أولاً|اولاً|ثانيًا|ثانيا|ثالثًا|ثالثا)\s*[:：\-]\s*([^\n]+)/g;
+                const positions = [];
+                let m;
+                while ((m = secRegex.exec(t))){ positions.push({ idx: m.index, label: m[0], title: m[2] }); }
+                const blocks = [];
+                if (positions.length){
+                    if (positions[0].idx > 0) {
+                        blocks.push({ header: '', body: t.slice(0, positions[0].idx) });
+                    }
+                    for (let i=0;i<positions.length;i++){
+                        const start = positions[i].idx;
+                        const end = i+1<positions.length ? positions[i+1].idx : t.length;
+                        blocks.push({ header: positions[i].label, body: t.slice(start, end) });
+                    }
+                } else {
+                    blocks.push({ header: '', body: t });
+                }
+                blocks.forEach(b=>{
+                    const secTitle = (b.header || '').trim();
+                    const urlMatch = b.body.match(/https?:\/\/[^\s]+/i);
+                    const url = urlMatch ? urlMatch[0] : '';
+                    if (secTitle) slides.push({ type:'header', title: secTitle, url });
+                    const ideaMatch = b.body.match(/(?:📋|الفكرة)\s*:?([\s\S]*?)(?=(?:⚙️|خطوات|⭐|المميزات|🏁|$))/);
+                    const stepsMatch = b.body.match(/(?:⚙️|خطوات(?:\s*الاستخدام)?)\s*:?([\s\S]*?)(?=(?:⭐|المميزات|🏁|$))/);
+                    const featsMatch = b.body.match(/(?:⭐|المميزات)\s*:?([\s\S]*?)(?=(?:🏁|$))/);
+                    const idea = ideaMatch ? ideaMatch[1].trim() : '';
+                    const stepsRaw = stepsMatch ? stepsMatch[1] : '';
+                    const featsRaw = featsMatch ? featsMatch[1] : '';
+                    if (idea) slides.push({ type:'text', title:'الفكرة', body: idea });
+                    const normList = (raw) => {
+                        let arr = (raw || '').split(/\n+/)
+                            .map(x=>x.replace(/^[\-\*•\u2022\u25CF]+/,'').replace(/^\d+\s*[\)\.\-\:]/,'').trim())
+                            .filter(Boolean);
+                        if (arr.length <= 1) {
+                            arr = (raw || '').split(/[\.!?\u061F؛،]+/)
+                                .map(s=>s.trim())
+                                .filter(s=>s.length > 2);
+                        }
+                        return arr;
+                    };
+                    const steps = normList(stepsRaw);
+                    const feats = normList(featsRaw);
+                    if (steps.length) slides.push({ type:'bullets', title:'خطوات الاستخدام', items: steps });
+                    if (feats.length) slides.push({ type:'bullets', title:'المميزات', items: feats });
+                });
+                const summary = t.match(/🏁[\s\S]*$/);
+                if (summary){
+                    const body = summary[0].replace(/^🏁\s*/,'').trim();
+                    if (body) slides.push({ type:'text', title:'النتيجة', body });
+                }
+                return slides;
+            }catch(_){ return []; }
+        }
+        function setupPptTheme(pptx){
+            try{
+                if (pptx.__SP_THEME_DEFINED) return;
+                const primary = '7C3AED'; // purple-600
+                const accent = 'F5F3FF';  // purple-50
+                const gray = '111827';    // gray-900
+                pptx.defineSlideMaster({
+                    title: 'MASTER_TITLE',
+                    bkgd: 'FFFFFF',
+                    objects: [
+                        { rect: { x:0, y:0, w:10, h:0.7, fill: accent } },
+                        { rect: { x:9.2, y:0, w:0.8, h:7.5, fill: primary } },
+                        { text: { text: 'منصة الطالب الذكي', options: { x:0.6, y:0.18, w:8.4, h:0.5, color: gray, fontSize: 14, bold: true, align: 'right', fontFace: 'Arial' } } }
+                    ],
+                    slideNumber: { x: 4.8, y: 6.9, color: '9CA3AF', fontSize: 10 }
+                });
+                pptx.defineSlideMaster({
+                    title: 'MASTER_SECTION',
+                    bkgd: 'FFFFFF',
+                    objects: [
+                        { rect: { x:0, y:0, w:10, h:0.55, fill: accent } },
+                        { rect: { x:9.2, y:0, w:0.8, h:7.5, fill: primary } }
+                    ],
+                    slideNumber: { x: 4.8, y: 6.9, color: '9CA3AF', fontSize: 10 }
+                });
+                pptx.defineSlideMaster({
+                    title: 'MASTER_CONTENT',
+                    bkgd: 'FFFFFF',
+                    objects: [
+                        { rect: { x:0, y:0, w:10, h:0.3, fill: accent } },
+                        { rect: { x:9.2, y:0, w:0.8, h:7.5, fill: primary } }
+                    ],
+                    slideNumber: { x: 4.8, y: 6.9, color: '9CA3AF', fontSize: 10 }
+                });
+                pptx.__SP_THEME_DEFINED = true;
+            }catch(_){ }
+        }
+        function populatePptFromText(pptx, aiText){
+            try{
+                setupPptTheme(pptx);
+                const slides = extractStructuredSlides(aiText);
+                if (!slides.length) return false;
+                const primary = '7C3AED';
+                const gray = '111827';
+                let hasCover = false;
+                slides.forEach((sl) => {
+                    if (sl.type === 'title'){
+                        const s = pptx.addSlide({ masterName: 'MASTER_TITLE' });
+                        s.addText(sl.title, { x: 0.6, y: 1.6, w: 8.6, h: 1.4, fontSize: 34, bold: true, align: 'right', color: gray, fontFace: 'Arial' });
+                        const dt = new Date();
+                        s.addText(dt.toLocaleDateString('ar-EG'), { x: 0.6, y: 2.8, w: 8.6, h: 0.6, fontSize: 14, color: '6B7280', align: 'right', fontFace: 'Arial' });
+                        hasCover = true;
+                    } else if (sl.type === 'header'){
+                        const s = pptx.addSlide({ masterName: 'MASTER_SECTION' });
+                        s.addText(sl.title, { x: 0.6, y: 1.3, w: 8.6, h: 1.0, fontSize: 28, bold: true, align: 'right', color: primary, fontFace: 'Arial' });
+                        if (sl.url) {
+                            s.addText([{ text: '🔗 ', options: { bold: true } }, { text: sl.url }], { x: 0.6, y: 2.1, w: 8.6, h: 0.6, fontSize: 14, color: '2563EB', align: 'right', hyperlink: { url: sl.url }, fontFace: 'Arial' });
+                        }
+                    } else if (sl.type === 'text'){
+                        const s = pptx.addSlide({ masterName: 'MASTER_CONTENT' });
+                        s.addText(sl.title, { x: 0.6, y: 0.6, w: 8.6, h: 0.8, fontSize: 22, bold: true, align: 'right', color: primary, fontFace: 'Arial' });
+                        s.addText(sl.body, { x: 0.6, y: 1.2, w: 8.6, h: 5.0, fontSize: 18, align: 'right', color: gray, fontFace: 'Arial' });
+                    } else if (sl.type === 'bullets'){
+                        const s = pptx.addSlide({ masterName: 'MASTER_CONTENT' });
+                        s.addText(sl.title, { x: 0.6, y: 0.6, w: 8.6, h: 0.8, fontSize: 22, bold: true, align: 'right', color: primary, fontFace: 'Arial' });
+                        const items = sl.items.map(t => ({ text: t, options: { bullet: true } }));
+                        s.addText(items, { x: 0.8, y: 1.2, w: 8.2, h: 5.0, fontSize: 18, align: 'right', color: gray, fontFace: 'Arial' });
+                    }
+                });
+                if (!hasCover) {
+                    const s = pptx.addSlide({ masterName: 'MASTER_TITLE' });
+                    s.addText('ملخص العرض', { x: 0.6, y: 1.6, w: 8.6, h: 1.4, fontSize: 34, bold: true, align: 'right', color: gray, fontFace: 'Arial' });
+                }
+                return true;
+            }catch(_){ return false; }
+        }
         function sanitizeForPdf(html) {
             try{
                 const root = document.createElement('div');
@@ -2223,7 +2362,6 @@ ${original}`;
                             const an = a.name.toLowerCase();
                             if (an === 'style') continue;
                             if (el.tagName === 'A' && an === 'href') {
-                                // keep safe href only
                                 try { if ((a.value || '').trim().toLowerCase().startsWith('javascript:')) el.removeAttribute(a.name); } catch(_) {}
                                 continue;
                             }
@@ -2361,6 +2499,61 @@ ${original}`;
                 }
             }catch(_){ }
         }
+        function loadScriptOnce(src){
+            return new Promise((resolve)=>{
+                try{
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.async = true;
+                    s.defer = true;
+                    s.onload = ()=>resolve(true);
+                    s.onerror = ()=>resolve(false);
+                    document.head.appendChild(s);
+                }catch(_){ resolve(false); }
+            });
+        }
+        async function ensurePptxLoaded(){
+            try{
+                if (getPptxCtor()) return true;
+                const cdns = [
+                    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.16.0/dist/pptxgen.bundle.js',
+                    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.14.0/dist/pptxgen.bundle.js',
+                    'https://unpkg.com/pptxgenjs@3.16.0/dist/pptxgen.bundle.js',
+                    'https://unpkg.com/pptxgenjs@3.14.0/dist/pptxgen.bundle.js',
+                    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.16.0/dist/pptxgen.min.js',
+                    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.14.0/dist/pptxgen.min.js'
+                ];
+                for (const url of cdns){
+                    const ok = await loadScriptOnce(url);
+                    if (ok && getPptxCtor()) return true;
+                }
+                return false;
+            }catch(_){ return false; }
+        }
+        function getPptxCtor(){
+            try{
+                if (typeof window.PptxGenJS === 'function') return window.PptxGenJS;
+                if (window.PptxGenJS && typeof window.PptxGenJS.default === 'function') return window.PptxGenJS.default;
+                if (typeof window.pptxgen === 'function') return window.pptxgen;
+                if (window.pptxgen && typeof window.pptxgen.default === 'function') return window.pptxgen.default;
+                return null;
+            }catch(_){ return null; }
+        }
+        function getPptxInstance(){
+            try{
+                const C = getPptxCtor();
+                if (C && typeof C === 'function') {
+                    try { return new C(); } catch(_) {}
+                }
+                if (window.pptxgen && typeof window.pptxgen === 'object' && typeof window.pptxgen.addSlide === 'function') {
+                    return window.pptxgen;
+                }
+                if (window.PptxGenJS && typeof window.PptxGenJS === 'object' && typeof window.PptxGenJS.addSlide === 'function') {
+                    return window.PptxGenJS;
+                }
+                return null;
+            }catch(_){ return null; }
+        }
         function deriveNameFromUrl(u){
             try{
                 const a = new URL(u);
@@ -2419,38 +2612,50 @@ ${original}`;
         }
         async function exportMessageToPpt(aiText, fileName) {
             try {
-                if (typeof PptxGenJS === 'undefined') { showNotification('ميزة PowerPoint غير متاحة حالياً', 'error'); return; }
-                const pptx = new PptxGenJS();
-                const bullets = splitToBullets(aiText);
-                if (!bullets.length) {
-                    const s = pptx.addSlide();
-                    s.addText(aiText, { x: 0.7, y: 0.7, w: 8.6, h: 5, fontSize: 18, align: 'right' });
-                } else {
-                    const chunkSize = 8;
-                    for (let i=0;i<bullets.length;i+=chunkSize) {
-                        const s = pptx.addSlide();
-                        const group = bullets.slice(i, i+chunkSize);
-                        const items = group.map(t => ({ text: t, options: { bullet: true } }));
-                        s.addText(items, { x: 0.8, y: 0.9, w: 8.4, h: 5.2, fontSize: 18, align: 'right' });
+                const ok = await ensurePptxLoaded();
+                if (!ok) { showNotification('ميزة PowerPoint غير متاحة حالياً', 'error'); return; }
+                const P = window.PptxGenJS || window.pptxgen || (window.PptxGenJS && window.PptxGenJS.default);
+                if (!P) { showNotification('ميزة PowerPoint غير متاحة حالياً', 'error'); return; }
+                const pptx = new P();
+                const usedStructured = populatePptFromText(pptx, aiText);
+                if (!usedStructured) {
+                    const bullets = splitToBullets(aiText);
+                    if (!bullets.length) {
+                        const s = pptx.addSlide({ masterName: 'MASTER_CONTENT' });
+                        s.addText(aiText, { x: 0.6, y: 1.2, w: 8.6, h: 5, fontSize: 18, align: 'right' });
+                    } else {
+                        const chunkSize = 8;
+                        for (let i=0;i<bullets.length;i+=chunkSize) {
+                            const s = pptx.addSlide({ masterName: 'MASTER_CONTENT' });
+                            const group = bullets.slice(i, i+chunkSize);
+                            const items = group.map(t => ({ text: t, options: { bullet: true } }));
+                            s.addText(items, { x: 0.8, y: 1.2, w: 8.2, h: 5.2, fontSize: 18, align: 'right' });
+                        }
                     }
                 }
                 await pptx.writeFile({ fileName });
             } catch(_) { showNotification('تعذر إنشاء العرض التقديمي', 'error'); }
         }
         async function buildPptBlobFromText(aiText){
-            if (typeof PptxGenJS === 'undefined') return null;
-            const pptx = new PptxGenJS();
-            const bullets = splitToBullets(aiText);
-            if (!bullets.length) {
-                const s = pptx.addSlide();
-                s.addText(aiText, { x: 0.7, y: 0.7, w: 8.6, h: 5, fontSize: 18, align: 'right' });
-            } else {
-                const chunkSize = 8;
-                for (let i=0;i<bullets.length;i+=chunkSize) {
-                    const s = pptx.addSlide();
-                    const group = bullets.slice(i, i+chunkSize);
-                    const items = group.map(t => ({ text: t, options: { bullet: true } }));
-                    s.addText(items, { x: 0.8, y: 0.9, w: 8.4, h: 5.2, fontSize: 18, align: 'right' });
+            const ok = await ensurePptxLoaded();
+            if (!ok) return null;
+            const P = window.PptxGenJS || window.pptxgen || (window.PptxGenJS && window.PptxGenJS.default);
+            if (!P) return null;
+            const pptx = new P();
+            const usedStructured = populatePptFromText(pptx, aiText);
+            if (!usedStructured) {
+                const bullets = splitToBullets(aiText);
+                if (!bullets.length) {
+                    const s = pptx.addSlide({ masterName: 'MASTER_CONTENT' });
+                    s.addText(aiText, { x: 0.6, y: 1.2, w: 8.6, h: 5, fontSize: 18, align: 'right' });
+                } else {
+                    const chunkSize = 8;
+                    for (let i=0;i<bullets.length;i+=chunkSize) {
+                        const s = pptx.addSlide({ masterName: 'MASTER_CONTENT' });
+                        const group = bullets.slice(i, i+chunkSize);
+                        const items = group.map(t => ({ text: t, options: { bullet: true } }));
+                        s.addText(items, { x: 0.8, y: 1.2, w: 8.2, h: 5.2, fontSize: 18, align: 'right' });
+                    }
                 }
             }
             const blob = await pptx.write('blob');
