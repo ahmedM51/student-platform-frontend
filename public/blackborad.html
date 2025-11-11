@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>السبورة الذكية التفاعلية (نسخة المحاضر)</title>
+    <!-- تحميل مكتبة Tailwind CSS للتصميم -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* تعريف خط Cairo ودعم النصوص العربية */
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f7f7f7;
+            padding: 0;
+            margin: 0;
+        }
+        #whiteboard {
+            touch-action: none; /* لمنع التمرير الافتراضي على اللمس أثناء الرسم */
+            cursor: crosshair;
+            border: 2px solid #3b82f6; /* إطار أزرق جذاب */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); /* ظل أعمق */
+        }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        /* تصميم صندوق النص العائم */
+        #floatingTextBox {
+            position: absolute;
+            z-index: 100;
+            padding: 8px;
+            border: 2px dashed #1d4ed8;
+            background: rgba(255, 255, 255, 0.95);
+            resize: none;
+            outline: none;
+            border-radius: 6px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            font-family: 'Cairo', sans-serif;
+            cursor: move; /* لجعل النص قابلاً للسحب */
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="js/supabase-config.js"></script>
+</head>
+<body class="p-4 sm:p-6 min-h-screen flex flex-col items-center">
+
+    <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b-4 border-blue-500 pb-2">سبورة المحاضر الذكية</h1>
+
+    <!-- لوحة التحكم -->
+    <div class="w-full max-w-7xl bg-white p-4 rounded-xl shadow-2xl mb-4 flex flex-wrap justify-center items-center gap-4 sm:gap-6">
+
+        <!-- مجموعة اللون والسمك -->
+        <div class="flex flex-row gap-4">
+            <div class="control-group">
+                <label for="colorPicker" class="text-sm font-medium text-gray-700 mb-1">اللون</label>
+                <input type="color" id="colorPicker" value="#000000" class="w-16 h-10 border-2 border-gray-300 rounded-lg p-0.5 cursor-pointer">
+            </div>
+            <div class="control-group">
+                <label for="thicknessRange" class="text-sm font-medium text-gray-700 mb-1">السمك / حجم النص</label>
+                <input type="range" id="thicknessRange" min="1" max="50" value="5" class="w-24 h-10 cursor-pointer">
+                <span id="thicknessValue" class="text-xs text-gray-500 mt-1">5</span>
+            </div>
+        </div>
+        
+        <!-- أزرار أوضاع الرسم (القلم والممحاة) -->
+        <div class="control-group flex-row gap-2 mt-4 sm:mt-0">
+             <button id="penModeButton" class="tool-button bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
+                القلم (نشط)
+            </button>
+            <button id="eraserModeButton" class="tool-button bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
+                الممحاة
+            </button>
+        </div>
+
+        <!-- زر إضافة نص (الوضع الاحترافي) -->
+        <div class="control-group mt-4 sm:mt-0">
+            <button id="textModeButton" class="tool-button bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
+                إضافة نص
+            </button>
+        </div>
+    
+        <!-- التراجع والإعادة -->
+        <div class="control-group flex-row gap-2 mt-4 sm:mt-0">
+            <button id="undoButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105 disabled:opacity-50" disabled>
+                تراجع
+            </button>
+            <button id="redoButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105 disabled:opacity-50" disabled>
+                إعادة
+            </button>
+        </div>
+
+        <!-- رفع صورة ومسح وتصدير -->
+        <div class="control-group flex-row gap-2 mt-4 sm:mt-0">
+            <label for="imageUpload" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105 cursor-pointer text-center">
+                رفع صورة
+            </label>
+            <input type="file" id="imageUpload" accept="image/*" class="hidden">
+            
+            <button id="clearButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
+                مسح الكل
+            </button>
+
+            <button id="exportButton" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
+                تصدير (PNG)
+            </button>
+        </div>
+
+        <div class="control-group mt-4 sm:mt-0">
+            <label class="text-sm font-medium text-gray-700 mb-1">جلسة</label>
+            <div class="flex items-center gap-2">
+                <input id="sessionTitle" type="text" placeholder="عنوان الجلسة" class="w-44 px-3 py-2 border rounded-lg text-sm" />
+                <button id="createSessionBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">بدء</button>
+            </div>
+        </div>
+
+        <div class="control-group mt-4 sm:mt-0">
+            <label class="text-sm font-medium text-gray-700 mb-1">انضمام</label>
+            <div class="flex items-center gap-2">
+                <input id="roomIdInput" type="text" placeholder="رمز الجلسة" class="w-40 px-3 py-2 border rounded-lg text-sm" />
+                <button id="joinSessionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">انضمام</button>
+            </div>
+        </div>
+
+        <div class="control-group mt-4 sm:mt-0">
+            <label class="text-sm font-medium text-gray-700 mb-1">المشاركة والحفظ</label>
+            <div class="flex items-center gap-2">
+                <span id="roomBadge" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">لا توجد جلسة</span>
+                <button id="copyLinkBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">نسخ الرابط</button>
+                <button id="saveCloudBtn" class="bg-purple-700 hover:bg-purple-800 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">حفظ في السحابة</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="w-full max-w-7xl bg-white p-3 rounded-xl shadow-md mb-4 flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">عنوان الملف</label>
+            <input id="fileTitle" type="text" placeholder="اكتب عنوان اللقطة" class="w-56 px-3 py-2 border rounded-lg text-sm" />
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="boldBtn" class="px-3 py-2 rounded-lg border text-sm">B</button>
+            <button id="italicBtn" class="px-3 py-2 rounded-lg border text-sm">I</button>
+            <button id="underlineBtn" class="px-3 py-2 rounded-lg border text-sm">U</button>
+            <button id="bulletsBtn" class="px-3 py-2 rounded-lg border text-sm">•</button>
+            <button id="numberedBtn" class="px-3 py-2 rounded-lg border text-sm">1.</button>
+            <button id="alignRightBtn" class="px-3 py-2 rounded-lg border text-sm">يمين</button>
+            <button id="alignCenterBtn" class="px-3 py-2 rounded-lg border text-sm">وسط</button>
+            <button id="alignLeftBtn" class="px-3 py-2 rounded-lg border text-sm">يسار</button>
+            <button id="highlighterBtn" class="px-3 py-2 rounded-lg border text-sm">مبرز</button>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">أشكال</label>
+            <select id="shapeSelect" class="px-2 py-2 border rounded-lg text-sm">
+                <option value="none">—</option>
+                <option value="check">صح</option>
+                <option value="cross">غلط</option>
+                <option value="circle">دائرة</option>
+                <option value="rect">مستطيل</option>
+                <option value="arrow">سهم</option>
+                <option value="star">نجمة</option>
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">خلفية</label>
+            <select id="bgSelect" class="px-2 py-2 border rounded-lg text-sm">
+                <option value="plain">بيضاء</option>
+                <option value="lined">سطرية</option>
+                <option value="grid">شبكة</option>
+                <option value="dots">منقطة</option>
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">ألوان المبرز</label>
+            <button class="w-6 h-6 rounded-full border" style="background:#f59e0b" title="أصفر" data-hi-color="#f59e0b"></button>
+            <button class="w-6 h-6 rounded-full border" style="background:#34d399" title="أخضر" data-hi-color="#34d399"></button>
+            <button class="w-6 h-6 rounded-full border" style="background:#60a5fa" title="أزرق" data-hi-color="#60a5fa"></button>
+            <button class="w-6 h-6 rounded-full border" style="background:#f472b6" title="وردي" data-hi-color="#f472b6"></button>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="laserBtn" class="px-3 py-2 rounded-lg border text-sm">ليزر</button>
+        </div>
+        <div class="flex items-center gap-2">
+            <label for="shapeFill" class="text-sm text-gray-600">تعبئة الشكل</label>
+            <input id="shapeFill" type="checkbox" class="w-5 h-5">
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="prevPageBtn" class="px-3 py-2 rounded-lg border text-sm">السابق</button>
+            <span id="pageInfo" class="text-sm text-gray-600">صفحة 1 / 1</span>
+            <button id="nextPageBtn" class="px-3 py-2 rounded-lg border text-sm">التالي</button>
+            <button id="newPageBtn" class="px-3 py-2 rounded-lg border text-sm">صفحة جديدة</button>
+        </div>
+    </div>
+
+    <!-- حاوية السبورة -->
+    <div class="w-full max-w-7xl flex-grow bg-white rounded-xl overflow-hidden relative">
+        <canvas id="whiteboard" class="w-full h-full"></canvas>
+        <canvas id="overlay" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+    </div>
+
+    <script>
+        // تهيئة المتغيرات الأساسية
+        const canvas = document.getElementById('whiteboard');
+        const ctx = canvas.getContext('2d');
+        const overlayCanvas = document.getElementById('overlay');
+        const octx = overlayCanvas.getContext('2d');
+        const colorPicker = document.getElementById('colorPicker');
+        const thicknessRange = document.getElementById('thicknessRange');
+        const thicknessValue = document.getElementById('thicknessValue');
+        const clearButton = document.getElementById('clearButton');
+        const penModeButton = document.getElementById('penModeButton');
+        const eraserModeButton = document.getElementById('eraserModeButton');
+        const textModeButton = document.getElementById('textModeButton');
+        const undoButton = document.getElementById('undoButton');
+        const redoButton = document.getElementById('redoButton');
+        const exportButton = document.getElementById('exportButton');
+        const imageUpload = document.getElementById('imageUpload');
+
+        let supa = null;
+        let userId = 'anonymous';
+        let roomId = null;
+        let channel = null;
+        let isRemoteDrawing = false;
+
+        let textBold = false;
+        let textItalic = false;
+        let textUnderline = false;
+        let listType = 'none';
+        let textAlignMode = 'right';
+        let bgType = 'plain';
+        let shapeType = 'none';
+        let highlighterActive = false;
+        let shapeFillFlag = false;
+        let laserActive = false;
+        let laserColor = '#ef4444';
+        let laserDots = [];
+        let laserRAF = null;
+        let pages = [];
+        let pageIndex = 0;
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentMode = 'pen'; // 'pen', 'eraser', 'text'
+        let uploadedImage = null; // لحفظ كائن الصورة المُحمّلة
+
+        // متغيرات تاريخ التراجع/الإعادة
+        let history = [];
+        let historyStep = -1;
+        const MAX_HISTORY = 30; // الحد الأقصى لخطوات التراجع
+
+        // تهيئة خصائص الرسم الأولية
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // 1. وظيفة حفظ حالة السبورة في التاريخ
+        function saveState() {
+            // إزالة أي خطوات إعادة لاحقة
+            if (historyStep < history.length - 1) {
+                history = history.slice(0, historyStep + 1);
+            }
+
+            // منع التضخم الزائد للتاريخ
+            if (history.length >= MAX_HISTORY) {
+                history.shift(); // إزالة أقدم خطوة
+            } else {
+                historyStep++;
+            }
+
+            // حفظ صورة البيانات الحالية للـ Canvas
+            history.push(canvas.toDataURL());
+            
+            updateUndoRedoButtons();
+        }
+
+        // 2. وظيفة لتحديث أزرار التراجع والإعادة
+        function updateUndoRedoButtons() {
+            undoButton.disabled = historyStep <= 0;
+            redoButton.disabled = historyStep >= history.length - 1;
+        }
+
+        // 3. وظيفة لإعادة رسم حالة معينة من التاريخ
+        function restoreState(index) {
+            if (index < 0 || index >= history.length) return;
+
+            const base64Image = history[index];
+            const img = new Image();
+            img.onload = () => {
+                // يجب أولاً مسح السبورة وإعادة رسم الخلفية قبل تطبيق حالة التاريخ
+                const displayWidth = canvas.parentElement.clientWidth;
+                const displayHeight = canvas.parentElement.clientHeight;
+                
+                // مسح اللوحة (بدون التأثير على التحجيم)
+                ctx.save(); 
+                ctx.setTransform(1, 0, 0, 1, 0, 0); 
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                ctx.restore(); 
+
+                // إعادة رسم الصورة الخلفية (إن وجدت)
+                if (uploadedImage) {
+                    drawBackgroundImage(displayWidth, displayHeight);
+                } else {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, displayWidth, displayHeight);
+                }
+
+                // رسم حالة التاريخ فوق الخلفية
+                ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+                
+                historyStep = index;
+                updateUndoRedoButtons();
+            };
+            img.src = base64Image;
+        }
+
+        // 4. وظيفة مساعدة لرسم الصورة الخلفية
+        function drawBackgroundImage(displayWidth, displayHeight) {
+             // رسم الصورة بحيث تغطي السبورة بالكامل مع الحفاظ على نسبة العرض إلى الارتفاع (Cover)
+            const canvasRatio = displayWidth / displayHeight;
+            const imageRatio = uploadedImage.width / uploadedImage.height;
+            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+            if (imageRatio > canvasRatio) { // الصورة أوسع من السبورة
+                drawHeight = displayHeight;
+                drawWidth = imageRatio * displayHeight;
+                offsetX = (displayWidth - drawWidth) / 2;
+            } else { // الصورة أطول من السبورة
+                drawWidth = displayWidth;
+                drawHeight = displayWidth / imageRatio;
+                offsetY = (displayHeight - drawHeight) / 2;
+            }
+            ctx.drawImage(uploadedImage, offsetX, offsetY, drawWidth, drawHeight);
+        }
+
+        function drawBaseBackground(displayWidth, displayHeight){
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, displayWidth, displayHeight);
+        }
+        
+        function drawPatternOverlayOnOverlay(displayWidth, displayHeight){
+            octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            if (bgType === 'plain') return;
+            octx.save();
+            if (bgType === 'lined'){
+                octx.strokeStyle = '#e5e7eb';
+                octx.lineWidth = 1;
+                for (let y=32; y<displayHeight; y+=32){
+                    octx.beginPath(); octx.moveTo(0,y); octx.lineTo(displayWidth,y); octx.stroke();
+                }
+            } else if (bgType === 'grid'){
+                octx.strokeStyle = '#f1f5f9';
+                octx.lineWidth = 1;
+                for (let y=32; y<displayHeight; y+=32){ octx.beginPath(); octx.moveTo(0,y); octx.lineTo(displayWidth,y); octx.stroke(); }
+                for (let x=32; x<displayWidth; x+=32){ octx.beginPath(); octx.moveTo(x,0); octx.lineTo(x,displayHeight); octx.stroke(); }
+            } else if (bgType === 'dots'){
+                const prevFill = octx.fillStyle;
+                octx.fillStyle = '#e5e7eb';
+                for (let y=24; y<displayHeight; y+=32){
+                    for (let x=24; x<displayWidth; x+=32){
+                        octx.beginPath(); octx.arc(x, y, 1.2, 0, Math.PI*2); octx.fill();
+                    }
+                }
+                octx.fillStyle = prevFill;
+            }
+            octx.restore();
+        }
+
+        function redrawOverlay(){
+            const displayWidth = canvas.parentElement.clientWidth;
+            const displayHeight = canvas.parentElement.clientHeight;
+            drawPatternOverlayOnOverlay(displayWidth, displayHeight);
+            // laser dots will be drawn in RAF, so we don't draw them here
+        }
+
+        function applyBackground(type){
+            const displayWidth = canvas.parentElement.clientWidth;
+            const displayHeight = canvas.parentElement.clientHeight;
+            const tempCanvas = document.createElement('canvas');
+            const tctx = tempCanvas.getContext('2d');
+            tempCanvas.width = displayWidth; tempCanvas.height = displayHeight;
+            tctx.drawImage(canvas, 0, 0, displayWidth, displayHeight);
+            ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore();
+            if (uploadedImage) { drawBackgroundImage(displayWidth, displayHeight); } else { drawBaseBackground(displayWidth, displayHeight); }
+            ctx.drawImage(tempCanvas, 0, 0, displayWidth, displayHeight);
+            redrawOverlay();
+        }
+
+        // 5. وظيفة لضبط حجم اللوحة ليتناسب مع الحاوية ويدعم وضوح الشاشة (DPI)
+        function resizeCanvas() {
+            const displayWidth = canvas.parentElement.clientWidth;
+            const displayHeight = canvas.parentElement.clientHeight;
+            
+            // حفظ المحتوى الحالي قبل تغيير الحجم
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            tempCtx.setTransform(1, 0, 0, 1, 0, 0); 
+            tempCtx.drawImage(canvas, 0, 0);
+
+            // تطبيق التحجيم الجديد
+            const scale = window.devicePixelRatio;
+            canvas.width = displayWidth * scale;
+            canvas.height = displayHeight * scale;
+            ctx.scale(scale, scale);
+            overlayCanvas.width = displayWidth;
+            overlayCanvas.height = displayHeight;
+            
+            // 1. مسح وإعادة رسم الخلفية الأساسية
+            if (uploadedImage) { drawBackgroundImage(displayWidth, displayHeight); } else { drawBaseBackground(displayWidth, displayHeight); }
+
+            // 2. إعادة رسم المحتوى المحفوظ (الرسم/النص)
+            if (tempCanvas.width > 0 && tempCanvas.height > 0) {
+                 // رسم المحتوى المحفوظ بعد ضبط الحجم
+                 ctx.drawImage(tempCanvas, 0, 0, displayWidth, displayHeight);
+            }
+
+            // 3. رسم طبقة الخلفية (سطور/شبكة/نقاط) فوق المحتوى على Canvas العلوي
+            redrawOverlay();
+
+            // 4. إعادة تعيين إعدادات الفرشاة بعد إعادة التحجيم
+            setMode(currentMode);
+            ctx.strokeStyle = colorPicker.value;
+            ctx.lineWidth = thicknessRange.value;
+        }
+
+        // 6. وظيفة لتبديل وضع الرسم
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // تحديث وضع الدمج والمؤشر
+            if (mode === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                canvas.style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWVyYXNlciI+PHBhdGggZD0iTTE0LjQ4NSA3LjE0TDE1Ljc1IDhjLjk5Ljk5Ljk5IDIuMDYgMCAzLjA1TDUuMjkgMjIuNTFHMi4xMTkgMi4xMTkgMCAwMSAyLjI0IDIyLjVMMCAyMC4yNiAzLjQ5IDE2Ljc3TDEwLjQ4IDkuNzlIMTkuOTRDLjQ2LTIuMTQuNTItMi4wOSAxLjc4LTguOTciIHN0cm9rZT0icmVkIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2ZyI+"), auto';
+                ctx.globalAlpha = 1;
+            } else if (mode === 'pen') {
+                ctx.globalCompositeOperation = 'source-over';
+                canvas.style.cursor = 'crosshair';
+                ctx.globalAlpha = 1;
+            } else if (mode === 'text') {
+                ctx.globalCompositeOperation = 'source-over';
+                canvas.style.cursor = 'crosshair'; // سنستخدم الكروس هير للإشارة إلى مكان بدء النص
+                ctx.globalAlpha = 1;
+            } else if (mode === 'highlighter') {
+                ctx.globalCompositeOperation = 'source-over';
+                canvas.style.cursor = 'crosshair';
+                ctx.globalAlpha = 0.3;
+            } else if (mode === 'shape') {
+                ctx.globalCompositeOperation = 'source-over';
+                canvas.style.cursor = 'crosshair';
+                ctx.globalAlpha = 1;
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                canvas.style.cursor = 'crosshair';
+                ctx.globalAlpha = 1;
+            }
+            
+            // تحديث أزرار الوضع
+            document.querySelectorAll('.tool-button').forEach(btn => {
+                btn.classList.remove('bg-blue-500', 'bg-red-500', 'bg-indigo-500');
+                btn.classList.add('bg-gray-400');
+                let newText = '';
+                if (btn.id === 'penModeButton') newText = 'القلم';
+                if (btn.id === 'eraserModeButton') newText = 'الممحاة';
+                if (btn.id === 'textModeButton') newText = 'إضافة نص';
+                btn.textContent = newText;
+            });
+
+            if (mode === 'pen') {
+                penModeButton.classList.remove('bg-gray-400');
+                penModeButton.classList.add('bg-blue-500');
+                penModeButton.textContent = 'القلم (نشط)';
+            } else if (mode === 'eraser') {
+                eraserModeButton.classList.remove('bg-gray-400');
+                eraserModeButton.classList.add('bg-red-500');
+                eraserModeButton.textContent = 'الممحاة (نشطة)';
+            } else if (mode === 'text') {
+                textModeButton.classList.remove('bg-gray-400');
+                textModeButton.classList.add('bg-indigo-500');
+                textModeButton.textContent = 'إضافة نص (نشط)';
+            }
+        }
+
+        async function setupSupabaseAndRealtime(){
+            try{
+                supa = window.supabaseClient || (window.initializeSupabase && window.initializeSupabase());
+            }catch(_){}
+            try{
+                if (window.supabaseAuth && typeof window.supabaseAuth.getCurrentUser === 'function'){
+                    const { data } = await window.supabaseAuth.getCurrentUser();
+                    if (data && data.id) userId = data.id;
+                }
+            }catch(_){
+                try{ userId = localStorage.getItem('userId') || 'anonymous'; }catch(__){}
+            }
+            try{
+                const params = new URLSearchParams(window.location.search);
+                const qRoom = params.get('room');
+                if (qRoom) joinRoom(qRoom);
+            }catch(_){ }
+        }
+
+        function uiSetRoom(id){
+            roomId = id;
+            const badge = document.getElementById('roomBadge');
+            if (badge) badge.textContent = id ? `رمز الجلسة: ${id}` : 'لا توجد جلسة';
+        }
+
+        function cryptoRandomId(){
+            try{ return (crypto.randomUUID && crypto.randomUUID().slice(0,8)) || Math.random().toString(36).slice(2,10); }catch(_){ return Math.random().toString(36).slice(2,10); }
+        }
+
+        function joinRoom(id){
+            if (!supa) return;
+            uiSetRoom(id);
+            try{ if (channel && supa.removeChannel) supa.removeChannel(channel); }catch(_){ }
+            channel = supa.channel(`whiteboard:${id}`, { config: { broadcast: { self: false } } });
+            channel.on('broadcast', { event: 'stroke-start' }, ({ payload })=> startRemoteStroke(payload));
+            channel.on('broadcast', { event: 'draw' }, ({ payload })=> applyRemoteDraw(payload));
+            channel.on('broadcast', { event: 'stroke-end' }, ({ payload })=> endRemoteStroke(payload));
+            channel.on('broadcast', { event: 'text' }, ({ payload })=> applyRemoteText(payload));
+            channel.on('broadcast', { event: 'clear' }, ()=> clearCanvas(true));
+            channel.on('broadcast', { event: 'image' }, ({ payload })=> applyRemoteImage(payload));
+            channel.on('broadcast', { event: 'shape' }, ({ payload })=> applyRemoteShape(payload));
+            channel.on('broadcast', { event: 'bg' }, ({ payload })=> applyRemoteBg(payload));
+            channel.on('broadcast', { event: 'laser' }, ({ payload })=> applyRemoteLaser(payload));
+            channel.on('broadcast', { event: 'page' }, ({ payload })=> applyRemotePage(payload));
+            channel.subscribe();
+            try{
+                const url = new URL(window.location.href);
+                url.searchParams.set('room', id);
+                window.history.replaceState({}, '', url);
+            }catch(_){ }
+        }
+
+        function send(event, payload){
+            try{ if (channel && channel.send) channel.send({ type: 'broadcast', event, payload }); }catch(_){ }
+        }
+
+        function startRemoteStroke(p){
+            try{
+                const rect = canvas.getBoundingClientRect();
+                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
+                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
+                ctx.save();
+                ctx.lineWidth = (p && p.lineWidth) || thicknessRange.value;
+                ctx.strokeStyle = (p && p.color) || colorPicker.value;
+                if (p && p.mode === 'eraser') {
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.globalAlpha = 1;
+                } else if (p && p.mode === 'highlighter') {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.globalAlpha = 0.3;
+                } else {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.globalAlpha = 1;
+                }
+                isRemoteDrawing = true;
+                lastX = x; lastY = y;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            }catch(_){ }
+        }
+
+        function applyRemoteDraw(p){
+            try{
+                if (!isRemoteDrawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
+                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                lastX = x; lastY = y;
+            }catch(_){ }
+        }
+
+        function endRemoteStroke(){
+            try{
+                if (isRemoteDrawing){
+                    isRemoteDrawing = false;
+                    ctx.closePath();
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.globalAlpha = 1;
+                }
+            }catch(_){ }
+        }
+
+        function applyRemoteText(p){
+            try{
+                const rect = canvas.getBoundingClientRect();
+                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
+                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
+                const w = (p && p.wRatio != null) ? (p.wRatio * rect.width) : rect.width * 0.5;
+                const h = (p && p.hRatio != null) ? (p.hRatio * rect.height) : 40;
+                const prevColor = colorPicker.value;
+                const prevThickness = thicknessRange.value;
+                if (p && p.color) colorPicker.value = p.color;
+                if (p && p.fontSize) thicknessRange.value = Math.max(1, Math.round(p.fontSize / 2.5));
+                drawText((p && p.text) || '', x, y, w, h, { bold: !!(p&&p.bold), italic: !!(p&&p.italic), underline: !!(p&&p.underline), align: (p&&p.align)||'right', listType: (p&&p.listType)||'none', fontSizePx: (p&&p.fontSize)||undefined, color: colorPicker.value });
+                colorPicker.value = prevColor;
+                thicknessRange.value = prevThickness;
+                saveState();
+            }catch(_){ }
+        }
+
+        function applyRemoteShape(p){
+            try{
+                const rect = canvas.getBoundingClientRect();
+                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
+                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
+                const size = (p && p.sizeRatio != null) ? (p.sizeRatio * Math.min(rect.width, rect.height)) : 40;
+                const prev = colorPicker.value;
+                if (p && p.color) colorPicker.value = p.color;
+                drawShapeAt((p&&p.type)||'check', x, y, size, colorPicker.value, +thicknessRange.value, !!(p&&p.fill));
+                colorPicker.value = prev;
+                saveState();
+            }catch(_){ }
+        }
+
+        function applyRemoteImage(p){
+            try{
+                if (!p || !p.dataURL) return;
+                const img = new Image();
+                img.onload = ()=>{ uploadedImage = img; resizeCanvas(); saveState(); };
+                img.src = p.dataURL;
+            }catch(_){ }
+        }
+
+        function applyRemoteBg(p){
+            try{
+                const t = (p && p.type) || 'plain';
+                bgType = t;
+                applyBackground(t);
+            }catch(_){ }
+        }
+
+        function applyRemoteLaser(p){
+            try{
+                const rect = canvas.getBoundingClientRect();
+                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
+                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
+                addLaserDot(x, y, (p && p.color) || '#ef4444');
+            }catch(_){ }
+        }
+
+        function addLaserDot(x, y, color){
+            laserDots.push({ x, y, color, t: performance.now() });
+            if (!laserRAF) startLaserRAF();
+        }
+
+        function startLaserRAF(){
+            const maxAge = 1000; // ms
+            function frame(){
+                const now = performance.now();
+                // clear overlay then redraw pattern and lasers
+                octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                const dw = canvas.parentElement.clientWidth;
+                const dh = canvas.parentElement.clientHeight;
+                drawPatternOverlayOnOverlay(dw, dh);
+                // draw laser dots
+                laserDots = laserDots.filter(d => (now - d.t) < maxAge);
+                for (const d of laserDots){
+                    const age = now - d.t;
+                    const a = Math.max(0, 1 - age / maxAge);
+                    octx.save();
+                    octx.globalAlpha = a;
+                    octx.fillStyle = d.color;
+                    octx.beginPath();
+                    octx.arc(d.x, d.y, 10, 0, Math.PI*2);
+                    octx.fill();
+                    octx.restore();
+                }
+                if (laserDots.length > 0 || laserActive){
+                    laserRAF = requestAnimationFrame(frame);
+                } else {
+                    laserRAF = null;
+                }
+            }
+            laserRAF = requestAnimationFrame(frame);
+        }
+
+        // 7. إنشاء صندوق نص عائم (Floating Textbox)
+        function createFloatingTextBox(x, y) {
+            // إزالة أي صندوق نص موجود مسبقاً
+            removeFloatingTextBox();
+            
+            const textBox = document.createElement('textarea');
+            textBox.id = 'floatingTextBox';
+            textBox.style.left = `${x}px`;
+            textBox.style.top = `${y}px`;
+            // حجم الخط بناءً على شريط التمرير
+            textBox.style.fontSize = `${thicknessRange.value * 2.5}px`;
+            textBox.style.color = colorPicker.value;
+            textBox.placeholder = 'اكتب هنا واضغط Enter للرسم...';
+            
+            document.body.appendChild(textBox);
+            textBox.focus();
+
+            // عند الضغط على مفتاح (مثل Enter)
+            textBox.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    commitTextToCanvas(textBox, x, y);
+                    setMode('pen'); 
+                }
+            });
+
+            // عند فقدان التركيز (Click outside)
+            textBox.addEventListener('blur', () => {
+                commitTextToCanvas(textBox, x, y);
+                setMode('pen'); 
+            });
+
+            // جعل صندوق النص قابلاً للسحب
+            let isDragging = false;
+            let currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
+
+            textBox.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                initialX = e.clientX;
+                initialY = e.clientY;
+                const rect = textBox.getBoundingClientRect();
+                xOffset = initialX - rect.left;
+                yOffset = initialY - rect.top;
+                e.stopPropagation(); // منع انتقال الحدث للـ Canvas
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    currentX = e.clientX;
+                    currentY = e.clientY;
+                    
+                    let newX = currentX - xOffset;
+                    let newY = currentY - yOffset;
+
+                    textBox.style.left = `${newX}px`;
+                    textBox.style.top = `${newY}px`;
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        }
+        
+        // 8. وظيفة لتنفيذ النص على السبورة
+        function commitTextToCanvas(textBox) {
+            const text = textBox.value.trim();
+            if (text.length > 0) {
+                // حساب إحداثيات الصندوق بالنسبة للـ Canvas
+                const rect = canvas.getBoundingClientRect();
+                const textRect = textBox.getBoundingClientRect();
+                const scale = window.devicePixelRatio;
+
+                // إحداثيات الزاوية العلوية اليسرى للصندوق، مقسومة على معامل التحجيم
+                const drawX = (textRect.left - rect.left);
+                const drawY = (textRect.top - rect.top);
+                
+                drawText(text, drawX, drawY, textRect.width, textRect.height, { bold: textBold, italic: textItalic, underline: textUnderline, align: textAlignMode, listType, fontSizePx: thicknessRange.value * 2.5, color: colorPicker.value });
+                saveState();
+                try{
+                    const xRatio = rect.width ? (drawX / rect.width) : 0;
+                    const yRatio = rect.height ? (drawY / rect.height) : 0;
+                    const wRatio = rect.width ? (textRect.width / rect.width) : 0.5;
+                    const hRatio = rect.height ? (textRect.height / rect.height) : 0.1;
+                    send('text', { text, xRatio, yRatio, wRatio, hRatio, color: colorPicker.value, fontSize: thicknessRange.value * 2.5, bold: textBold, italic: textItalic, underline: textUnderline, align: textAlignMode, listType });
+                }catch(_){ }
+            }
+            removeFloatingTextBox();
+        }
+
+        // 9. وظيفة لإزالة صندوق النص
+        function removeFloatingTextBox() {
+            const existingTextBox = document.getElementById('floatingTextBox');
+            if (existingTextBox) {
+                existingTextBox.remove();
+            }
+        }
+
+        // 10. وظيفة للبدء بالرسم أو إضافة نص
+        function startDrawing(e) {
+            e.preventDefault();
+            // تجاهل أحداث اللمس الثانوية
+            if (e.touches && e.touches.length > 1) return;
+            
+            const { x, y, clientX, clientY } = getCoordinates(e, true);
+            removeFloatingTextBox(); // إزالة أي صندوق نص قبل بدء رسم جديد
+
+            if (currentMode === 'shape' && shapeType !== 'none') {
+                const rect = canvas.getBoundingClientRect();
+                const size = Math.max(20, +thicknessRange.value * 8);
+                drawShapeAt(shapeType, x, y, size, colorPicker.value, +thicknessRange.value, !!shapeFillFlag);
+                saveState();
+                try{
+                    const xRatio = rect.width ? ((clientX - rect.left) / rect.width) : 0;
+                    const yRatio = rect.height ? ((clientY - rect.top) / rect.height) : 0;
+                    const sizeRatio = Math.min(rect.width, rect.height) ? (size / Math.min(rect.width, rect.height)) : 0.1;
+                    send('shape', { type: shapeType, xRatio, yRatio, sizeRatio, color: colorPicker.value, fill: !!shapeFillFlag });
+                }catch(_){ }
+                return;
+            }
+
+            if (currentMode === 'text') {
+                // إنشاء صندوق نص عائم في مكان النقر (باستخدام إحداثيات الشاشة)
+                createFloatingTextBox(clientX, clientY);
+                return;
+            }
+
+            // وضع القلم أو الممحاة
+            if (currentMode === 'pen' || currentMode === 'eraser') {
+                isDrawing = true;
+                [lastX, lastY] = [x, y];
+                ctx.lineWidth = thicknessRange.value;
+                if(currentMode === 'pen') {
+                    ctx.strokeStyle = colorPicker.value;
+                }
+                try{
+                    const rect = canvas.getBoundingClientRect();
+                    const xRatio = rect.width ? ((clientX - rect.left) / rect.width) : 0;
+                    const yRatio = rect.height ? ((clientY - rect.top) / rect.height) : 0;
+                    send('stroke-start', { xRatio, yRatio, color: colorPicker.value, lineWidth: +thicknessRange.value, mode: currentMode });
+                }catch(_){ }
+            }
+            
+            // حفظ الحالة قبل البدء بالرسم الجديد
+            saveState(); 
+        }
+
+        // 11. وظيفة للرسم الفعلي
+        function draw(e) {
+            if (!isDrawing) return;
+            if (currentMode !== 'pen' && currentMode !== 'eraser') return;
+            
+            e.preventDefault();
+
+            const { x, y, clientX, clientY } = getCoordinates(e, true);
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            [lastX, lastY] = [x, y];
+            try{
+                const rect = canvas.getBoundingClientRect();
+                const xRatio = rect.width ? ((clientX - rect.left) / rect.width) : 0;
+                const yRatio = rect.height ? ((clientY - rect.top) / rect.height) : 0;
+                send('draw', { xRatio, yRatio });
+            }catch(_){ }
+        }
+
+        // 12. وظيفة لإنهاء الرسم
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+            }
+            try{ send('stroke-end', {}); }catch(_){ }
+        }
+
+        // 13. وظيفة لتنفيذ النص على Canvas
+        function drawText(text, x, y, width, height, style) {
+            ctx.save();
+            const fontSize = (style && style.fontSizePx) || (thicknessRange.value * 2.5);
+            const color = (style && style.color) || colorPicker.value;
+            const bold = !!(style && style.bold);
+            const italic = !!(style && style.italic);
+            const underline = !!(style && style.underline);
+            const align = (style && style.align) || 'right';
+            const list = (style && style.listType) || 'none';
+            ctx.fillStyle = color;
+            ctx.font = `${bold ? 'bold ' : ''}${italic ? 'italic ' : ''}${fontSize}px Cairo, sans-serif`;
+            ctx.textBaseline = 'top';
+            let anchorX = x;
+            if (align === 'right') anchorX = x + width;
+            else if (align === 'center') anchorX = x + width/2;
+            else anchorX = x;
+            ctx.textAlign = align === 'right' ? 'right' : (align === 'center' ? 'center' : 'left');
+            
+            const scale = window.devicePixelRatio;
+            const drawY = y / scale;
+
+            const lines = text.split('\n');
+            let currentY = drawY + (fontSize / scale);
+            let lineIndex = 1;
+            lines.forEach((line) => {
+                let content = line;
+                let prefix = '';
+                if (list === 'bullets') prefix = '• ';
+                if (list === 'numbered') prefix = (lineIndex++) + '. ';
+                const textToDraw = prefix + content;
+                ctx.fillText(textToDraw, anchorX / scale, currentY);
+                if (underline) {
+                    const metrics = ctx.measureText(textToDraw);
+                    const w = metrics.width;
+                    let startX = anchorX / scale;
+                    if (ctx.textAlign === 'right') startX -= w;
+                    else if (ctx.textAlign === 'center') startX -= w/2;
+                    const uy = currentY + (fontSize * 0.85) / scale;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, uy);
+                    ctx.lineTo(startX + w, uy);
+                    ctx.lineWidth = Math.max(1, fontSize * 0.06);
+                    ctx.strokeStyle = color;
+                    ctx.stroke();
+                }
+                currentY += (fontSize * 1.2) / scale;
+            });
+
+            ctx.restore();
+        }
+
+        function drawShapeAt(type, x, y, size, color, lineW, fill){
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = Math.max(2, lineW);
+            const r = size/2;
+            if (type === 'check'){
+                ctx.beginPath();
+                ctx.moveTo(x - r*0.6, y);
+                ctx.lineTo(x - r*0.2, y + r*0.5);
+                ctx.lineTo(x + r*0.7, y - r*0.6);
+                ctx.stroke();
+            } else if (type === 'cross'){
+                ctx.beginPath();
+                ctx.moveTo(x - r, y - r);
+                ctx.lineTo(x + r, y + r);
+                ctx.moveTo(x + r, y - r);
+                ctx.lineTo(x - r, y + r);
+                ctx.stroke();
+            } else if (type === 'circle'){
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI*2);
+                if (fill) ctx.fill(); else ctx.stroke();
+            } else if (type === 'rect'){
+                if (fill) ctx.fillRect(x - r, y - r*0.6, size, r*1.2); else ctx.strokeRect(x - r, y - r*0.6, size, r*1.2);
+            } else if (type === 'arrow'){
+                ctx.beginPath();
+                ctx.moveTo(x - r, y);
+                ctx.lineTo(x + r*0.5, y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x + r*0.5, y);
+                ctx.lineTo(x + r*0.1, y - r*0.3);
+                ctx.lineTo(x + r, y);
+                ctx.lineTo(x + r*0.1, y + r*0.3);
+                ctx.closePath();
+                ctx.fill();
+            } else if (type === 'star'){
+                const points = 5;
+                const outer = r, inner = r*0.5;
+                let rot = Math.PI/2 * 3;
+                let ax = x, ay = y;
+                ctx.beginPath();
+                ctx.moveTo(ax, ay - outer);
+                for(let i=0;i<points;i++){
+                    ax = x + Math.cos(rot) * outer;
+                    ay = y + Math.sin(rot) * outer;
+                    ctx.lineTo(ax, ay);
+                    rot += Math.PI/points;
+                    ax = x + Math.cos(rot) * inner;
+                    ay = y + Math.sin(rot) * inner;
+                    ctx.lineTo(ax, ay);
+                    rot += Math.PI/points;
+                }
+                ctx.lineTo(x, y - outer);
+                ctx.closePath();
+                if (fill) ctx.fill(); else ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // 14. وظيفة لمسح السبورة بالكامل
+        function clearCanvas(fromRemote = false) {
+            // مسح بالكامل
+            ctx.save(); 
+            ctx.setTransform(1, 0, 0, 1, 0, 0); 
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            ctx.restore(); 
+            
+            // إزالة الصورة المرفوعة وإعادة رسم الخلفية البيضاء
+            uploadedImage = null; 
+            resizeCanvas(); 
+
+            // مسح التاريخ بالكامل
+            history = [];
+            historyStep = -1;
+            saveState(); // حفظ حالة السبورة النظيفة
+            try{ if (!fromRemote) send('clear', {}); }catch(_){ }
+        }
+        
+        // 15. وظيفة مساعدة للحصول على إحداثيات الماوس أو اللمس
+        function getCoordinates(e, includeClient = false) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            // الإحداثيات بالنسبة للـ Canvas (مُقسمة على الـ DPI)
+            const scale = window.devicePixelRatio;
+            const x = (clientX - rect.left) / scale;
+            const y = (clientY - rect.top) / scale;
+            
+            if (includeClient) {
+                return { x, y, clientX, clientY };
+            }
+            return { x, y };
+        }
+
+        // 16. وظيفة معالجة رفع الصورة
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    uploadedImage = img;
+                    resizeCanvas(); // إعادة رسم السبورة مع الصورة الجديدة كخلفية
+                    saveState(); // حفظ الحالة الجديدة في التاريخ
+                    setMode('pen'); 
+                    try{ send('image', { dataURL: event.target.result }); }catch(_){ }
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 17. وظيفة تصدير السبورة كملف PNG
+        function exportCanvas() {
+            // composite main + overlay to an offscreen canvas
+            const off = document.createElement('canvas');
+            off.width = canvas.width; // high-res
+            off.height = canvas.height;
+            const offctx = off.getContext('2d');
+            offctx.drawImage(canvas, 0, 0);
+            // scale overlayCanvas up to device pixels
+            offctx.drawImage(overlayCanvas, 0, 0, overlayCanvas.width, overlayCanvas.height, 0, 0, off.width, off.height);
+            const dataURL = off.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataURL;
+            const t = (document.getElementById('fileTitle') && document.getElementById('fileTitle').value.trim()) || '';
+            const safe = t ? t.replace(/[^\u0600-\u06FF0-9A-Za-z-_ ]+/g,'').replace(/\s+/g,'-') : '';
+            a.download = (safe ? safe + '-' : '') + 'whiteboard-export-' + new Date().toISOString().slice(0, 10) + '.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        async function saveToCloud(){
+            try{
+                if (!supa){ alert('لا يمكن الاتصال بالسحابة حالياً'); return; }
+                // composite main + overlay before saving
+                const off = document.createElement('canvas');
+                off.width = canvas.width; off.height = canvas.height;
+                const offctx = off.getContext('2d');
+                offctx.drawImage(canvas, 0, 0);
+                offctx.drawImage(overlayCanvas, 0, 0, overlayCanvas.width, overlayCanvas.height, 0, 0, off.width, off.height);
+                const blob = await new Promise(res=> off.toBlob(res, 'image/png'));
+                const dateStr = new Date().toISOString().replace(/[:.]/g,'-');
+                const sid = roomId || 'solo';
+                const ft = (document.getElementById('fileTitle') && document.getElementById('fileTitle').value) || '';
+                const title = ft || (document.getElementById('sessionTitle') && document.getElementById('sessionTitle').value) || '';
+                const safe = title ? title.replace(/[^\u0600-\u06FF0-9A-Za-z-_ ]+/g,'').replace(/\s+/g,'-') : '';
+                const fileName = (safe ? safe + '-' : '') + `snapshot-${dateStr}.png`;
+                const path = `${userId || 'anonymous'}/${sid}/${fileName}`;
+                const { error } = await supa.storage.from('whiteboards').upload(path, blob, { contentType: 'image/png', upsert: false });
+                if (error){ alert('تعذر الحفظ في السحابة'); return; }
+                const { data } = supa.storage.from('whiteboards').getPublicUrl(path);
+                const url = (data && data.publicUrl) || '';
+                try{ await supa.from('whiteboard_snapshots').insert({ session_id: sid, owner_id: userId || null, title: title || null, image_url: url || null }); }catch(_){ }
+                alert('تم الحفظ في السحابة' + (url ? `\n${url}` : ''));
+            }catch(_){ alert('تعذر الحفظ في السحابة'); }
+        }
+
+        // ********** معالجات الأحداث **********
+
+        // ضبط حجم اللوحة عند التحميل وتغيير الحجم
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            setMode('pen');
+            saveState();
+            setupSupabaseAndRealtime();
+            try{ updatePageInfo(); }catch(_){ }
+        });
+        window.addEventListener('resize', resizeCanvas);
+
+        document.addEventListener('keydown', (e)=>{
+            if (e.ctrlKey && !e.shiftKey && !e.altKey){
+                if (e.key.toLowerCase() === 'b'){ e.preventDefault(); if (boldBtn) boldBtn.click(); }
+                if (e.key.toLowerCase() === 'i'){ e.preventDefault(); if (italicBtn) italicBtn.click(); }
+                if (e.key.toLowerCase() === 'u'){ e.preventDefault(); if (underlineBtn) underlineBtn.click(); }
+                if (e.key.toLowerCase() === 'z'){ e.preventDefault(); undoButton.click(); }
+                if (e.key.toLowerCase() === 'y'){ e.preventDefault(); redoButton.click(); }
+            }
+        });
+
+        // أحداث الرسم واللمس
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', (e)=>{
+            if (laserActive){
+                const rect = canvas.getBoundingClientRect();
+                const { clientX, clientY } = (e.touches && e.touches.length>0) ? { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } : e;
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+                addLaserDot(x, y, laserColor);
+                try{
+                    const xRatio = rect.width ? (x / rect.width) : 0;
+                    const yRatio = rect.height ? (y / rect.height) : 0;
+                    send('laser', { xRatio, yRatio, color: laserColor });
+                }catch(_){ }
+            }
+            draw(e);
+        });
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', (e)=>{
+            if (laserActive){
+                const rect = canvas.getBoundingClientRect();
+                const tx = e.touches && e.touches[0];
+                if (tx){
+                    const x = tx.clientX - rect.left; const y = tx.clientY - rect.top;
+                    addLaserDot(x, y, laserColor);
+                    try{ const xRatio = rect.width ? (x / rect.width) : 0; const yRatio = rect.height ? (y / rect.height) : 0; send('laser', { xRatio, yRatio, color: laserColor }); }catch(_){ }
+                }
+            }
+            draw(e);
+        });
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchcancel', stopDrawing);
+
+        // صفحات
+        const newPageBtn = document.getElementById('newPageBtn');
+        const prevPageBtn = document.getElementById('prevPageBtn');
+        const nextPageBtn = document.getElementById('nextPageBtn');
+        const pageInfo = document.getElementById('pageInfo');
+
+        function updatePageInfo(){ if (pageInfo) pageInfo.textContent = `صفحة ${pageIndex+1} / ${Math.max(1, pages.length || 1)}`; }
+
+        function saveCurrentPage(){ try{ pages[pageIndex] = canvas.toDataURL('image/png'); }catch(_){ } }
+
+        function loadPage(i){
+            const displayWidth = canvas.parentElement.clientWidth;
+            const displayHeight = canvas.parentElement.clientHeight;
+            ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore();
+            if (uploadedImage) { drawBackgroundImage(displayWidth, displayHeight); } else { drawBaseBackground(displayWidth, displayHeight); }
+            const data = pages[i];
+            if (data){
+                const img = new Image();
+                img.onload = ()=>{ ctx.drawImage(img, 0, 0, displayWidth, displayHeight); saveState(); };
+                img.src = data;
+            } else {
+                saveState();
+            }
+            pageIndex = i;
+            updatePageInfo();
+        }
+
+        function gotoPage(i){ if (i<0) return; saveCurrentPage(); if (i>= (pages.length||1)){ pages.push(null); } loadPage(i); try{ send('page', { index: i, image: pages[i]||null }); }catch(_){ } }
+        function newPage(){ gotoPage((pages.length||0)); }
+        function prevPage(){ gotoPage(Math.max(0, pageIndex-1)); }
+        function nextPage(){ gotoPage(pageIndex+1); }
+
+        function applyRemotePage(p){ try{ const i = (p&&p.index)|0; const img = p&&p.image; if (img!=null) pages[i] = img; loadPage(i); }catch(_){ } }
+
+        if (newPageBtn) newPageBtn.addEventListener('click', newPage);
+        if (prevPageBtn) prevPageBtn.addEventListener('click', prevPage);
+        if (nextPageBtn) nextPageBtn.addEventListener('click', nextPage);
+
+        // أزرار التراجع والإعادة
+        undoButton.addEventListener('click', () => {
+            if (historyStep > 0) {
+                restoreState(historyStep - 1);
+            }
+        });
+        redoButton.addEventListener('click', () => {
+            if (historyStep < history.length - 1) {
+                restoreState(historyStep + 1);
+            }
+        });
+
+        // تبديل الوضع
+        penModeButton.addEventListener('click', () => setMode('pen'));
+        eraserModeButton.addEventListener('click', () => setMode('eraser'));
+        textModeButton.addEventListener('click', () => setMode('text'));
+        
+        // معالجة رفع الصورة
+        imageUpload.addEventListener('change', handleImageUpload);
+        
+        // زر المسح والتصدير
+        clearButton.addEventListener('click', ()=> clearCanvas(false));
+        exportButton.addEventListener('click', exportCanvas);
+
+        const createSessionBtn = document.getElementById('createSessionBtn');
+        const joinSessionBtn = document.getElementById('joinSessionBtn');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        const saveCloudBtn = document.getElementById('saveCloudBtn');
+        const roomIdInput = document.getElementById('roomIdInput');
+        if (createSessionBtn){ createSessionBtn.addEventListener('click', ()=>{ const id = cryptoRandomId(); joinRoom(id); }); }
+        if (joinSessionBtn){ joinSessionBtn.addEventListener('click', ()=>{ const id = (roomIdInput && roomIdInput.value && roomIdInput.value.trim()) || ''; if (id) joinRoom(id.trim()); }); }
+        if (copyLinkBtn){ copyLinkBtn.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(window.location.href); alert('تم نسخ الرابط'); }catch(_){ } }); }
+        if (saveCloudBtn){ saveCloudBtn.addEventListener('click', saveToCloud); }
+
+        const boldBtn = document.getElementById('boldBtn');
+        const italicBtn = document.getElementById('italicBtn');
+        const underlineBtn = document.getElementById('underlineBtn');
+        const bulletsBtn = document.getElementById('bulletsBtn');
+        const numberedBtn = document.getElementById('numberedBtn');
+        const alignRightBtn = document.getElementById('alignRightBtn');
+        const alignCenterBtn = document.getElementById('alignCenterBtn');
+        const alignLeftBtn = document.getElementById('alignLeftBtn');
+        const highlighterBtn = document.getElementById('highlighterBtn');
+        const bgSelect = document.getElementById('bgSelect');
+        const shapeSelect = document.getElementById('shapeSelect');
+        const laserBtn = document.getElementById('laserBtn');
+        const highlighterColors = document.querySelectorAll('[data-hi-color]');
+        const shapeFill = document.getElementById('shapeFill');
+        if (boldBtn) boldBtn.addEventListener('click', ()=>{ textBold = !textBold; boldBtn.classList.toggle('bg-gray-800'); boldBtn.classList.toggle('text-white'); });
+        if (italicBtn) italicBtn.addEventListener('click', ()=>{ textItalic = !textItalic; italicBtn.classList.toggle('bg-gray-800'); italicBtn.classList.toggle('text-white'); });
+        if (underlineBtn) underlineBtn.addEventListener('click', ()=>{ textUnderline = !textUnderline; underlineBtn.classList.toggle('bg-gray-800'); underlineBtn.classList.toggle('text-white'); });
+        if (bulletsBtn) bulletsBtn.addEventListener('click', ()=>{ listType = (listType==='bullets'?'none':'bullets'); bulletsBtn.classList.toggle('bg-gray-800'); bulletsBtn.classList.toggle('text-white'); if (listType==='bullets'){ numberedBtn.classList.remove('bg-gray-800','text-white'); } });
+        if (numberedBtn) numberedBtn.addEventListener('click', ()=>{ listType = (listType==='numbered'?'none':'numbered'); numberedBtn.classList.toggle('bg-gray-800'); numberedBtn.classList.toggle('text-white'); if (listType==='numbered'){ bulletsBtn.classList.remove('bg-gray-800','text-white'); } });
+        if (alignRightBtn) alignRightBtn.addEventListener('click', ()=>{ textAlignMode='right'; alignRightBtn.classList.add('bg-gray-800','text-white'); alignCenterBtn.classList.remove('bg-gray-800','text-white'); alignLeftBtn.classList.remove('bg-gray-800','text-white'); });
+        if (alignCenterBtn) alignCenterBtn.addEventListener('click', ()=>{ textAlignMode='center'; alignCenterBtn.classList.add('bg-gray-800','text-white'); alignRightBtn.classList.remove('bg-gray-800','text-white'); alignLeftBtn.classList.remove('bg-gray-800','text-white'); });
+        if (alignLeftBtn) alignLeftBtn.addEventListener('click', ()=>{ textAlignMode='left'; alignLeftBtn.classList.add('bg-gray-800','text-white'); alignRightBtn.classList.remove('bg-gray-800','text-white'); alignCenterBtn.classList.remove('bg-gray-800','text-white'); });
+        if (highlighterBtn) highlighterBtn.addEventListener('click', ()=>{ highlighterActive = !highlighterActive; if (highlighterActive){ setMode('highlighter'); highlighterBtn.classList.add('bg-yellow-500','text-white'); } else { setMode('pen'); highlighterBtn.classList.remove('bg-yellow-500','text-white'); } });
+        if (bgSelect) bgSelect.addEventListener('change', ()=>{ bgType = bgSelect.value || 'plain'; applyBackground(bgType); try{ send('bg', { type: bgType }); }catch(_){ } });
+        if (shapeSelect) shapeSelect.addEventListener('change', ()=>{ shapeType = shapeSelect.value || 'none'; if (shapeType==='none') setMode('pen'); else setMode('shape'); });
+        if (shapeFill) shapeFill.addEventListener('change', ()=>{ shapeFillFlag = !!shapeFill.checked; });
+        if (laserBtn) laserBtn.addEventListener('click', ()=>{ laserActive = !laserActive; if (laserActive){ laserColor = colorPicker.value; laserBtn.classList.add('bg-red-600','text-white'); if (!laserRAF) startLaserRAF(); } else { laserBtn.classList.remove('bg-red-600','text-white'); } });
+        if (highlighterColors) highlighterColors.forEach(btn=> btn.addEventListener('click', ()=>{ const c = btn.getAttribute('data-hi-color'); if (c){ colorPicker.value = c; setMode('highlighter'); highlighterActive = true; highlighterBtn.classList.add('bg-yellow-500','text-white'); } }));
+
+        // تغيير اللون والسمك
+        colorPicker.addEventListener('input', (e) => {
+            ctx.strokeStyle = e.target.value;
+            if (laserActive) laserColor = e.target.value;
+        });
+
+        thicknessRange.addEventListener('input', (e) => {
+            thicknessValue.textContent = e.target.value;
+            ctx.lineWidth = e.target.value;
+        });
+
+    </script>
+</body>
+</html>
