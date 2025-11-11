@@ -338,51 +338,21 @@
                         </div>
                     </div>
 
-                    <!-- Desktop actions (hidden to keep mobile look on desktop) -->
-                    <div class="hidden">
-                      <div class="flex items-center gap-2">
-                        <button onclick="window.location.href='subjects.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
-                          <i class="fas fa-book ml-1"></i><span data-i18n="nav.subjects">المواد الدراسية</span>
-                        </button>
-                        <button onclick="window.location.href='planner.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
-                          <i class="fas fa-calendar-alt ml-1"></i><span data-i18n="nav.planner">المخطط الدراسي</span>
-                        </button>
-                        <button onclick="window.location.href='study-timer.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
-                          <i class="fas fa-clock ml-1"></i><span data-i18n="nav.timer">مؤقت المذاكرة</span>
-                        </button>
-                        <button onclick="window.location.href='ai-assistant.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
-                          <i class="fas fa-robot ml-1"></i><span data-i18n="nav.ai">المساعد الذكي</span>
-                        </button>
-                        <button onclick="window.location.href='ai-voice.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
-                          <i class="fas fa-microphone-lines ml-1"></i><span data-i18n="nav.voice">النسخة الصوتية</span>
-                        </button>
-                        <button onclick="window.location.href='my%20note.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
-                          <i class="fas fa-microphone ml-1"></i><span data-i18n="nav.mynotes">ملاحظاتي الصوتية</span>
-                        </button>
-                        <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
-                          <i class="fas fa-headset ml-1"></i><span data-i18n="nav.contact">تواصل معانا</span>
-                        </button>
-                        <button onclick="window.location.href='privacy-policy.html'" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center">
-                          <i class="fas fa-shield-alt ml-1"></i><span data-i18n="nav.privacy">سياسة الخصوصية</span>
-                        </button>
-                      </div>
-                      <div class="flex items-center gap-2">
+                    <!-- Left controls: burger + language + logout -->
+                    <div class="order-last flex items-center gap-2">
                         <select id="langSelect" onchange="setLanguage(this.value)" class="bg-white bg-opacity-90 text-gray-800 px-2 py-2 rounded-lg text-sm">
-                          <option value="ar">العربية</option>
-                          <option value="en">English</option>
+                            <option value="ar">العربية</option>
+                            <option value="en">English</option>
                         </select>
                         <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                          <i class="fas fa-sign-out-alt ml-2"></i><span data-i18n="nav.logout">تسجيل الخروج</span>
+                            <i class="fas fa-sign-out-alt ml-2"></i><span data-i18n="nav.logout">تسجيل الخروج</span>
                         </button>
-                      </div>
+                        <button id="mobileMenuBtn" aria-label="فتح القائمة" class="inline-flex items-center justify-center p-2 rounded-md bg-white bg-opacity-20 hover:bg-opacity-30 focus:outline-none">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
                     </div>
-
-                    <!-- Mobile hamburger (visible on all screens) -->
-                    <button id="mobileMenuBtn" aria-label="فتح القائمة" class="order-last inline-flex items-center justify-center p-2 rounded-md bg-white bg-opacity-20 hover:bg-opacity-30 focus:outline-none">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
                 </div>
             </div>
 
@@ -413,15 +383,6 @@
                     <button onclick="window.location.href='privacy-policy.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
                         <i class="fas fa-shield-alt ml-2"></i> <span data-i18n="nav.privacy">سياسة الخصوصية</span>
                     </button>
-                    <div class="flex items-center gap-2">
-                      <select id="langSelect" onchange="setLanguage(this.value)" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <option value="ar">العربية</option>
-                        <option value="en">English</option>
-                      </select>
-                      <button onclick="logout()" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg text-sm text-right">
-                          <i class="fas fa-sign-out-alt ml-2"></i> <span data-i18n="nav.logout">تسجيل الخروج</span>
-                      </button>
-                    </div>
                 </div>
             </div>
         </header>
@@ -1089,6 +1050,26 @@
       </div>
     </footer>
     <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
+    <script>
+      async function logout(){
+        try{
+          if (window.supabaseAuth && typeof window.supabaseAuth.signOut === 'function'){
+            await window.supabaseAuth.signOut();
+          }
+        }catch(e){}
+        try{ localStorage.clear(); }catch(e){}
+        window.location.href = 'auth.html';
+      }
+      (function syncLangSelect(){
+        try{
+          var cur = localStorage.getItem('lang') || 'ar';
+          var sel1 = document.getElementById('langSelect');
+          if (sel1) sel1.value = cur;
+          var sel2 = document.getElementById('langSelectHidden');
+          if (sel2) sel2.value = cur;
+        }catch(e){}
+      })();
+    </script>
     <script src="js/theme.js"></script>
     </body>
     </html>
