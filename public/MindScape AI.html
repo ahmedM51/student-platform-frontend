@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindScape AI - Portable</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        .canvas-bg {
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Node Styles */
+        .node {
+            position: absolute;
+            transition: box-shadow 0.2s, transform 0.1s;
+            cursor: grab;
+            user-select: none;
+        }
+        .node:active { cursor: grabbing; }
+        .node.root { background-color: #4f46e5; color: white; border-color: #4338ca; }
+        .node.child { background-color: white; color: #334155; border-color: #e2e8f0; }
+        .node.selected { box-shadow: 0 0 0 2px #3b82f6, 0 10px 15px -3px rgb(0 0 0 / 0.1); z-index: 10; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 overflow-hidden h-screen w-screen">
+
+    <!-- App Container -->
+    <div id="app" class="h-full w-full relative">
+        <!-- Loading State -->
+        <div id="loading-screen" class="absolute inset-0 bg-white flex items-center justify-center z-50">
+            <div class="flex flex-col items-center">
+                <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="text-slate-500 font-medium">Loading MindScape AI...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div id="modal-content" class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in"></div>
+    </div>
+
+    <!-- Global Logic & State -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+
+        // --- State & Config ---
+        const state = {
+            user: null,
+            isOfflineMode: false, // True if Firebase config is missing
+            view: 'dashboard',
+            maps: [],
+            currentMap: null,
+            nodes: [],
+            edges: [],
+            scale: 1,
+            offset: { x: 0, y: 0 },
+            selectedNodeId: null,
+            isDraggingCanvas: false,
+            isDraggingNode: false,
+            dragStart: { x: 0, y: 0 },
+            draggedNodeId: null,
+            chatOpen: false,
+            chatMessages: [],
+            apiKey: localStorage.getItem('gemini_api_key') || ""
+        };
+
+        let db = null;
+        let auth = null;
+
+        // --- Initialization ---
+        async function initApp() {
+            const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+            
+            if (configStr && configStr !== '""' && configStr !== "{}") {
+                // Firebase Mode
+                try {
+                    const firebaseConfig = JSON.parse(configStr);
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    
+                    onAuthStateChanged(auth, async (currentUser) => {
+                        if (currentUser) {
+                            state.user = currentUser;
+                            await fetchMaps();
+                            finishLoading();
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    });
+                } catch (e) {
+                    console.warn("Firebase init failed, falling back to local mode:", e);
+                    enableLocalMode();
+                }
+            } else {
+                // No Config -> Local Mode
+                enableLocalMode();
+            }
+        }
+
+        function enableLocalMode() {
+            console.log("Running in Local Offline Mode");
+            state.isOfflineMode = true;
+            // Generate a fake user ID for local storage key
+            if(!localStorage.getItem('local_user_id')) {
+                localStorage.setItem('local_user_id', 'local-' + Date.now());
+            }
+            state.user = { uid: localStorage.getItem('local_user_id'), isAnonymous: true };
+            fetchMaps();
+            finishLoading();
+        }
+
+        function finishLoading() {
+            document.getElementById('loading-screen').classList.add('hidden');
+            renderApp();
+        }
+
+        // --- Storage Abstraction (Firebase vs LocalStorage) ---
+        async function fetchMaps() {
+            state.maps = [];
+            if (!state.isOfflineMode && db && state.user) {
+                try {
+                    const q = query(collection(db, `users/${state.user.uid}/mindmaps`), orderBy('updatedAt', 'desc'));
+                    const snapshot = await getDocs(q);
+                    state.maps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch (e) { console.error(e); }
+            } else {
+                // LocalStorage
+                const localMaps = JSON.parse(localStorage.getItem(`maps_${state.user.uid}`) || "[]");
+                state.maps = localMaps.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            }
+        }
+
+        async function saveCurrentMap() {
+            if (!state.user || !state.currentMap) return;
+            const mapData = {
+                title: state.currentMap.title,
+                nodes: state.nodes,
+                edges: state.edges,
+                updatedAt: state.isOfflineMode ? new Date().toISOString() : serverTimestamp()
+            };
+
+            if (!state.isOfflineMode && db) {
+                if (state.currentMap.id) {
+                    await updateDoc(doc(db, `users/${state.user.uid}/mindmaps`, state.currentMap.id), mapData);
+                } else {
+                    const ref = await addDoc(collection(db, `users/${state.user.uid}/mindmaps`), { ...mapData, createdAt: serverTimestamp() });
+                    state.currentMap.id = ref.id;
+                }
+            } else {
+                // LocalStorage Save
+                let maps = JSON.parse(localStorage.getItem(`maps_${state.user.uid}`) || "[]");
+                if (state.currentMap.id) {
+                    const idx = maps.findIndex(m => m.id === state.currentMap.id);
+                    if (idx !== -1) maps[idx] = { ...maps[idx], ...mapData };
+                } else {
+                    const newId = 'local-map-' + Date.now();
+                    state.currentMap.id = newId;
+                    maps.push({ id: newId, ...mapData, createdAt: new Date().toISOString() });
+                }
+                localStorage.setItem(`maps_${state.user.uid}`, JSON.stringify(maps));
+            }
+            await fetchMaps();
+            renderEditor(); // Refresh
+            alert("Saved successfully!");
+        }
+
+        async function deleteMap(id) {
+            if(!confirm("Delete this map?")) return;
+            if (!state.isOfflineMode && db) {
+                await deleteDoc(doc(db, `users/${state.user.uid}/mindmaps`, id));
+            } else {
+                let maps = JSON.parse(localStorage.getItem(`maps_${state.user.uid}`) || "[]");
+                maps = maps.filter(m => m.id !== id);
+                localStorage.setItem(`maps_${state.user.uid}`, JSON.stringify(maps));
+            }
+            await fetchMaps();
+            renderDashboard();
+        }
+
+        // --- AI Logic ---
+        async function generateAI(prompt, systemPrompt) {
+            if(!state.apiKey) {
+                openSettingsModal();
+                throw new Error("No API Key");
+            }
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+            
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.apiKey}`, 
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }
+            );
+            
+            if (!response.ok) throw new Error("AI Request Failed");
+            
+            const data = await response.json();
+            return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        }
+
+        async function handleAIGenerateMap(topic) {
+            window.closeModal();
+            if(!state.apiKey) { window.openSettingsModal(); return; }
+            
+            setLoading(true, "Thinking...");
+            try {
+                const systemPrompt = `You are a JSON generator for mind maps. Output ONLY valid JSON. Structure: { "nodes": [{ "id": "string", "label": "string", "parent": "string (optional)" }], "title": "string" }. Root node no parent. 10+ nodes.`;
+                const res = await generateAI(topic, systemPrompt);
+                const jsonStr = res.replace(/```json/g, '').replace(/```/g, '').trim();
+                const data = JSON.parse(jsonStr);
+                setupNewMapFromData(data);
+            } catch (e) {
+                console.error(e);
+                alert("Failed. Check your API Key in Settings.");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function handleAIExpandNode() {
+            if (!state.selectedNodeId) return;
+            if(!state.apiKey) { window.openSettingsModal(); return; }
+
+            const node = state.nodes.find(n => n.id === state.selectedNodeId);
+            setLoading(true, "Expanding...");
+            try {
+                const systemPrompt = `Generate 3-5 sub-topics for "${node.label}". Output ONLY valid JSON array of strings: ["A", "B"]`;
+                const res = await generateAI("Expand", systemPrompt);
+                const subtopics = JSON.parse(res.replace(/```json/g, '').replace(/```/g, '').trim());
+
+                subtopics.forEach((label, i) => {
+                    const id = `ai-${Date.now()}-${i}`;
+                    const angle = Math.random() * Math.PI * 2;
+                    state.nodes.push({
+                        id, label, 
+                        x: node.x + Math.cos(angle) * 180, 
+                        y: node.y + Math.sin(angle) * 180, 
+                        type: 'child'
+                    });
+                    state.edges.push({ id: `e-${node.id}-${id}`, source: node.id, target: id });
+                });
+                renderCanvasContent();
+            } catch (e) {
+                alert("AI Error. Check API Key.");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function handleAIChat(input) {
+            if(!state.apiKey) { 
+                state.chatMessages.push({ role: 'ai', text: "Please set your Gemini API Key in settings first." });
+                renderChatMessages();
+                return;
+            }
+
+            state.chatMessages.push({ role: 'user', text: input });
+            renderChatMessages();
+            
+            try {
+                const context = state.nodes.map(n => n.label).join(", ");
+                const systemPrompt = `Assistant for mind map. Context: [${context}]. Be concise.`;
+                const res = await generateAI(input, systemPrompt);
+                state.chatMessages.push({ role: 'ai', text: res });
+            } catch (e) {
+                state.chatMessages.push({ role: 'ai', text: "Error connecting to AI." });
+            }
+            renderChatMessages();
+        }
+
+        // --- Helpers ---
+        function setupNewMapFromData(data) {
+            const rootX = window.innerWidth/2, rootY = window.innerHeight/2;
+            const newNodes = [];
+            const newEdges = [];
+            
+            const root = data.nodes.find(n => !n.parent) || data.nodes[0];
+            newNodes.push({ ...root, x: rootX, y: rootY, type: 'root' });
+
+            const processChildren = (parentId, level, px, py, angleStart, angleEnd) => {
+                const children = data.nodes.filter(n => n.parent === parentId);
+                if (!children.length) return;
+                
+                const step = (angleEnd - angleStart) / children.length;
+                const radius = 180 + (level * 40);
+                
+                children.forEach((child, i) => {
+                    const angle = angleStart + (i * step) + (step/2);
+                    const x = px + Math.cos(angle) * radius;
+                    const y = py + Math.sin(angle) * radius;
+                    
+                    newNodes.push({ ...child, x, y, type: 'child' });
+                    newEdges.push({ id: `e-${parentId}-${child.id}`, source: parentId, target: child.id });
+                    processChildren(child.id, level+1, x, y, angle - step/2, angle + step/2);
+                });
+            };
+            processChildren(root.id, 0, rootX, rootY, 0, Math.PI*2);
+            
+            state.nodes = newNodes;
+            state.edges = newEdges;
+            state.currentMap = { title: data.title || "AI Map", id: null };
+            state.scale = 1;
+            state.offset = { x: 0, y: 0 };
+            state.view = 'editor';
+            renderApp();
+        }
+
+        function createEmptyMap() {
+            state.nodes = [{ id: 'root', label: 'Central Idea', x: window.innerWidth/2 - 75, y: window.innerHeight/2 - 25, type: 'root' }];
+            state.edges = [];
+            state.currentMap = { title: "Untitled Map", id: null };
+            state.scale = 1;
+            state.offset = { x: 0, y: 0 };
+            state.view = 'editor';
+            renderApp();
+        }
+
+        // --- Rendering ---
+        function renderApp() {
+            appEl.innerHTML = '';
+            if (state.view === 'dashboard') renderDashboard();
+            else renderEditor();
+            lucide.createIcons();
+        }
+
+        function renderDashboard() {
+            const modeBadge = state.isOfflineMode 
+                ? `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs">Offline Mode (Local Storage)</span>`
+                : `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">Cloud Mode</span>`;
+
+            const html = `
+                <div class="min-h-screen bg-slate-50 p-8">
+                    <div class="max-w-6xl mx-auto">
+                        <header class="flex justify-between items-center mb-12">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                                    <i data-lucide="zap"></i>
+                                </div>
+                                <div>
+                                    <h1 class="text-3xl font-bold text-slate-900">MindScape AI</h1>
+                                    ${modeBadge}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <button onclick="window.openSettingsModal()" class="p-2 text-slate-500 hover:bg-slate-200 rounded-full"><i data-lucide="settings"></i></button>
+                                <button onclick="window.triggerCreate()" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-md">
+                                    <i data-lucide="plus" size="18"></i> New Map
+                                </button>
+                            </div>
+                        </header>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div onclick="window.triggerCreate()" class="cursor-pointer group aspect-video border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center hover:border-blue-500 hover:bg-blue-50/50 transition">
+                                <div class="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-blue-500 mb-3 group-hover:scale-110 transition">
+                                    <i data-lucide="plus"></i>
+                                </div>
+                                <span class="font-medium text-slate-600">Create from scratch</span>
+                            </div>
+
+                            <div onclick="window.openAIModal()" class="cursor-pointer group aspect-video bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 flex flex-col justify-between text-white shadow-xl hover:-translate-y-1 transition">
+                                <div>
+                                    <div class="w-10 h-10 bg-white/20 backdrop-blur rounded-lg flex items-center justify-center mb-4">
+                                        <i data-lucide="zap"></i>
+                                    </div>
+                                    <h3 class="text-xl font-bold mb-1">Generate with AI</h3>
+                                    <p class="text-indigo-100 text-sm">Turn text into maps instantly.</p>
+                                </div>
+                                <div class="flex items-center gap-2 text-sm font-medium opacity-90">Try it now <i data-lucide="chevron-right" size="16"></i></div>
+                            </div>
+
+                            ${state.maps.length === 0 ? `<div class="col-span-full text-center py-10 text-slate-400">No maps found. Create one!</div>` : ''}
+
+                            ${state.maps.map(map => `
+                                <div onclick="window.loadMap('${map.id}')" class="relative cursor-pointer aspect-video bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between hover:shadow-lg hover:border-blue-200 transition group">
+                                    <button onclick="event.stopPropagation(); window.deleteMap('${map.id}')" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition">
+                                        <i data-lucide="trash-2" size="16"></i>
+                                    </button>
+                                    <div class="flex-1 flex items-center justify-center opacity-20 text-slate-400">
+                                        <i data-lucide="layout" size="48"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-lg truncate text-slate-800">${map.title}</h3>
+                                        <p class="text-xs text-slate-400 mt-1">${map.updatedAt ? 'Updated recently' : ''}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            appEl.innerHTML = html;
+        }
+
+        function renderEditor() {
+            const html = `
+                <div class="flex flex-col h-screen bg-slate-50 overflow-hidden">
+                    <header class="h-14 border-b bg-white flex items-center justify-between px-4 z-20 shadow-sm shrink-0">
+                        <div class="flex items-center gap-4">
+                            <button onclick="window.goHome()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><i data-lucide="home" size="20"></i></button>
+                            <div class="h-6 w-px bg-slate-200"></div>
+                            <input type="text" value="${state.currentMap.title}" onchange="window.updateTitle(this.value)" class="font-bold text-lg text-slate-800 bg-transparent outline-none focus:bg-slate-50 px-2 rounded" placeholder="Untitled Map" />
+                        </div>
+                        <div class="flex items-center gap-2">
+                             <button onclick="window.openSettingsModal()" class="p-2 text-slate-500 hover:bg-slate-200 rounded-full" title="Settings"><i data-lucide="settings" size="18"></i></button>
+                            <button onclick="window.exportMap()" class="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-white border hover:bg-slate-50"><i data-lucide="download" size="18"></i> Export</button>
+                            <button onclick="window.saveCurrentMap()" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 shadow-md"><i data-lucide="save" size="18"></i> Save</button>
+                        </div>
+                    </header>
+
+                    <div class="flex-1 flex relative overflow-hidden">
+                        <div class="w-16 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 shadow-sm shrink-0">
+                            <button onclick="window.openAIModal()" class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow hover:bg-indigo-700" title="AI Gen"><i data-lucide="zap" size="20"></i></button>
+                            <div class="w-8 h-px bg-slate-200 my-1"></div>
+                            <button onclick="window.addNode()" class="p-3 rounded-lg hover:bg-slate-100 text-slate-600" title="Add Node"><i data-lucide="plus" size="20"></i></button>
+                            <button onclick="window.deleteNode()" class="p-3 rounded-lg hover:bg-red-50 text-slate-600 hover:text-red-500" title="Delete"><i data-lucide="trash-2" size="20"></i></button>
+                            <button onclick="window.resetView()" class="p-3 rounded-lg hover:bg-slate-100 text-slate-600" title="Reset View"><i data-lucide="maximize" size="20"></i></button>
+                        </div>
+
+                        <div id="canvas-container" class="flex-1 relative bg-[#f8f9fa] overflow-hidden canvas-bg" style="background-size: 20px 20px;">
+                            <div id="canvas-content" class="absolute top-0 left-0 w-full h-full origin-top-left">
+                                <svg id="edges-layer" class="absolute top-0 left-0 overflow-visible pointer-events-none" style="width: 10000px; height: 10000px;"></svg>
+                                <div id="nodes-layer"></div>
+                            </div>
+                        </div>
+
+                        <button onclick="window.toggleChat()" class="absolute bottom-6 right-6 bg-slate-900 text-white p-4 rounded-full shadow-xl hover:bg-slate-800 z-20 transition transform hover:scale-105">
+                            <i data-lucide="message-square" size="24"></i>
+                        </button>
+
+                        <div id="chat-sidebar" class="absolute top-0 right-0 bottom-0 w-80 bg-white shadow-2xl border-l z-30 transform transition-transform duration-300 translate-x-full flex flex-col">
+                            <div class="p-4 border-b flex justify-between items-center bg-slate-50">
+                                <h3 class="font-bold flex items-center gap-2"><i data-lucide="zap" size="16" class="text-indigo-600"></i> AI Assistant</h3>
+                                <button onclick="window.toggleChat()" class="hover:bg-slate-200 rounded p-1"><i data-lucide="x" size="18"></i></button>
+                            </div>
+                            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+                            <div class="p-4 border-t bg-white">
+                                <div class="flex gap-2">
+                                    <input id="chat-input" type="text" placeholder="Ask..." class="flex-1 border rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" onkeydown="if(event.key==='Enter') window.sendChat()">
+                                    <button onclick="window.sendChat()" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700"><i data-lucide="chevron-right" size="18"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            appEl.innerHTML = html;
+            
+            const container = document.getElementById('canvas-container');
+            container.addEventListener('mousedown', onMouseDown);
+            container.addEventListener('wheel', onWheel);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            
+            renderCanvasContent();
+            updateCanvasTransform();
+        }
+
+        function renderCanvasContent() {
+            const edgesLayer = document.getElementById('edges-layer');
+            const nodesLayer = document.getElementById('nodes-layer');
+            if(!edgesLayer || !nodesLayer) return;
+
+            let edgesHtml = '';
+            state.edges.forEach(edge => {
+                const src = state.nodes.find(n => n.id === edge.source);
+                const tgt = state.nodes.find(n => n.id === edge.target);
+                if(src && tgt) {
+                    const dx = Math.abs(src.x - tgt.x);
+                    edgesHtml += `<path d="M ${src.x + 100} ${src.y + 25} C ${src.x + 150 + dx*0.2} ${src.y + 25}, ${tgt.x - 50 - dx*0.2} ${tgt.y + 25}, ${tgt.x} ${tgt.y + 25}" stroke="#cbd5e1" stroke-width="3" fill="none" />`;
+                }
+            });
+            edgesLayer.innerHTML = edgesHtml;
+
+            let nodesHtml = '';
+            state.nodes.forEach(node => {
+                const isSelected = node.id === state.selectedNodeId;
+                const classes = `node ${node.type} ${isSelected ? 'selected' : ''} flex items-center justify-center px-6 py-3 rounded-xl shadow-sm border min-w-[120px]`;
+                nodesHtml += `
+                    <div class="${classes}" style="left: ${node.x}px; top: ${node.y}px;" onmousedown="window.onNodeDown(event, '${node.id}')">
+                        <input value="${node.label}" onchange="window.updateNodeLabel('${node.id}', this.value)" class="bg-transparent text-center outline-none w-full pointer-events-auto" onmousedown="event.stopPropagation()">
+                        ${isSelected ? `<button onclick="event.stopPropagation(); window.handleAIExpandNode()" class="absolute -top-3 -right-3 bg-white text-indigo-600 border border-indigo-100 p-1.5 rounded-full shadow-sm hover:scale-110 transition transform" title="AI Expand"><i data-lucide="zap" size="14" fill="currentColor"></i></button>` : ''}
+                    </div>
+                `;
+            });
+            nodesLayer.innerHTML = nodesHtml;
+            lucide.createIcons();
+        }
+
+        // --- Interaction Logic ---
+        function onMouseDown(e) {
+            if(e.target.id === 'canvas-container' || e.target.id === 'canvas-content') {
+                state.isDraggingCanvas = true;
+                state.dragStart = { x: e.clientX - state.offset.x, y: e.clientY - state.offset.y };
+            }
+        }
+
+        function onMouseMove(e) {
+            if(state.isDraggingCanvas) {
+                state.offset = { x: e.clientX - state.dragStart.x, y: e.clientY - state.dragStart.y };
+                updateCanvasTransform();
+            } else if(state.isDraggingNode && state.draggedNodeId) {
+                const node = state.nodes.find(n => n.id === state.draggedNodeId);
+                if(node) {
+                    node.x += e.movementX / state.scale;
+                    node.y += e.movementY / state.scale;
+                    renderCanvasContent();
+                }
+            }
+        }
+
+        function onMouseUp() {
+            state.isDraggingCanvas = false;
+            state.isDraggingNode = false;
+            state.draggedNodeId = null;
+        }
+
+        function onWheel(e) {
+            e.preventDefault();
+            state.scale = Math.min(Math.max(0.1, state.scale - e.deltaY * 0.001), 5);
+            updateCanvasTransform();
+        }
+
+        function updateCanvasTransform() {
+            const content = document.getElementById('canvas-content');
+            const container = document.getElementById('canvas-container');
+            if(content && container) {
+                content.style.transform = `translate(${state.offset.x}px, ${state.offset.y}px) scale(${state.scale})`;
+                container.style.backgroundPosition = `${state.offset.x}px ${state.offset.y}px`;
+                container.style.backgroundSize = `${20 * state.scale}px ${20 * state.scale}px`;
+            }
+        }
+
+        // --- Global Exposed Functions ---
+        const appEl = document.getElementById('app');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContent = document.getElementById('modal-content');
+        const loadingScreen = document.getElementById('loading-screen');
+
+        window.goHome = () => { state.view = 'dashboard'; renderApp(); };
+        window.triggerCreate = () => createEmptyMap();
+        window.loadMap = (id) => { 
+            state.currentMap = state.maps.find(m => m.id === id);
+            state.nodes = state.currentMap.nodes || [];
+            state.edges = state.currentMap.edges || [];
+            state.view = 'editor';
+            renderApp();
+        };
+        window.deleteMap = deleteMap;
+        window.saveCurrentMap = saveCurrentMap;
+        window.exportMap = () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({nodes: state.nodes, edges: state.edges, title: state.currentMap.title}));
+            const a = document.createElement('a');
+            a.href = dataStr;
+            a.download = `${state.currentMap.title}.json`;
+            a.click();
+        };
+        
+        window.onNodeDown = (e, id) => { e.stopPropagation(); state.selectedNodeId = id; state.isDraggingNode = true; state.draggedNodeId = id; renderCanvasContent(); };
+        window.updateNodeLabel = (id, val) => { const node = state.nodes.find(n => n.id === id); if(node) node.label = val; };
+        window.updateTitle = (val) => { state.currentMap.title = val; };
+        
+        window.addNode = () => {
+            if(!state.selectedNodeId) return alert("Select a parent node first!");
+            const parent = state.nodes.find(n => n.id === state.selectedNodeId);
+            const id = `node-${Date.now()}`;
+            state.nodes.push({ id, label: "New Node", x: parent.x + 150, y: parent.y + 50, type: 'child' });
+            state.edges.push({ source: parent.id, target: id, id: `e-${parent.id}-${id}` });
+            state.selectedNodeId = id;
+            renderCanvasContent();
+        };
+
+        window.deleteNode = () => {
+            if(!state.selectedNodeId) return;
+            const toDelete = new Set([state.selectedNodeId]);
+            let changed = true;
+            while(changed) {
+                changed = false;
+                state.edges.forEach(e => { if(toDelete.has(e.source) && !toDelete.has(e.target)) { toDelete.add(e.target); changed = true; } });
+            }
+            state.nodes = state.nodes.filter(n => !toDelete.has(n.id));
+            state.edges = state.edges.filter(e => !toDelete.has(e.source) && !toDelete.has(e.target));
+            state.selectedNodeId = null;
+            renderCanvasContent();
+        };
+
+        window.resetView = () => { state.scale = 1; state.offset = { x: 0, y: 0 }; updateCanvasTransform(); };
+        window.toggleChat = () => document.getElementById('chat-sidebar')?.classList.toggle('translate-x-full');
+        window.sendChat = () => { const input = document.getElementById('chat-input'); if(input.value.trim()) { handleAIChat(input.value); input.value = ''; } };
+        
+        window.handleAIGenerateMap = handleAIGenerateMap;
+        window.handleAIExpandNode = handleAIExpandNode;
+
+        // Settings & Modals
+        window.openAIModal = () => {
+            if(!state.apiKey) return window.openSettingsModal();
+            modalContent.innerHTML = `
+                <div class="flex justify-between items-center p-4 border-b"><h3 class="font-bold text-lg">Generate with AI</h3><button onclick="window.closeModal()"><i data-lucide="x"></i></button></div>
+                <div class="p-4 space-y-4">
+                    <textarea id="ai-prompt-input" class="w-full h-32 border rounded-lg p-3 text-sm outline-none focus:ring-2 ring-indigo-500/20" placeholder="Topic..."></textarea>
+                    <div class="flex justify-end gap-2"><button onclick="window.closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button><button onclick="window.handleAIGenerateMap(document.getElementById('ai-prompt-input').value)" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"><i data-lucide="zap" size="16"></i> Generate</button></div>
+                </div>`;
+            modalOverlay.classList.remove('hidden');
+            lucide.createIcons();
+        };
+
+        window.openSettingsModal = () => {
+            modalContent.innerHTML = `
+                <div class="flex justify-between items-center p-4 border-b"><h3 class="font-bold text-lg">Settings</h3><button onclick="window.closeModal()"><i data-lucide="x"></i></button></div>
+                <div class="p-4 space-y-4">
+                    <p class="text-sm text-slate-600">To use AI features outside the playground, enter your Google Gemini API Key:</p>
+                    <input type="password" id="api-key-input" value="${state.apiKey}" class="w-full border rounded-lg p-2 text-sm outline-none" placeholder="AIzaSy..." />
+                    <p class="text-xs text-slate-400">Key is saved in your browser's local storage.</p>
+                    <div class="flex justify-end gap-2"><button onclick="window.saveSettings()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save Key</button></div>
+                </div>`;
+            modalOverlay.classList.remove('hidden');
+            lucide.createIcons();
+        };
+
+        window.saveSettings = () => {
+            const key = document.getElementById('api-key-input').value.trim();
+            state.apiKey = key;
+            localStorage.setItem('gemini_api_key', key);
+            window.closeModal();
+            alert("API Key saved!");
+        };
+
+        window.closeModal = () => modalOverlay.classList.add('hidden');
+        function setLoading(isLoading, text) {
+            const el = document.getElementById('loading-screen');
+            if(isLoading) { el.querySelector('p').innerText = text; el.classList.remove('hidden'); } else el.classList.add('hidden');
+        }
+
+        // Init
+        initApp();
+
+    </script>
+</body>
+</html>
+
+

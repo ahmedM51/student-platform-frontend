@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina AI</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', 'Cairo', sans-serif;
+        }
+        /* Custom Scrollbar for Webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #666; 
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-black text-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Icons (Inline SVGs) ---
+        const Icons = {
+            Sparkles: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>
+            ),
+            Plus: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            ),
+            Image: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            ),
+            ChevronRight: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>
+            ),
+            ArrowLeft: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+            ),
+            Play: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            ),
+            Share: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+            ),
+            Settings: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            ),
+            Presentation: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></svg>
+            ),
+            FileText: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            ),
+            Monitor: ({ className }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+            )
+        };
+
+        // --- REAL GEMINI API INTEGRATION ---
+
+        const fetchGeminiContent = async (apiKey, topic, type) => {
+            const prompt = `
+                You are a professional presentation generator. 
+                Create a structured 4-slide ${type} about: "${topic}".
+                
+                Return ONLY valid JSON without markdown code blocks.
+                The JSON must be an array of objects with this exact structure:
+                [
+                {
+                    "title": "Slide Title",
+                    "blocks": [
+                    { "type": "heading", "content": "Main Point" },
+                    { "type": "paragraph", "content": "Detailed explanation..." },
+                    { "type": "list", "content": "Point 1\\nPoint 2\\nPoint 3" },
+                    { "type": "image", "content": "visual description for AI image generator" }
+                    ]
+                }
+                ]
+
+                Ensure the first slide is a title slide with an image.
+                Ensure the last slide is a conclusion.
+                Make sure the "content" for type "image" is a short English visual description (e.g., "futuristic city with neon lights").
+            `;
+
+            try {
+                // Using Gemini 2.5 Flash Preview
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error?.message || `API Error: ${response.statusText}`);
+                }
+
+                if (!data.candidates || !data.candidates[0].content) {
+                    throw new Error('Invalid API response structure');
+                }
+
+                const textResponse = data.candidates[0].content.parts[0].text;
+                
+                // Clean up markdown
+                const cleanJson = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+                const parsedData = JSON.parse(cleanJson);
+
+                // Map and hydrate with Image URLs
+                const hydratedSlides = parsedData.map((slide, sIdx) => ({
+                    id: `s-${sIdx}`,
+                    title: slide.title,
+                    blocks: slide.blocks.map((b, bIdx) => ({
+                        id: `b-${sIdx}-${bIdx}`,
+                        type: b.type,
+                        content: b.content,
+                        // Use Pollinations.ai for real AI image generation
+                        imageUrl: b.type === 'image' 
+                        ? `https://image.pollinations.ai/prompt/${encodeURIComponent(b.content)}?width=800&height=600&nologo=true`
+                        : undefined
+                    }))
+                }));
+
+                return hydratedSlides;
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                return [
+                    {
+                        id: 'err',
+                        title: 'Generation Failed',
+                        blocks: [
+                            {id: 'e1', type: 'heading', content: 'Error details:'},
+                            {id: 'e2', type: 'paragraph', content: error.message || 'Unknown error occurred.'},
+                            {id: 'e3', type: 'paragraph', content: 'Please check your API Key in settings. Ensure it has permission to use the Gemini API.'}
+                        ]
+                    }
+                ];
+            }
+        };
+
+        // --- Components ---
+
+        const SettingsModal = ({ isOpen, onClose, apiKey, setApiKey }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60]">
+                    <div className="bg-[#1C1C1C] border border-gray-700 w-full max-w-md rounded-2xl p-6 shadow-2xl">
+                        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <Icons.Settings className="w-5 h-5" /> API Settings
+                        </h2>
+                        <p className="text-gray-400 text-sm mb-4">
+                            Enter your Google Gemini API Key to enable real AI generation. 
+                            <br/><span className="text-xs text-red-400">Keys are stored only in your browser's memory.</span>
+                        </p>
+                        <input 
+                            type="password" 
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            placeholder="Paste your Gemini API Key here..."
+                            className="w-full bg-black/30 border border-gray-600 rounded-lg p-3 text-white focus:border-purple-500 outline-none mb-4"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={onClose} className="px-4 py-2 text-gray-300 hover:text-white">Close</button>
+                            <button onClick={onClose} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500">Save</button>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+
+        const LandingPage = ({ onLogin }) => (
+            <div className="min-h-screen bg-black text-white font-sans relative overflow-hidden flex flex-col">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
+
+                <nav className="flex justify-between items-center p-6 relative z-10 max-w-7xl mx-auto w-full">
+                    <div className="flex items-center gap-2 font-bold text-2xl">
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-blue-600 rounded-lg flex items-center justify-center">
+                            <Icons.Sparkles className="w-5 h-5 text-white" />
+                        </div>
+                        Lumina AI
+                    </div>
+                    <div className="flex gap-4 items-center">
+                        <button onClick={onLogin} className="text-white hover:text-purple-300 transition">Log in</button>
+                        <button onClick={onLogin} className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2 rounded-full font-medium transition shadow-lg shadow-purple-500/30">
+                            Start Creating
+                        </button>
+                    </div>
+                </nav>
+
+                <main className="relative z-10 max-w-5xl mx-auto text-center mt-12 px-6 flex-1 flex flex-col items-center">
+                    <h1 className="text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6">
+                        Real AI Generation <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">
+                            Powered by Gemini
+                        </span>
+                    </h1>
+                    <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+                        Bring your own API Key. Generate full presentations with real text and AI-generated images instantly.
+                    </p>
+
+                    <div className="flex justify-center gap-4">
+                        <button onClick={onLogin} className="bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition flex items-center gap-2 transform hover:scale-105 duration-200">
+                            <Icons.Sparkles className="w-5 h-5 text-purple-600" />
+                            Try Demo Now
+                        </button>
+                    </div>
+
+                    {/* Mock UI Preview */}
+                    <div className="mt-16 w-full rounded-t-xl overflow-hidden border border-white/10 shadow-2xl shadow-purple-900/20 bg-[#1a1a1a] transform transition-all hover:-translate-y-2 duration-500">
+                        <div className="h-10 bg-[#2a2a2a] flex items-center px-4 gap-2 border-b border-white/5">
+                            <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
+                            <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+                            <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
+                        </div>
+                        <div className="p-8 md:p-16 grid md:grid-cols-2 gap-8 items-center text-left">
+                            <div className="space-y-4">
+                                <div className="h-8 w-3/4 bg-white/10 rounded animate-pulse"></div>
+                                <div className="h-4 w-full bg-white/5 rounded"></div>
+                                <div className="h-4 w-5/6 bg-white/5 rounded"></div>
+                            </div>
+                            <div className="bg-purple-900/20 h-48 rounded-lg border border-purple-500/30 flex items-center justify-center">
+                                <Icons.Image className="w-12 h-12 text-purple-500/50" />
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+
+        const CreateProjectModal = ({ onClose, onCreate, hasKey }) => {
+            const [topic, setTopic] = useState('');
+            const [activeType, setActiveType] = useState('presentation');
+
+            return (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-[#1C1C1C] border border-gray-700 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+                            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                                <Icons.Sparkles className="w-5 h-5 text-purple-500" />
+                                Create with AI
+                            </h2>
+                            <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+                        </div>
+                        
+                        <div className="p-8">
+                            {!hasKey && (
+                                <div className="mb-6 bg-yellow-500/10 border border-yellow-500/50 text-yellow-200 p-3 rounded-lg text-sm">
+                                    ⚠️ You haven't set a Gemini API Key. The app will use mock data. Click the settings gear in the dashboard to add your key.
+                                </div>
+                            )}
+                            
+                            <div className="flex gap-4 mb-8">
+                                {[
+                                    { id: 'presentation', icon: Icons.Presentation, label: 'Presentation' },
+                                    { id: 'document', icon: Icons.FileText, label: 'Document' },
+                                    { id: 'webpage', icon: Icons.Monitor, label: 'Webpage' }
+                                ].map((item) => (
+                                    <button 
+                                        key={item.id}
+                                        onClick={() => setActiveType(item.id)}
+                                        className={`flex-1 p-4 rounded-xl border flex flex-col items-center gap-2 transition ${
+                                            activeType === item.id 
+                                            ? 'bg-purple-500/10 border-purple-500 text-purple-400' 
+                                            : 'bg-gray-800/50 border-transparent text-gray-400 hover:bg-gray-800'
+                                        }`}
+                                    >
+                                        <item.icon className="w-6 h-6" />
+                                        <span className="text-sm font-medium">{item.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="relative">
+                                <textarea
+                                    value={topic}
+                                    onChange={(e) => setTopic(e.target.value)}
+                                    placeholder={`Describe your ${activeType} topic... (e.g., "The impact of AI on healthcare")`}
+                                    className="w-full bg-black/30 border border-gray-700 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none h-32"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-900/50 border-t border-gray-800 flex justify-end">
+                            <button 
+                                disabled={!topic}
+                                onClick={() => onCreate(topic, activeType)}
+                                className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition ${
+                                    !topic ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-500'
+                                }`}
+                            >
+                                Generate outline
+                                <Icons.ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Editor = ({ project, onBack }) => {
+            const [slides, setSlides] = useState(project.slides);
+            const [activeSlideId, setActiveSlideId] = useState(slides[0]?.id);
+            const [theme, setTheme] = useState(project.theme);
+
+            const activeSlide = slides.find(s => s.id === activeSlideId) || slides[0];
+
+            const themeClasses = {
+                light: 'bg-white text-gray-900',
+                dark: 'bg-[#1a1a1a] text-gray-100',
+                navy: 'bg-[#0f172a] text-white',
+                purple: 'bg-[#2e1065] text-white'
+            };
+
+            return (
+                <div className={`h-screen flex flex-col ${themeClasses[theme]} transition-colors duration-500`}>
+                    <header className="h-14 border-b border-white/10 flex items-center justify-between px-4 bg-inherit z-20">
+                        <div className="flex items-center gap-4">
+                            <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-lg transition">
+                                <Icons.ArrowLeft className="w-5 h-5" />
+                            </button>
+                            <h1 className="font-semibold text-lg truncate max-w-[200px]">{project.title}</h1>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                            <div className="flex bg-white/5 rounded-lg p-1 mr-2">
+                                {['light', 'dark', 'navy', 'purple'].map(t => (
+                                    <button 
+                                        key={t}
+                                        onClick={() => setTheme(t)}
+                                        className={`w-6 h-6 rounded-md border border-transparent hover:border-white/50 transition ${t === 'light' ? 'bg-white' : t === 'dark' ? 'bg-[#333]' : t === 'navy' ? 'bg-[#0f172a]' : 'bg-[#2e1065]'} ${theme === t ? 'ring-2 ring-purple-500' : ''}`}
+                                    />
+                                ))}
+                            </div>
+                            <button className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition">
+                                <Icons.Play className="w-4 h-4" /> <span className="hidden sm:inline">Present</span>
+                            </button>
+                            <button className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium transition">
+                                <Icons.Share className="w-4 h-4" /> <span className="hidden sm:inline">Share</span>
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="flex flex-1 overflow-hidden">
+                        <aside className="w-48 border-r border-white/10 flex flex-col bg-inherit/50 overflow-y-auto hidden md:flex">
+                            <div className="p-4 space-y-2">
+                                {slides.map((slide, idx) => (
+                                    <button
+                                        key={slide.id}
+                                        onClick={() => setActiveSlideId(slide.id)}
+                                        className={`w-full text-left p-3 rounded-lg border transition group ${
+                                            activeSlideId === slide.id 
+                                            ? 'border-purple-500 bg-purple-500/10' 
+                                            : 'border-transparent hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <div className="text-xs opacity-50 mb-1">0{idx + 1}</div>
+                                        <div className="text-sm font-medium truncate">{slide.title}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </aside>
+
+                        <main className="flex-1 overflow-y-auto bg-inherit relative p-8 md:p-16 flex justify-center">
+                            <div 
+                                key={activeSlideId}
+                                className="w-full max-w-4xl space-y-8 pb-20 animate-fade-in"
+                                style={{ animation: 'fadeIn 0.5s ease-out' }}
+                            >
+                                <input
+                                    value={activeSlide.title}
+                                    onChange={(e) => {
+                                        setSlides(prev => prev.map(s => s.id === activeSlideId ? { ...s, title: e.target.value } : s))
+                                    }}
+                                    className="w-full bg-transparent text-4xl md:text-5xl font-bold outline-none"
+                                />
+                                
+                                <div className="space-y-6">
+                                    {activeSlide.blocks.map((block) => (
+                                        <div key={block.id} className="group relative transition-all hover:bg-white/5 p-2 -mx-2 rounded-lg">
+                                            {block.type === 'heading' && (
+                                                <input
+                                                    defaultValue={block.content}
+                                                    className="w-full bg-transparent text-2xl font-semibold outline-none border-l-2 border-transparent focus:border-purple-500 pl-2 transition"
+                                                />
+                                            )}
+                                            
+                                            {block.type === 'paragraph' && (
+                                                <textarea
+                                                    defaultValue={block.content}
+                                                    className="w-full bg-transparent text-lg opacity-90 outline-none resize-none h-auto border-l-2 border-transparent focus:border-purple-500 pl-2 transition leading-relaxed"
+                                                    rows={Math.ceil(block.content.length / 80)}
+                                                />
+                                            )}
+
+                                            {block.type === 'list' && (
+                                                <div className="pl-4 border-l-2 border-purple-500/30">
+                                                    {block.content.split('\n').map((line, i) => (
+                                                        <div key={i} className="flex items-start gap-2 mb-2">
+                                                            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2.5 flex-shrink-0" />
+                                                            <div className="text-lg opacity-90">{line}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {block.type === 'image' && (
+                                                <div className="relative rounded-xl overflow-hidden border border-white/10 group-hover:border-purple-500/50 transition">
+                                                    <img src={block.imageUrl} alt="AI Gen" className="w-full h-auto object-cover max-h-[400px]" />
+                                                    <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur px-3 py-1 rounded-full text-xs text-white flex items-center gap-1">
+                                                        <Icons.Sparkles className="w-3 h-3 text-purple-400" /> Generated by Pollinations AI
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        const Dashboard = ({ projects, onOpenProject, onNewProject, onOpenSettings }) => {
+            return (
+                <div className="min-h-screen bg-[#121212] text-white">
+                    <nav className="h-16 border-b border-white/10 flex items-center px-6 justify-between bg-[#1C1C1C]">
+                        <div className="font-bold text-xl flex items-center gap-2">
+                            <div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
+                                <span className="text-xs">L</span>
+                            </div>
+                            Lumina AI
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={onOpenSettings} className="p-2 hover:bg-white/10 rounded-full transition" title="API Settings">
+                                <Icons.Settings className="w-5 h-5 text-gray-400" />
+                            </button>
+                            <div className="w-8 h-8 bg-gradient-to-tr from-yellow-400 to-red-500 rounded-full"></div>
+                        </div>
+                    </nav>
+
+                    <main className="p-8 max-w-7xl mx-auto">
+                        <div className="flex justify-between items-center mb-8">
+                            <h1 className="text-2xl font-bold">My Projects</h1>
+                            <button 
+                                onClick={onNewProject}
+                                className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
+                            >
+                                <Icons.Plus className="w-5 h-5" /> New Project
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            <button onClick={onNewProject} className="group aspect-[4/3] border border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center gap-3 hover:border-purple-500 hover:bg-white/5 transition">
+                                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition">
+                                    <Icons.Plus className="w-6 h-6" />
+                                </div>
+                                <span className="font-medium text-white/60 group-hover:text-white">Create new ai</span>
+                            </button>
+
+                            {projects.map((p) => (
+                                <div key={p.id} onClick={() => onOpenProject(p)} className="group cursor-pointer relative aspect-[4/3] bg-gray-900 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 transition">
+                                    <div className="absolute inset-0 p-6 bg-gradient-to-br from-gray-800 to-black group-hover:scale-105 transition duration-500">
+                                        <div className="w-1/2 h-2 bg-white/20 rounded mb-2"></div>
+                                        <div className="w-full h-1 bg-white/10 rounded mb-1"></div>
+                                        <div className="w-full h-20 bg-white/5 rounded border border-white/5 flex items-center justify-center mt-4">
+                                            <Icons.Image className="w-8 h-8 text-white/10" />
+                                        </div>
+                                    </div>
+                                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
+                                        <h3 className="font-semibold truncate">{p.title}</h3>
+                                        <div className="flex justify-between text-xs text-white/50 mt-1">
+                                            <span className="capitalize">{p.type}</span>
+                                            <span>Just now</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </main>
+                </div>
+            )
+        }
+
+        const AILoading = () => (
+            <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
+                <div className="w-full max-w-md text-center space-y-8">
+                    <div className="relative w-24 h-24 mx-auto">
+                        <div className="absolute inset-0 rounded-full border-4 border-purple-900/50"></div>
+                        <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
+                        <Icons.Sparkles className="absolute inset-0 m-auto w-8 h-8 text-purple-400 animate-pulse" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Working magic with Gemini...</h2>
+                        <p className="text-purple-300/80 animate-pulse">Generating intelligent outlines & images</p>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // --- Main App Logic ---
+
+        const App = () => {
+            const [view, setView] = useState('landing');
+            const [showCreateModal, setShowCreateModal] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+            const [isAIGenerating, setIsAIGenerating] = useState(false);
+            
+            const [apiKey, setApiKey] = useState('AIzaSyBPO26XFOh7KMjanr7IImI3rDJ4OT--Edo');
+            
+            const [projects, setProjects] = useState([]);
+            const [currentProject, setCurrentProject] = useState(null);
+
+            const handleCreateProject = async (topic, type) => {
+                setShowCreateModal(false);
+                setIsAIGenerating(true);
+
+                let slides = [];
+
+                if (apiKey) {
+                    // REAL AI GENERATION
+                    slides = await fetchGeminiContent(apiKey, topic, type);
+                } else {
+                    // MOCK FALLBACK
+                    await new Promise(r => setTimeout(r, 2000));
+                    slides = [
+                        {
+                            id: '1',
+                            title: topic,
+                            blocks: [
+                                { id: 'b1', type: 'heading', content: 'Demo Mode (No API Key)' },
+                                { id: 'b2', type: 'paragraph', content: 'Please enter your Gemini API Key in settings for real generation.' },
+                                { id: 'b3', type: 'image', content: 'abstract technology', imageUrl: 'https://placehold.co/600x400/purple/white?text=Demo+Image' }
+                            ]
+                        }
+                    ];
+                }
+                
+                const newProject = {
+                    id: Date.now().toString(),
+                    title: topic,
+                    type: type,
+                    slides: slides,
+                    theme: 'dark',
+                    createdAt: new Date()
+                };
+
+                setProjects([newProject, ...projects]);
+                setCurrentProject(newProject);
+                setIsAIGenerating(false);
+                setView('editor');
+            };
+
+            return (
+                <div className="text-slate-900 bg-white">
+                {view === 'landing' && <LandingPage onLogin={() => setView('dashboard')} />}
+                
+                {view === 'dashboard' && (
+                    <>
+                    <Dashboard 
+                        projects={projects} 
+                        onOpenProject={(p) => { setCurrentProject(p); setView('editor'); }}
+                        onNewProject={() => setShowCreateModal(true)}
+                        onOpenSettings={() => setShowSettings(true)}
+                    />
+                    
+                    <SettingsModal 
+                        isOpen={showSettings} 
+                        onClose={() => setShowSettings(false)}
+                        apiKey={apiKey}
+                        setApiKey={setApiKey}
+                    />
+
+                    {showCreateModal && (
+                        <CreateProjectModal 
+                            onClose={() => setShowCreateModal(false)} 
+                            onCreate={handleCreateProject}
+                            hasKey={!!apiKey}
+                        />
+                    )}
+                    
+                    {isAIGenerating && <AILoading />}
+                    </>
+                )}
+
+                {view === 'editor' && currentProject && (
+                    <Editor 
+                        project={currentProject} 
+                        onBack={() => setView('dashboard')}
+                    />
+                )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
