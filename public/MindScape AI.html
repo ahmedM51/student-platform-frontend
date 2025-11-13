@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindScape AI - Portable</title>
+    <title>MindScape AI - Ultimate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -52,10 +52,29 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
 
+        // ==========================================
+        // ⚙️ منطقة الإعدادات (CONFIGURATION ZONE) ⚙️
+        // ==========================================
+        
+        // 1. ضع مفتاح الذكاء الاصطناعي هنا (اختياري - يمكنك إدخاله من واجهة التطبيق أيضًا)
+        // احصل عليه من: https://aistudio.google.com/app/apikey
+        const HARDCODED_API_KEY = ""; 
+
+        // 2. إعدادات Firebase (اختياري - للمزامنة السحابية)
+        // اتركها فارغة لاستخدام "الوضع المحلي" (Local Mode)
+        const HARDCODED_FIREBASE_CONFIG = {
+            // apiKey: "AIzaSy...",
+            // authDomain: "your-app.firebaseapp.com",
+            // projectId: "your-app",
+            // ...
+        };
+
+        // ==========================================
+
         // --- State & Config ---
         const state = {
             user: null,
-            isOfflineMode: false, // True if Firebase config is missing
+            isOfflineMode: false, 
             view: 'dashboard',
             maps: [],
             currentMap: null,
@@ -70,7 +89,8 @@
             draggedNodeId: null,
             chatOpen: false,
             chatMessages: [],
-            apiKey: localStorage.getItem('gemini_api_key') || ""
+            // Priority: Hardcoded -> LocalStorage -> Empty
+            apiKey: HARDCODED_API_KEY || localStorage.getItem('gemini_api_key') || ""
         };
 
         let db = null;
@@ -78,13 +98,23 @@
 
         // --- Initialization ---
         async function initApp() {
-            const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+            // Check for environment config (from this platform) OR hardcoded config
+            let config = null;
             
-            if (configStr && configStr !== '""' && configStr !== "{}") {
+            // 1. Try Platform Config
+            if (typeof __firebase_config !== 'undefined' && __firebase_config !== '""' && __firebase_config !== "{}") {
+                try { config = JSON.parse(__firebase_config); } catch(e) {}
+            }
+            
+            // 2. Try Hardcoded Config
+            if (!config && Object.keys(HARDCODED_FIREBASE_CONFIG).length > 0) {
+                config = HARDCODED_FIREBASE_CONFIG;
+            }
+
+            if (config) {
                 // Firebase Mode
                 try {
-                    const firebaseConfig = JSON.parse(configStr);
-                    const app = initializeApp(firebaseConfig);
+                    const app = initializeApp(config);
                     auth = getAuth(app);
                     db = getFirestore(app);
                     
@@ -110,7 +140,6 @@
         function enableLocalMode() {
             console.log("Running in Local Offline Mode");
             state.isOfflineMode = true;
-            // Generate a fake user ID for local storage key
             if(!localStorage.getItem('local_user_id')) {
                 localStorage.setItem('local_user_id', 'local-' + Date.now());
             }
@@ -124,7 +153,7 @@
             renderApp();
         }
 
-        // --- Storage Abstraction (Firebase vs LocalStorage) ---
+        // --- Storage Abstraction ---
         async function fetchMaps() {
             state.maps = [];
             if (!state.isOfflineMode && db && state.user) {
@@ -134,7 +163,6 @@
                     state.maps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 } catch (e) { console.error(e); }
             } else {
-                // LocalStorage
                 const localMaps = JSON.parse(localStorage.getItem(`maps_${state.user.uid}`) || "[]");
                 state.maps = localMaps.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
             }
@@ -157,7 +185,6 @@
                     state.currentMap.id = ref.id;
                 }
             } else {
-                // LocalStorage Save
                 let maps = JSON.parse(localStorage.getItem(`maps_${state.user.uid}`) || "[]");
                 if (state.currentMap.id) {
                     const idx = maps.findIndex(m => m.id === state.currentMap.id);
@@ -170,8 +197,9 @@
                 localStorage.setItem(`maps_${state.user.uid}`, JSON.stringify(maps));
             }
             await fetchMaps();
-            renderEditor(); // Refresh
-            alert("Saved successfully!");
+            renderEditor();
+            // Custom Toast
+            showToast("Saved successfully!");
         }
 
         async function deleteMap(id) {
@@ -209,7 +237,6 @@
             );
             
             if (!response.ok) throw new Error("AI Request Failed");
-            
             const data = await response.json();
             return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
         }
@@ -218,7 +245,7 @@
             window.closeModal();
             if(!state.apiKey) { window.openSettingsModal(); return; }
             
-            setLoading(true, "Thinking...");
+            setLoading(true, "AI is thinking...");
             try {
                 const systemPrompt = `You are a JSON generator for mind maps. Output ONLY valid JSON. Structure: { "nodes": [{ "id": "string", "label": "string", "parent": "string (optional)" }], "title": "string" }. Root node no parent. 10+ nodes.`;
                 const res = await generateAI(topic, systemPrompt);
@@ -227,7 +254,7 @@
                 setupNewMapFromData(data);
             } catch (e) {
                 console.error(e);
-                alert("Failed. Check your API Key in Settings.");
+                alert("Failed. Check your API Key.");
             } finally {
                 setLoading(false);
             }
@@ -269,10 +296,8 @@
                 renderChatMessages();
                 return;
             }
-
             state.chatMessages.push({ role: 'user', text: input });
             renderChatMessages();
-            
             try {
                 const context = state.nodes.map(n => n.label).join(", ");
                 const systemPrompt = `Assistant for mind map. Context: [${context}]. Be concise.`;
@@ -284,27 +309,23 @@
             renderChatMessages();
         }
 
-        // --- Helpers ---
+        // --- Helpers & Rendering (Simplified for brevity) ---
         function setupNewMapFromData(data) {
             const rootX = window.innerWidth/2, rootY = window.innerHeight/2;
             const newNodes = [];
             const newEdges = [];
-            
             const root = data.nodes.find(n => !n.parent) || data.nodes[0];
             newNodes.push({ ...root, x: rootX, y: rootY, type: 'root' });
 
             const processChildren = (parentId, level, px, py, angleStart, angleEnd) => {
                 const children = data.nodes.filter(n => n.parent === parentId);
                 if (!children.length) return;
-                
                 const step = (angleEnd - angleStart) / children.length;
                 const radius = 180 + (level * 40);
-                
                 children.forEach((child, i) => {
                     const angle = angleStart + (i * step) + (step/2);
                     const x = px + Math.cos(angle) * radius;
                     const y = py + Math.sin(angle) * radius;
-                    
                     newNodes.push({ ...child, x, y, type: 'child' });
                     newEdges.push({ id: `e-${parentId}-${child.id}`, source: parentId, target: child.id });
                     processChildren(child.id, level+1, x, y, angle - step/2, angle + step/2);
@@ -331,7 +352,6 @@
             renderApp();
         }
 
-        // --- Rendering ---
         function renderApp() {
             appEl.innerHTML = '';
             if (state.view === 'dashboard') renderDashboard();
@@ -341,7 +361,7 @@
 
         function renderDashboard() {
             const modeBadge = state.isOfflineMode 
-                ? `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs">Offline Mode (Local Storage)</span>`
+                ? `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs">Offline Mode</span>`
                 : `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">Cloud Mode</span>`;
 
             const html = `
@@ -383,8 +403,6 @@
                                 </div>
                                 <div class="flex items-center gap-2 text-sm font-medium opacity-90">Try it now <i data-lucide="chevron-right" size="16"></i></div>
                             </div>
-
-                            ${state.maps.length === 0 ? `<div class="col-span-full text-center py-10 text-slate-400">No maps found. Create one!</div>` : ''}
 
                             ${state.maps.map(map => `
                                 <div onclick="window.loadMap('${map.id}')" class="relative cursor-pointer aspect-video bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between hover:shadow-lg hover:border-blue-200 transition group">
@@ -466,7 +484,6 @@
             container.addEventListener('wheel', onWheel);
             window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('mouseup', onMouseUp);
-            
             renderCanvasContent();
             updateCanvasTransform();
         }
@@ -546,6 +563,14 @@
             }
         }
 
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-full text-sm shadow-lg z-50 animate-fade-in';
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
         // --- Global Exposed Functions ---
         const appEl = document.getElementById('app');
         const modalOverlay = document.getElementById('modal-overlay');
@@ -623,7 +648,7 @@
             modalContent.innerHTML = `
                 <div class="flex justify-between items-center p-4 border-b"><h3 class="font-bold text-lg">Settings</h3><button onclick="window.closeModal()"><i data-lucide="x"></i></button></div>
                 <div class="p-4 space-y-4">
-                    <p class="text-sm text-slate-600">To use AI features outside the playground, enter your Google Gemini API Key:</p>
+                    <p class="text-sm text-slate-600">To use AI features, enter your Google Gemini API Key:</p>
                     <input type="password" id="api-key-input" value="${state.apiKey}" class="w-full border rounded-lg p-2 text-sm outline-none" placeholder="AIzaSy..." />
                     <p class="text-xs text-slate-400">Key is saved in your browser's local storage.</p>
                     <div class="flex justify-end gap-2"><button onclick="window.saveSettings()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save Key</button></div>
