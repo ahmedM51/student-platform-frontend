@@ -17,13 +17,14 @@
         "imports": {
             "react": "https://esm.sh/react@18.2.0",
             "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.263.1",
-            "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
-            "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"
+            "lucide-react": "https://esm.sh/lucide-react@0.263.1"
         }
     }
     </script>
+
+    <!-- Supabase client + platform config (reuse platform DB & auth) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
 
     <style>
         body { margin: 0; overflow: hidden; background-color: #f8f9fa; }
@@ -36,84 +37,37 @@
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        import React, { useState, useEffect, useRef, useMemo } from 'react';
+        import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
         import { createRoot } from 'react-dom/client';
         import { 
             Layout, Plus, Save, Download, Upload, Share2, 
             Trash2, Type, Zap, MessageSquare, X, ChevronRight, 
             MoreHorizontal, ZoomIn, ZoomOut, Maximize, Home 
         } from 'lucide-react';
-        import { initializeApp } from 'firebase/app';
-        import { 
-            getFirestore, collection, addDoc, getDocs, 
-            doc, getDoc, updateDoc, deleteDoc, serverTimestamp, 
-            query, where, orderBy 
-        } from 'firebase/firestore';
-        import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
         // ==========================================
         // ⚙️ إعدادات التهيئة (يجب تعديلها لتعمل)
         // ==========================================
         
-        // 1. ضع إعدادات Firebase الخاصة بك هنا
-        // يمكنك الحصول عليها من: Firebase Console -> Project Settings -> General -> Your apps -> SDK setup and configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSy...",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef"
-        };
+        // في هذه النسخة، نعيد استخدام إعدادات Supabase والمنصة من js/supabase-config.js
+        // لا حاجة لإعداد firebaseConfig أو وضع GEMINI_API_KEY هنا.
 
-        // 2. ضع مفتاح Gemini API هنا (للميزات الذكاء الاصطناعي)
-        // احصل عليه من: https://aistudio.google.com/app/apikey
-        const GEMINI_API_KEY = ""; 
-
-        // ==========================================
-
-        // تهيئة Firebase فقط إذا تم توفير الإعدادات الصحيحة لتجنب توقف التطبيق
-        let app, db, auth;
-        try {
-            // التحقق مما إذا كانت الإعدادات افتراضية (فارغة)
-            if (firebaseConfig.apiKey === "AIzaSy...") {
-                console.warn("⚠️ تنبيه: لم يتم وضع إعدادات Firebase الحقيقية. الحفظ لن يعمل.");
-                // استخدام كائنات وهمية حتى لا ينهار التطبيق عند التشغيل بدون إعدادات
-                db = { type: 'dummy' };
-                auth = { type: 'dummy' };
-            } else {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-            }
-        } catch (e) {
-            console.error("Firebase init error:", e);
-        }
-
-        // --- AI Integration (Gemini) ---
+        // --- AI Integration via platform backend (/api/ai/ask) ---
         const generateAIContent = async (prompt, systemInstruction = "") => {
-            if (!GEMINI_API_KEY) {
-                alert("Please add your Gemini API Key in the code settings.");
-                return "";
-            }
             try {
-                const payload = {
-                    contents: [{ parts: [{ text: prompt }] }],
-                    systemInstruction: { parts: [{ text: systemInstruction }] },
-                };
-                
-                const response = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, 
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    }
-                );
-
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
-                return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                const question = systemInstruction
+                    ? `${systemInstruction}\n\n${prompt}`
+                    : prompt;
+                const res = await fetch('https://student-platform-frontend.vercel.app/api/ai/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, context: '' })
+                });
+                if (!res.ok) {
+                    throw new Error('AI backend error: ' + res.status);
+                }
+                const data = await res.json();
+                return data && data.response ? data.response : "";
             } catch (error) {
                 console.error("AI Generation Error:", error);
                 alert("AI Error: " + error.message);
@@ -185,73 +139,101 @@
             const [chatInput, setChatInput] = useState("");
 
             const containerRef = useRef(null);
+            const supabaseClientRef = useRef(null);
 
-            // -- Auth & Init --
-            useEffect(() => {
-                if (auth && auth.type !== 'dummy') {
-                    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-                        if (currentUser) {
-                            setUser(currentUser);
-                            fetchMaps(currentUser.uid);
-                        } else {
-                            signInAnonymously(auth).catch(console.error);
-                        }
-                    });
-                    return () => unsubscribe();
-                } else {
-                    // وضع المستخدم في وضع عدم الاتصال (للتجربة بدون فايربيس)
-                    setUser({ uid: 'offline-user', isAnonymous: true });
-                    // تحميل بيانات وهمية للتجربة
-                    setMaps([{ id: 'demo', title: 'Demo Map (Offline)', updatedAt: { seconds: Date.now()/1000 } }]);
+            // Helper: get Supabase client + current user from platform config
+            const initSupabaseUser = useCallback(async () => {
+                try {
+                    if (!window.initializeSupabase || !window.supabaseAuth) {
+                        console.warn('Supabase helpers not found, using offline demo mode');
+                        setUser({ id: 'offline-user', isOffline: true });
+                        setMaps([{ id: 'demo', title: 'Demo Map (Offline)' }]);
+                        return;
+                    }
+                    const client = window.supabaseClient || window.initializeSupabase();
+                    supabaseClientRef.current = client;
+
+                    const { data: userData, error } = await window.supabaseAuth.getCurrentUser();
+                    if (error || !userData) {
+                        console.warn('No logged-in user for mind-map, using offline demo');
+                        setUser({ id: 'offline-user', isOffline: true });
+                        setMaps([{ id: 'demo', title: 'Demo Map (Offline)' }]);
+                        return;
+                    }
+
+                    setUser(userData);
+                    await fetchMaps(client, userData.id);
+                } catch (e) {
+                    console.error('Supabase init error for mind-map:', e);
+                    setUser({ id: 'offline-user', isOffline: true });
+                    setMaps([{ id: 'demo', title: 'Demo Map (Offline)' }]);
                 }
             }, []);
 
-            // -- Database Operations --
-            const fetchMaps = async (userId) => {
-                if (db.type === 'dummy') return;
+            // -- Database Operations (Supabase mindmaps table) --
+            const fetchMaps = async (client, userId) => {
+                if (!client || !userId) return;
                 try {
-                    const q = query(
-                        collection(db, `users/${userId}/mindmaps`), 
-                        orderBy('updatedAt', 'desc')
-                    );
-                    const querySnapshot = await getDocs(q);
-                    const loadedMaps = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setMaps(loadedMaps);
+                    const { data, error } = await client
+                        .from('mindmaps')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order('updated_at', { ascending: false });
+                    if (error) throw error;
+                    setMaps(data || []);
                 } catch (error) {
                     console.error("Error fetching maps:", error);
                 }
             };
 
+            useEffect(() => {
+                initSupabaseUser();
+            }, [initSupabaseUser]);
+
             const saveMap = async () => {
                 if (!user) return;
-                
-                if (db.type === 'dummy') {
-                    alert("Saving is disabled in Demo mode. Please configure Firebase keys in the code.");
+                const client = supabaseClientRef.current;
+                if (!client || user.isOffline) {
+                    alert('لا يمكن الحفظ بدون اتصال بالحساب. سيتم استخدام وضع العرض التجريبي فقط.');
                     return;
                 }
 
                 setIsLoading(true);
                 try {
-                    const mapData = {
-                        title: currentMap.title,
+                    const payload = {
+                        title: (currentMap && currentMap.title) ? currentMap.title : 'Untitled Mind Map',
                         nodes,
-                        edges,
-                        updatedAt: serverTimestamp()
+                        edges
                     };
 
-                    if (currentMap.id && currentMap.id !== 'demo') {
-                        await updateDoc(doc(db, `users/${user.uid}/mindmaps`, currentMap.id), mapData);
+                    let saved;
+                    if (currentMap && currentMap.id && !currentMap.isDemo) {
+                        const { data, error } = await client
+                            .from('mindmaps')
+                            .update(payload)
+                            .eq('id', currentMap.id)
+                            .eq('user_id', user.id)
+                            .select()
+                            .single();
+                        if (error) throw error;
+                        saved = data;
                     } else {
-                        const docRef = await addDoc(collection(db, `users/${user.uid}/mindmaps`), {
-                            ...mapData,
-                            createdAt: serverTimestamp()
-                        });
-                        setCurrentMap(prev => ({ ...prev, id: docRef.id }));
+                        const { data, error } = await client
+                            .from('mindmaps')
+                            .insert([{ ...payload, user_id: user.id }])
+                            .select()
+                            .single();
+                        if (error) throw error;
+                        saved = data;
                     }
-                    fetchMaps(user.uid);
+
+                    if (saved) {
+                        setCurrentMap(prev => ({ ...(prev || {}), ...saved }));
+                    }
+                    await fetchMaps(client, user.id);
                 } catch (error) {
                     console.error("Error saving map:", error);
-                    alert("Error saving: " + error.message);
+                    alert("Error saving: " + (error.message || '')); 
                 } finally {
                     setIsLoading(false);
                 }
@@ -270,15 +252,22 @@
             const deleteMap = async (mapId, e) => {
                 e.stopPropagation();
                 if (!confirm("Are you sure you want to delete this map?")) return;
-                
-                if (db.type === 'dummy') {
+
+                const client = supabaseClientRef.current;
+                if (!client || !user || user.isOffline) {
+                    // في وضع أوفلاين نحذف من الحالة فقط
                     setMaps(maps.filter(m => m.id !== mapId));
                     return;
                 }
 
                 try {
-                    await deleteDoc(doc(db, `users/${user.uid}/mindmaps`, mapId));
-                    fetchMaps(user.uid);
+                    const { error } = await client
+                        .from('mindmaps')
+                        .delete()
+                        .eq('id', mapId)
+                        .eq('user_id', user.id);
+                    if (error) throw error;
+                    await fetchMaps(client, user.id);
                 } catch (error) {
                     console.error("Error deleting map:", error);
                 }
@@ -539,7 +528,10 @@
                         </div>
                         <div className="flex items-center gap-4">
                         <span className="text-sm text-slate-500 hidden sm:inline">
-                            {user ? `User: ${user.uid.slice(0,6)}...` : 'Connecting...'}
+                            {user ? (() => {
+                                const uid = user.id || user.uid || 'user';
+                                return `User: ${uid.toString().slice(0,6)}...`;
+                            })() : 'Connecting...'}
                         </span>
                         <Button onClick={createNewMap} icon={Plus}>New Map</Button>
                         </div>
