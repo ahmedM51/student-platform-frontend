@@ -59,7 +59,7 @@
         window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         // For Firebase JS SDK v7.20.0 and later, measurementId is optional
         const firebaseConfig = {
-          apiKey: "AIzaSyCBI1R2yozfL0iESk7U1Npg62Jt9Lnokss ",
+          apiKey: "AIzaSyBM7Y6ZEFwMOOPno1ighvtVumHB1f3keVA",
           authDomain: "pharmacy-769cb.firebaseapp.com",
           projectId: "pharmacy-769cb",
           storageBucket: "pharmacy-769cb.firebasestorage.app",
@@ -188,9 +188,9 @@
         const API_KEY = "AIzaSyAS3iCmoqqhSyodCeVMD7gl42Bfgz4gemk"; 
         const GEMINI_MODEL = 'gemini-2.5-flash-preview-05-20';
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
-        const MAX_RETRIES = 5;
+        const MAX_RETRIES = 10;
         // حد الحجم الأقصى لملف الصوت الذي يمكن لـ Gemini معالجته بكفاءة (5 ميجابايت)
-        const MAX_FILE_SIZE_MB = 5; 
+        const MAX_FILE_SIZE_MB = 10; 
         const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
         // حالة واجهة المستخدم
