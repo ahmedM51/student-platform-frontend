@@ -223,7 +223,7 @@
                             <Icons.Settings className="w-5 h-5" /> API Settings
                         </h2>
                         <p className="text-gray-400 text-sm mb-4">
-                            Enter your Gemini API Key.<br/>
+                            API Key is pre-configured for this demo.<br/>
                             <span className="text-xs text-gray-500">Supports Gemini Flash & Imagen.</span>
                         </p>
                         <input 
@@ -332,11 +332,6 @@
                             <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
                         </div>
                         <div className="p-8">
-                            {!hasKey && (
-                                <div className="mb-6 bg-yellow-500/10 border border-yellow-500/50 text-yellow-200 p-3 rounded-lg text-sm">
-                                    ⚠️ No API Key set. Using demo mode.
-                                </div>
-                            )}
                             <div className="flex gap-4 mb-8">
                                 {[{ id: 'presentation', icon: Icons.Presentation, label: 'Presentation' }, { id: 'document', icon: Icons.FileText, label: 'Document' }, { id: 'webpage', icon: Icons.Monitor, label: 'Webpage' }].map((item) => (
                                     <button key={item.id} onClick={() => setActiveType(item.id)} className={`flex-1 p-4 rounded-xl border flex flex-col items-center gap-2 transition ${activeType === item.id ? 'bg-purple-500/10 border-purple-500 text-purple-400' : 'bg-gray-800/50 border-transparent text-gray-400 hover:bg-gray-800'}`}>
@@ -525,7 +520,8 @@
             const [showCreateModal, setShowCreateModal] = useState(false);
             const [showSettings, setShowSettings] = useState(false);
             const [isAIGenerating, setIsAIGenerating] = useState(false);
-            const [apiKey, setApiKey] = useState('');
+            // HARDCODED API KEY
+            const [apiKey, setApiKey] = useState('AIzaSyALEaSt3HtzrQQ5woKXgEF6c63ewUkF8Gk');
             const [projects, setProjects] = useState([]);
             const [currentProject, setCurrentProject] = useState(null);
 
