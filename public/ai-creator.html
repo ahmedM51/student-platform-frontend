@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gamma Clone - AI Presentation Generator</title>
+    <title>Lumina - Next Gen AI Presentations</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -220,22 +220,22 @@
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60]">
                      <div className="bg-[#1C1C1C] border border-gray-700 w-full max-w-md rounded-2xl p-6 shadow-2xl">
                         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                            <Icons.Settings className="w-5 h-5" /> API Settings
+                            <Icons.Settings className="w-5 h-5" /> إعدادات API
                         </h2>
                         <p className="text-gray-400 text-sm mb-4">
-                            API Key is pre-configured for this demo.<br/>
-                            <span className="text-xs text-gray-500">Supports Gemini Flash & Imagen.</span>
+                            مفتاح API معد مسبقاً لهذا العرض التوضيحي.<br/>
+                            <span className="text-xs text-gray-500">يدعم Gemini Flash و Imagen.</span>
                         </p>
                         <input 
                             type="password" 
                             value={apiKey}
                             onChange={(e) => setApiKey(e.target.value)}
-                            placeholder="Paste Key here..."
-                            className="w-full bg-black/30 border border-gray-600 rounded-lg p-3 text-white focus:border-purple-500 outline-none mb-4"
+                            placeholder="أدخل المفتاح هنا..."
+                            className="w-full bg-black/30 border border-gray-600 rounded-lg p-3 text-white focus:border-purple-500 outline-none mb-4 text-left"
                         />
                         <div className="flex justify-end gap-2">
-                            <button onClick={onClose} className="px-4 py-2 text-gray-300 hover:text-white">Close</button>
-                            <button onClick={onClose} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500">Save</button>
+                            <button onClick={onClose} className="px-4 py-2 text-gray-300 hover:text-white">إغلاق</button>
+                            <button onClick={onClose} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500">حفظ</button>
                         </div>
                      </div>
                 </div>
@@ -258,22 +258,22 @@
 
             return (
                 <div 
-                    className="absolute z-50 bg-[#1C1C1C] border border-purple-500/50 shadow-2xl rounded-xl p-3 w-64 flex flex-col gap-2 animate-in fade-in zoom-in duration-200"
+                    className="absolute z-50 bg-[#1C1C1C] border border-blue-500/50 shadow-2xl rounded-xl p-3 w-64 flex flex-col gap-2 animate-in fade-in zoom-in duration-200"
                     style={{ top: position.top, left: position.left }}
                 >
-                    <div className="flex items-center gap-2 text-xs font-bold text-purple-400 uppercase tracking-wider mb-1">
-                        <Icons.Sparkles className="w-3 h-3" /> Edit with AI
+                    <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">
+                        <Icons.Sparkles className="w-3 h-3" /> تعديل ذكي
                     </div>
                     <input 
                         autoFocus
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Make it shorter..."
-                        className="bg-black/50 border border-gray-700 rounded p-2 text-sm text-white outline-none focus:border-purple-500"
+                        placeholder="اجعله أقصر، ترجم..."
+                        className="bg-black/50 border border-gray-700 rounded p-2 text-sm text-white outline-none focus:border-blue-500"
                         onKeyDown={(e) => e.key === 'Enter' && handleApply()}
                     />
                     <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
-                        {['Shorten', 'Translate to Arabic', 'Professional'].map(p => (
+                        {['لخص', 'ترجم للعربية', 'اجعله احترافي'].map(p => (
                             <button key={p} onClick={() => { setPrompt(p); handleApply(); }} className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-xs whitespace-nowrap transition">
                                 {p}
                             </button>
@@ -282,9 +282,9 @@
                     <button 
                         onClick={handleApply} 
                         disabled={loading || !prompt}
-                        className="bg-purple-600 text-white rounded py-1 text-xs font-bold hover:bg-purple-500 disabled:opacity-50"
+                        className="bg-blue-600 text-white rounded py-1 text-xs font-bold hover:bg-blue-500 disabled:opacity-50"
                     >
-                        {loading ? 'Generating...' : 'Apply'}
+                        {loading ? 'جاري التوليد...' : 'تطبيق'}
                     </button>
                 </div>
             )
@@ -292,26 +292,29 @@
 
         const LandingPage = ({ onLogin }) => (
             <div className="min-h-screen bg-black text-white font-sans relative overflow-hidden flex flex-col">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-blue-600/20 blur-[100px] rounded-full pointer-events-none"></div>
                 <nav className="flex justify-between items-center p-6 relative z-10 max-w-7xl mx-auto w-full">
                     <div className="flex items-center gap-2 font-bold text-2xl">
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-blue-600 rounded-lg flex items-center justify-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-cyan-600 rounded-lg flex items-center justify-center">
                             <Icons.Sparkles className="w-5 h-5 text-white" />
                         </div>
-                        GammaClone
+                        Lumina
                     </div>
-                    <button onClick={onLogin} className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2 rounded-full font-medium transition shadow-lg shadow-purple-500/30">
-                        Start Creating
+                    <button onClick={onLogin} className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full font-medium transition shadow-lg shadow-blue-500/30">
+                        ابدأ الآن
                     </button>
                 </nav>
                 <main className="relative z-10 max-w-5xl mx-auto text-center mt-12 px-6 flex-1 flex flex-col items-center">
                     <h1 className="text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6">
-                        Full AI Power <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">Gemini + Imagen 3</span>
+                        أطلق العنان لأفكارك <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400">مع Lumina AI</span>
                     </h1>
+                    <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+                        منصة الجيل القادم للعروض التقديمية. حوّل نصوصك إلى قصص بصرية مذهلة في ثوانٍ باستخدام أحدث تقنيات الذكاء الاصطناعي.
+                    </p>
                     <div className="flex justify-center gap-4">
                         <button onClick={onLogin} className="bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-200 transition flex items-center gap-2 transform hover:scale-105 duration-200">
-                            <Icons.Sparkles className="w-5 h-5 text-purple-600" /> Try Demo Now
+                            <Icons.Sparkles className="w-5 h-5 text-blue-600" /> جرب الديمو مجاناً
                         </button>
                     </div>
                 </main>
@@ -327,23 +330,23 @@
                     <div className="bg-[#1C1C1C] border border-gray-700 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
                         <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                             <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                                <Icons.Sparkles className="w-5 h-5 text-purple-500" /> Create with AI
+                                <Icons.Sparkles className="w-5 h-5 text-blue-500" /> إنشاء جديد
                             </h2>
                             <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
                         </div>
                         <div className="p-8">
                             <div className="flex gap-4 mb-8">
-                                {[{ id: 'presentation', icon: Icons.Presentation, label: 'Presentation' }, { id: 'document', icon: Icons.FileText, label: 'Document' }, { id: 'webpage', icon: Icons.Monitor, label: 'Webpage' }].map((item) => (
-                                    <button key={item.id} onClick={() => setActiveType(item.id)} className={`flex-1 p-4 rounded-xl border flex flex-col items-center gap-2 transition ${activeType === item.id ? 'bg-purple-500/10 border-purple-500 text-purple-400' : 'bg-gray-800/50 border-transparent text-gray-400 hover:bg-gray-800'}`}>
+                                {[{ id: 'presentation', icon: Icons.Presentation, label: 'عرض تقديمي' }, { id: 'document', icon: Icons.FileText, label: 'مستند' }, { id: 'webpage', icon: Icons.Monitor, label: 'صفحة ويب' }].map((item) => (
+                                    <button key={item.id} onClick={() => setActiveType(item.id)} className={`flex-1 p-4 rounded-xl border flex flex-col items-center gap-2 transition ${activeType === item.id ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-gray-800/50 border-transparent text-gray-400 hover:bg-gray-800'}`}>
                                         <item.icon className="w-6 h-6" /> <span className="text-sm font-medium">{item.label}</span>
                                     </button>
                                 ))}
                             </div>
-                            <textarea value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Describe your topic..." className="w-full bg-black/30 border border-gray-700 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none h-32" />
+                            <textarea value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="اكتب موضوع العرض هنا... (مثلاً: مستقبل الطاقة المتجددة)" className="w-full bg-black/30 border border-gray-700 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none h-32 text-right" dir="auto" />
                         </div>
                         <div className="p-6 bg-gray-900/50 border-t border-gray-800 flex justify-end">
-                            <button disabled={!topic} onClick={() => onCreate(topic, activeType)} className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition ${!topic ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-500'}`}>
-                                Generate outline <Icons.ChevronRight className="w-4 h-4" />
+                            <button disabled={!topic} onClick={() => onCreate(topic, activeType)} className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition ${!topic ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500'}`}>
+                                توليد المحتوى <Icons.ChevronRight className="w-4 h-4 rotate-180" />
                             </button>
                         </div>
                     </div>
@@ -406,17 +409,17 @@
                         <div className="flex items-center gap-2">
                             <div className="flex bg-white/5 rounded-lg p-1 mr-2">
                                 {['light', 'dark', 'navy', 'purple'].map(t => (
-                                    <button key={t} onClick={() => setTheme(t)} className={`w-6 h-6 rounded-md border border-transparent hover:border-white/50 transition ${t === 'light' ? 'bg-white' : t === 'dark' ? 'bg-[#333]' : t === 'navy' ? 'bg-[#0f172a]' : 'bg-[#2e1065]'} ${theme === t ? 'ring-2 ring-purple-500' : ''}`} />
+                                    <button key={t} onClick={() => setTheme(t)} className={`w-6 h-6 rounded-md border border-transparent hover:border-white/50 transition ${t === 'light' ? 'bg-white' : t === 'dark' ? 'bg-[#333]' : t === 'navy' ? 'bg-[#0f172a]' : 'bg-[#2e1065]'} ${theme === t ? 'ring-2 ring-blue-500' : ''}`} />
                                 ))}
                             </div>
-                            <button className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition"><Icons.Play className="w-4 h-4" /> Present</button>
+                            <button className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition"><Icons.Play className="w-4 h-4" /> عرض</button>
                         </div>
                     </header>
                     <div className="flex flex-1 overflow-hidden">
                         <aside className="w-48 border-r border-white/10 flex flex-col bg-inherit/50 overflow-y-auto hidden md:flex">
                             <div className="p-4 space-y-2">
                                 {slides.map((slide, idx) => (
-                                    <button key={slide.id} onClick={() => setActiveSlideId(slide.id)} className={`w-full text-left p-3 rounded-lg border transition group ${activeSlideId === slide.id ? 'border-purple-500 bg-purple-500/10' : 'border-transparent hover:bg-white/5'}`}>
+                                    <button key={slide.id} onClick={() => setActiveSlideId(slide.id)} className={`w-full text-left p-3 rounded-lg border transition group ${activeSlideId === slide.id ? 'border-blue-500 bg-blue-500/10' : 'border-transparent hover:bg-white/5'}`}>
                                         <div className="text-xs opacity-50 mb-1">0{idx + 1}</div>
                                         <div className="text-sm font-medium truncate">{slide.title}</div>
                                     </button>
@@ -430,20 +433,20 @@
                                     {activeSlide.blocks.map((block) => (
                                         <div key={block.id} className="group relative transition-all hover:bg-white/5 p-2 -mx-2 rounded-lg">
                                             {(block.type === 'paragraph' || block.type === 'list') && (
-                                                <button onClick={(e) => handleAIEditClick(e, block.id)} className="absolute -right-8 top-0 p-1.5 bg-purple-600 rounded text-white opacity-0 group-hover:opacity-100 transition hover:bg-purple-500 shadow-lg" title="Edit with AI"><Icons.Wand className="w-4 h-4" /></button>
+                                                <button onClick={(e) => handleAIEditClick(e, block.id)} className="absolute -right-8 top-0 p-1.5 bg-blue-600 rounded text-white opacity-0 group-hover:opacity-100 transition hover:bg-blue-500 shadow-lg" title="Edit with AI"><Icons.Wand className="w-4 h-4" /></button>
                                             )}
-                                            {block.type === 'heading' && <input defaultValue={block.content} className="w-full bg-transparent text-2xl font-semibold outline-none border-l-2 border-transparent focus:border-purple-500 pl-2 transition" />}
-                                            {block.type === 'paragraph' && <textarea defaultValue={block.content} className="w-full bg-transparent text-lg opacity-90 outline-none resize-none h-auto border-l-2 border-transparent focus:border-purple-500 pl-2 transition leading-relaxed" rows={Math.ceil(block.content.length / 80)} />}
-                                            {block.type === 'list' && <div className="pl-4 border-l-2 border-purple-500/30">{block.content.split('\n').map((line, i) => <div key={i} className="flex items-start gap-2 mb-2"><div className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2.5 flex-shrink-0" /><div className="text-lg opacity-90">{line}</div></div>)}</div>}
+                                            {block.type === 'heading' && <input defaultValue={block.content} className="w-full bg-transparent text-2xl font-semibold outline-none border-l-2 border-transparent focus:border-blue-500 pl-2 transition" />}
+                                            {block.type === 'paragraph' && <textarea defaultValue={block.content} className="w-full bg-transparent text-lg opacity-90 outline-none resize-none h-auto border-l-2 border-transparent focus:border-blue-500 pl-2 transition leading-relaxed" rows={Math.ceil(block.content.length / 80)} />}
+                                            {block.type === 'list' && <div className="pl-4 border-l-2 border-blue-500/30">{block.content.split('\n').map((line, i) => <div key={i} className="flex items-start gap-2 mb-2"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2.5 flex-shrink-0" /><div className="text-lg opacity-90">{line}</div></div>)}</div>}
                                             {block.type === 'image' && (
-                                                <div className="relative rounded-xl overflow-hidden border border-white/10 group-hover:border-purple-500/50 transition min-h-[300px] bg-gray-900 flex items-center justify-center">
+                                                <div className="relative rounded-xl overflow-hidden border border-white/10 group-hover:border-blue-500/50 transition min-h-[300px] bg-gray-900 flex items-center justify-center">
                                                     {block.isGeneratingImage ? (
-                                                        <div className="flex flex-col items-center gap-3"><div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div><span className="text-xs text-purple-300 animate-pulse">Painting pixels...</span></div>
+                                                        <div className="flex flex-col items-center gap-3"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div><span className="text-xs text-blue-300 animate-pulse">جاري الرسم...</span></div>
                                                     ) : (
                                                         <>
                                                             <img src={block.imageUrl} alt="AI Gen" className="w-full h-auto object-cover max-h-[500px]" />
                                                             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition flex gap-2">
-                                                                <button onClick={() => handleRegenerateImage(block.id, block.imagePrompt || "")} className="bg-black/70 backdrop-blur p-2 rounded-full text-white hover:bg-purple-600 transition" title="Regenerate"><Icons.Refresh className="w-4 h-4" /></button>
+                                                                <button onClick={() => handleRegenerateImage(block.id, block.imagePrompt || "")} className="bg-black/70 backdrop-blur p-2 rounded-full text-white hover:bg-blue-600 transition" title="Regenerate"><Icons.Refresh className="w-4 h-4" /></button>
                                                             </div>
                                                         </>
                                                     )}
@@ -462,21 +465,21 @@
         const Dashboard = ({ projects, onOpenProject, onNewProject, onOpenSettings }) => (
             <div className="min-h-screen bg-[#121212] text-white">
                 <nav className="h-16 border-b border-white/10 flex items-center px-6 justify-between bg-[#1C1C1C]">
-                    <div className="font-bold text-xl flex items-center gap-2"><div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center"><span className="text-xs">Γ</span></div>GammaClone</div>
+                    <div className="font-bold text-xl flex items-center gap-2"><div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center"><span className="text-xs">L</span></div>Lumina</div>
                     <div className="flex gap-3">
                         <button onClick={onOpenSettings} className="p-2 hover:bg-white/10 rounded-full transition" title="API Settings"><Icons.Settings className="w-5 h-5 text-gray-400" /></button>
-                        <div className="w-8 h-8 bg-gradient-to-tr from-yellow-400 to-red-500 rounded-full"></div>
+                        <div className="w-8 h-8 bg-gradient-to-tr from-blue-400 to-cyan-500 rounded-full"></div>
                     </div>
                 </nav>
                 <main className="p-8 max-w-7xl mx-auto">
                     <div className="flex justify-between items-center mb-8">
-                        <h1 className="text-2xl font-bold">My Projects</h1>
-                        <button onClick={onNewProject} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"><Icons.Plus className="w-5 h-5" /> New Project</button>
+                        <h1 className="text-2xl font-bold">مشاريعي</h1>
+                        <button onClick={onNewProject} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"><Icons.Plus className="w-5 h-5" /> مشروع جديد</button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        <button onClick={onNewProject} className="group aspect-[4/3] border border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center gap-3 hover:border-purple-500 hover:bg-white/5 transition">
-                            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition"><Icons.Plus className="w-6 h-6" /></div>
-                            <span className="font-medium text-white/60 group-hover:text-white">Create new ai</span>
+                        <button onClick={onNewProject} className="group aspect-[4/3] border border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center gap-3 hover:border-blue-500 hover:bg-white/5 transition">
+                            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition"><Icons.Plus className="w-6 h-6" /></div>
+                            <span className="font-medium text-white/60 group-hover:text-white">إنشاء ذكي</span>
                         </button>
                         {projects.map((p) => (
                             <div key={p.id} onClick={() => onOpenProject(p)} className="group cursor-pointer relative aspect-[4/3] bg-gray-900 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 transition">
@@ -488,8 +491,8 @@
                                     </div>
                                 </div>
                                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
-                                    <h3 className="font-semibold truncate">{p.title}</h3>
-                                    <div className="flex justify-between text-xs text-white/50 mt-1"><span className="capitalize">{p.type}</span><span>Just now</span></div>
+                                    <h3 className="font-semibold truncate text-right" dir="auto">{p.title}</h3>
+                                    <div className="flex justify-between text-xs text-white/50 mt-1"><span className="capitalize">{p.type}</span><span>الآن</span></div>
                                 </div>
                             </div>
                         ))}
@@ -502,13 +505,13 @@
             <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
                 <div className="w-full max-w-md text-center space-y-8">
                     <div className="relative w-24 h-24 mx-auto">
-                        <div className="absolute inset-0 rounded-full border-4 border-purple-900/50"></div>
-                        <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
-                        <Icons.Sparkles className="absolute inset-0 m-auto w-8 h-8 text-purple-400 animate-pulse" />
+                        <div className="absolute inset-0 rounded-full border-4 border-blue-900/50"></div>
+                        <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 animate-spin"></div>
+                        <Icons.Sparkles className="absolute inset-0 m-auto w-8 h-8 text-blue-400 animate-pulse" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-white mb-2">Designing with Gemini & Imagen...</h2>
-                        <p className="text-purple-300/80 animate-pulse">Drafting slides • Painting 4K visuals • Writing content</p>
+                        <h2 className="text-2xl font-bold text-white mb-2">جارٍ التصميم باستخدام Lumina...</h2>
+                        <p className="text-blue-300/80 animate-pulse">كتابة المحتوى • رسم الصور بدقة 4K • تنسيق الشرائح</p>
                     </div>
                 </div>
             </div>
@@ -521,7 +524,7 @@
             const [showSettings, setShowSettings] = useState(false);
             const [isAIGenerating, setIsAIGenerating] = useState(false);
             // HARDCODED API KEY
-            const [apiKey, setApiKey] = useState('AIzaSyALEaSt3HtzrQQ5woKXgEF6c63ewUkF8Gk');
+            const [apiKey, setApiKey] = useState('AIzaSyDK_rAqOA29xHwTA0CXZFpbTl65UjGo_jM');
             const [projects, setProjects] = useState([]);
             const [currentProject, setCurrentProject] = useState(null);
 
@@ -565,4 +568,5 @@
     </script>
 </body>
 </html>
+
 
