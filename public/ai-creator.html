@@ -142,16 +142,18 @@
         const rewriteTextWithAI = async (apiKey, text, instruction) => {
             try {
                 const prompt = `Rewrite this text: "${text}". Instruction: ${instruction}. Return ONLY the rewritten text.`;
-                const res = await fetch('/api/ai/ask', {
+                const url = `${GEMINI_TEXT_URL}?key=${apiKey}`;
+                const r = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: prompt, context: '' })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
-                if (!res.ok) throw new Error('AI backend error: ' + res.status);
-                const data = await res.json();
-                return (data && data.response ? data.response : text).trim();
+                if (!r.ok) throw new Error('Gemini rewrite error: ' + r.status);
+                const j = await r.json();
+                const out = j?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                return out && out.length ? out : text;
             } catch (e) {
-                console.error("Rewrite Error", e);
+                console.error('Rewrite Error', e);
                 return text;
             }
         };
@@ -176,20 +178,21 @@
                 3. Do not wrap response in \`\`\`.
             `;
 
+            // Direct call first (matches requested behavior)
             try {
-                const res = await fetch('/api/ai/ask', {
+                if (!apiKey) throw new Error('Missing API key');
+                const directUrl = `${GEMINI_TEXT_URL}?key=${apiKey}`;
+                const directRes = await fetch(directUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: prompt, context: '' })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
-                if (!res.ok) throw new Error('AI backend error: ' + res.status);
-                const data = await res.json();
-                let textResponse = (data && data.response) ? data.response : "[]";
+                if (!directRes.ok) throw new Error('Direct Gemini error: ' + directRes.status);
+                const dj = await directRes.json();
+                let textResponse = dj?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
                 textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-                
                 let parsedData;
-                try { parsedData = JSON.parse(textResponse); } catch (e) { return []; }
-
+                try { parsedData = JSON.parse(textResponse); } catch (_) { parsedData = []; }
                 const hydratedSlides = await Promise.all(parsedData.map(async (slide, sIdx) => ({
                     id: `s-${sIdx}`,
                     title: slide.title,
@@ -207,18 +210,50 @@
                         };
                     }))
                 })));
-
                 return hydratedSlides;
-            } catch (error) {
-                console.error("Gemini API Error:", error);
-                alert("Failed to generate content. Please check your API Key.");
-                return [];
+            } catch (directErr) {
+                console.warn('Direct Gemini failed, trying backend...', directErr);
+                try {
+                    const res = await fetch('/api/ai/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question: prompt, context: '' })
+                    });
+                    if (!res.ok) throw new Error('AI backend error: ' + res.status);
+                    const data = await res.json();
+                    let textResponse = (data && data.response) ? data.response : "[]";
+                    textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+                    let parsedData;
+                    try { parsedData = JSON.parse(textResponse); } catch (e) { parsedData = []; }
+                    const hydratedSlides = await Promise.all(parsedData.map(async (slide, sIdx) => ({
+                        id: `s-${sIdx}`,
+                        title: slide.title,
+                        blocks: await Promise.all((slide.blocks || []).map(async (b, bIdx) => {
+                            let imageUrl = undefined;
+                            if (b.type === 'image') {
+                                imageUrl = await generateImagenImage(apiKey, b.content);
+                            }
+                            return {
+                                id: `b-${sIdx}-${bIdx}`,
+                                type: b.type,
+                                content: b.content,
+                                imagePrompt: b.type === 'image' ? b.content : undefined,
+                                imageUrl: imageUrl
+                            };
+                        }))
+                    })));
+                    return hydratedSlides;
+                } catch (backendErr) {
+                    console.error('Both direct and backend generation failed:', backendErr);
+                    alert('Failed to generate content. Please check your API Key.');
+                    return [];
+                }
             }
         };
 
         // --- Components ---
 
-        const SettingsModal = ({ isOpen, onClose, apiKey, setApiKey }) => {
+        const SettingsModal = ({ isOpen, onClose, apiKey, setApiKey, isOwner }) => {
             if (!isOpen) return null;
             return (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60]">
@@ -233,13 +268,14 @@
                         <input 
                             type="password" 
                             value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
+                            onChange={(e) => { if (isOwner) setApiKey(e.target.value); }}
+                            readOnly={!isOwner}
                             placeholder="أدخل المفتاح هنا..."
                             className="w-full bg-black/30 border border-gray-600 rounded-lg p-3 text-white focus:border-purple-500 outline-none mb-4 text-left"
                         />
                         <div className="flex justify-end gap-2">
                             <button onClick={onClose} className="px-4 py-2 text-gray-300 hover:text-white">إغلاق</button>
-                            <button onClick={onClose} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500">حفظ</button>
+                            <button onClick={onClose} disabled={!isOwner} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">حفظ</button>
                         </div>
                      </div>
                 </div>
@@ -594,12 +630,17 @@
             const [showCreateModal, setShowCreateModal] = useState(false);
             const [showSettings, setShowSettings] = useState(false);
             const [isAIGenerating, setIsAIGenerating] = useState(false);
-            // HARDCODED API KEY (frontend demo only). For production, use backend proxy.
-            const [apiKey, setApiKey] = useState('AIzaSyDK_rAqOA29xHwTA0CXZFpbTl65UjGo_jM');
+            const DEFAULT_API_KEY = 'AIzaSyBDFdKdSpzAJ0UklU4WxtXS4QIXh1m_oe8';
+            const [apiKey, setApiKey] = useState(DEFAULT_API_KEY);
+
             const [projects, setProjects] = useState([]);
             const [currentProject, setCurrentProject] = useState(null);
             const [user, setUser] = useState(null);
             const supabaseClientRef = useRef(null);
+
+            const OWNER_ID = (window && window.LUMINA_OWNER_ID) || 'owner-id-placeholder';
+            const getUserId = (u) => (u && (u.id || (u.user && u.user.id))) || null;
+            const isOwner = getUserId(user) === OWNER_ID;
 
             // Initialize Supabase and current user (reuse platform config)
             useEffect(() => {
@@ -714,8 +755,8 @@
                     {view === 'landing' && <LandingPage onLogin={() => setView('dashboard')} />}
                     {view === 'dashboard' && (
                         <>
-                            <Dashboard projects={projects} onOpenProject={(p) => { setCurrentProject(p); setView('editor'); }} onNewProject={() => setShowCreateModal(true)} onOpenSettings={() => setShowSettings(true)} />
-                            <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} apiKey={apiKey} setApiKey={setApiKey} />
+                            <Dashboard projects={projects} onOpenProject={(p) => { setCurrentProject(p); setView('editor'); }} onNewProject={() => setShowCreateModal(true)} onOpenSettings={() => (isOwner ? setShowSettings(true) : alert('غير مسموح بتعديل مفتاح API'))} />
+                            <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} apiKey={apiKey} setApiKey={setApiKey} isOwner={isOwner} />
                             {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} onCreate={handleCreateProject} hasKey={!!apiKey} />}
                             {isAIGenerating && <AILoading />}
                         </>
