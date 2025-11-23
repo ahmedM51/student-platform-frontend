@@ -12,9 +12,6 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase client + platform config -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -357,11 +354,10 @@
             );
         };
 
-        const Editor = ({ project, onBack, apiKey, onSave }) => {
+        const Editor = ({ project, onBack, apiKey }) => {
             const [slides, setSlides] = useState(project.slides);
             const [activeSlideId, setActiveSlideId] = useState(slides[0]?.id);
             const [theme, setTheme] = useState(project.theme);
-            
             const [editingBlockId, setEditingBlockId] = useState(null);
             const [editPopupPos, setEditPopupPos] = useState({ top: 0, left: 0 });
             
@@ -395,49 +391,6 @@
                 setSlides(prev => prev.map(s => s.id === activeSlideId ? { ...s, blocks: s.blocks.map(b => b.id === blockId ? { ...b, imageUrl: newUrl, isGeneratingImage: false } : b) } : s));
             };
 
-            const handleSaveClick = () => {
-                if (!onSave) return;
-                const payload = {
-                    ...project,
-                    slides,
-                    theme
-                };
-                onSave(payload);
-            };
-
-            const handleExport = async (format) => {
-                if (!project.id || (typeof project.id === 'string' && project.id.startsWith('tmp-'))) {
-                    alert('يجب حفظ العرض في المنصة أولاً قبل التصدير.');
-                    return;
-                }
-                const endpoint = format === 'pdf'
-                    ? '/api/presentations/export/pdf'
-                    : '/api/presentations/export/pptx';
-                try {
-                    const res = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: project.id })
-                    });
-                    if (!res.ok) {
-                        throw new Error('Export failed: ' + res.status);
-                    }
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    const safeTitle = (project.title || 'عرض-ذكّي').replace(/[^a-zA-Z0-9\u0600-\u06FF-_ ]/g, '').trim() || 'عرض-ذكّي';
-                    a.href = url;
-                    a.download = format === 'pdf' ? `${safeTitle}.pdf` : `${safeTitle}.pptx`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    URL.revokeObjectURL(url);
-                } catch (e) {
-                    console.error('Export error:', e);
-                    alert('حدث خطأ أثناء التصدير. تأكد من اتصالك بالشبكة ومن حفظ العرض في المنصة.');
-                }
-            };
-
             const themeClasses = {
                 light: 'bg-white text-gray-900',
                 dark: 'bg-[#1a1a1a] text-gray-100',
@@ -459,9 +412,6 @@
                                     <button key={t} onClick={() => setTheme(t)} className={`w-6 h-6 rounded-md border border-transparent hover:border-white/50 transition ${t === 'light' ? 'bg-white' : t === 'dark' ? 'bg-[#333]' : t === 'navy' ? 'bg-[#0f172a]' : 'bg-[#2e1065]'} ${theme === t ? 'ring-2 ring-blue-500' : ''}`} />
                                 ))}
                             </div>
-                            <button onClick={handleSaveClick} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition">حفظ في المنصة</button>
-                            <button onClick={() => handleExport('pdf')} className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition">PDF</button>
-                            <button onClick={() => handleExport('pptx')} className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition">PowerPoint</button>
                             <button className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition"><Icons.Play className="w-4 h-4" /> عرض</button>
                         </div>
                     </header>
@@ -573,46 +523,14 @@
             const [showCreateModal, setShowCreateModal] = useState(false);
             const [showSettings, setShowSettings] = useState(false);
             const [isAIGenerating, setIsAIGenerating] = useState(false);
-            // HARDCODED API KEY (frontend demo only). For production, use backend proxy.
-            const [apiKey, setApiKey] = useState('AIzaSyDK_rAqOA29xHwTA0CXZFpbTl65UjGo_jM');
+            // HARDCODED API KEY
+            const [apiKey, setApiKey] = useState('AIzaSyAjmIc6nQFr0BE0QLoPbxOA-Et8eQdJ3qk');
             const [projects, setProjects] = useState([]);
             const [currentProject, setCurrentProject] = useState(null);
-            const [user, setUser] = useState(null);
-            const supabaseClientRef = useRef(null);
-
-            // Initialize Supabase and current user (reuse platform config)
-            useEffect(() => {
-                const initSupabaseUser = async () => {
-                    try {
-                        if (!window.initializeSupabase || !window.supabaseAuth) {
-                            console.warn('Supabase helpers not found, using offline demo mode for Lumina');
-                            setUser({ id: 'offline-user', isOffline: true });
-                            return;
-                        }
-                        const client = window.supabaseClient || window.initializeSupabase();
-                        supabaseClientRef.current = client;
-
-                        const { data: userData, error } = await window.supabaseAuth.getCurrentUser();
-                        if (error || !userData) {
-                            console.warn('No logged-in user for Lumina, using offline demo mode');
-                            setUser({ id: 'offline-user', isOffline: true });
-                            return;
-                        }
-
-                        setUser(userData);
-                    } catch (e) {
-                        console.error('Supabase init error for Lumina:', e);
-                        setUser({ id: 'offline-user', isOffline: true });
-                    }
-                };
-
-                initSupabaseUser();
-            }, []);
 
             const handleCreateProject = async (topic, type) => {
                 setShowCreateModal(false);
                 setIsAIGenerating(true);
-
                 let slides = [];
 
                 if (apiKey) {
@@ -629,57 +547,6 @@
                 setView('editor');
             };
 
-            const handleSaveProjectToPlatform = async (projectToSave) => {
-                if (!user || !supabaseClientRef.current || user.isOffline) {
-                    alert('لا يمكن الحفظ في المنصة بدون تسجيل الدخول. سيتم استخدام وضع العرض التجريبي فقط.');
-                    return;
-                }
-
-                const client = supabaseClientRef.current;
-                try {
-                    const payload = {
-                        title: projectToSave.title || 'عرض بدون عنوان',
-                        type: projectToSave.type || 'presentation',
-                        slides: projectToSave.slides || [],
-                        theme: projectToSave.theme || 'dark',
-                        user_id: user.id
-                    };
-
-                    let saved;
-                    if (projectToSave.id && typeof projectToSave.id === 'string' && !projectToSave.id.startsWith('tmp-')) {
-                        const { data, error } = await client
-                            .from('presentations')
-                            .update(payload)
-                            .eq('id', projectToSave.id)
-                            .eq('user_id', user.id)
-                            .select()
-                            .single();
-                        if (error) throw error;
-                        saved = data;
-                    } else {
-                        const { data, error } = await client
-                            .from('presentations')
-                            .insert([{ ...payload }])
-                            .select()
-                            .single();
-                        if (error) throw error;
-                        saved = data;
-                    }
-
-                    if (saved) {
-                        setCurrentProject(prev => ({ ...(prev || {}), ...saved }));
-                        setProjects(prev => {
-                            const others = prev.filter(p => p.id !== saved.id);
-                            return [saved, ...others];
-                        });
-                        alert('تم حفظ العرض في المنصة بنجاح ✅');
-                    }
-                } catch (error) {
-                    console.error('Error saving presentation:', error);
-                    alert('حدث خطأ أثناء حفظ العرض. تأكد من وجود جدول presentations في قاعدة البيانات وسياسات RLS المناسبة.');
-                }
-            };
-
             return (
                 <div className="font-sans text-slate-900 bg-white">
                     {view === 'landing' && <LandingPage onLogin={() => setView('dashboard')} />}
@@ -691,7 +558,7 @@
                             {isAIGenerating && <AILoading />}
                         </>
                     )}
-                    {view === 'editor' && currentProject && <Editor project={currentProject} onBack={() => setView('dashboard')} apiKey={apiKey} onSave={handleSaveProjectToPlatform} />}
+                    {view === 'editor' && currentProject && <Editor project={currentProject} onBack={() => setView('dashboard')} apiKey={apiKey} />}
                 </div>
             );
         };
@@ -701,3 +568,4 @@
     </script>
 </body>
 </html>
+
