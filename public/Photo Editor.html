@@ -8,6 +8,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
         body { font-family: 'Cairo', sans-serif; }
@@ -22,19 +26,27 @@
     <!-- Header -->
     <header class="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm z-20">
         <div class="flex items-center gap-2">
-            <div class="bg-indigo-600 p-2 rounded-lg text-white">
+            <div class="bg-gradient-to-r from-indigo-600 to-blue-600 p-2 rounded-lg text-white">
                 <i data-lucide="wand-2"></i>
             </div>
-            <h1 class="text-xl font-bold text-gray-800">محرر الصور (نصوص + رسم)</h1>
+            <h1 class="text-xl font-bold text-gray-800">محرر الصور الذكي (نصوص + رسم)</h1>
         </div>
         
         <div class="flex gap-3 items-center">
-            <!-- Toggle Original Image Preview -->
-            <div id="toggleOriginalContainer" class="hidden flex items-center gap-2 bg-gray-100 p-1 rounded-lg mr-4">
-                <span class="text-xs font-medium text-gray-500 px-2">عرض الأصلية:</span>
-                <button id="toggleOriginalBtn" class="w-10 h-6 bg-gray-300 rounded-full p-1 relative transition-colors focus:outline-none">
-                    <div id="toggleKnob" class="w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform translate-x-0"></div>
+            <div class="flex items-center gap-3">
+                <!-- AI Text Edit Button -->
+                <button id="aiEditBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg text-white transition bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90">
+                    <i class="fas fa-magic"></i>
+                    <span>تحرير النص بالذكاء الاصطناعي</span>
                 </button>
+
+                <!-- Toggle Original Image Preview -->
+                <div id="toggleOriginalContainer" class="hidden items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                    <span class="text-xs font-medium text-gray-500 px-2">عرض الأصلية:</span>
+                    <button id="toggleOriginalBtn" class="w-10 h-6 bg-gray-300 rounded-full p-1 relative transition-colors focus:outline-none">
+                        <div id="toggleKnob" class="w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform translate-x-0"></div>
+                    </button>
+                </div>
             </div>
 
             <button id="downloadBtn" disabled class="flex items-center gap-2 px-4 py-2 rounded-lg text-white transition bg-gray-300 cursor-not-allowed">
@@ -170,6 +182,39 @@
 
     </div>
 
+    <!-- AI Text Edit Modal -->
+    <div id="aiEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl w-full max-w-2xl mx-4">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">تحرير النص بالذكاء الاصطناعي</h3>
+                <button id="closeAiModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">النص الحالي:</label>
+                    <textarea id="currentText" class="w-full p-3 border rounded-lg h-32" readonly></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">التعليمات (اختياري):</label>
+                    <input type="text" id="aiInstructions" class="w-full p-3 border rounded-lg" placeholder="مثال: صحح الأخطاء الإملائية، أو أعد الصياغة بشكل أكاديمي">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button id="cancelAiEdit" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100">إلغاء</button>
+                    <button id="applyAiEdit" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:opacity-90 flex items-center gap-2">
+                        <span>تطبيق التعديلات</span>
+                        <i class="fas fa-magic"></i>
+                    </button>
+                </div>
+                <div id="aiLoading" class="mt-4 text-center hidden">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
+                    <p class="mt-2 text-gray-600">جاري معالجة النص بالذكاء الاصطناعي...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Template for Layer Item -->
     <template id="layerItemTemplate">
         <div class="layer-item flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition cursor-pointer group select-none">
@@ -204,9 +249,17 @@
         let dragStart = { x: 0, y: 0 };
         let currentItem = null; // For temp drawing/box creation
 
-        // DOM Elements
+        // Initialize UI elements
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        const aiEditBtn = document.getElementById('aiEditBtn');
+        const aiEditModal = document.getElementById('aiEditModal');
+        const closeAiModal = document.getElementById('closeAiModal');
+        const cancelAiEdit = document.getElementById('cancelAiEdit');
+        const applyAiEdit = document.getElementById('applyAiEdit');
+        const currentText = document.getElementById('currentText');
+        const aiInstructions = document.getElementById('aiInstructions');
+        const aiLoading = document.getElementById('aiLoading');
         const uploadInput = document.getElementById('imageUpload');
         const downloadBtn = document.getElementById('downloadBtn');
         const controlsContainer = document.getElementById('controlsContainer');
@@ -240,440 +293,96 @@
         // Initialize Lucide
         lucide.createIcons();
 
-        // --- Logic ---
-
-        uploadInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    image = img;
-                    layers = [];
-                    selectedId = null;
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    document.getElementById('originalImageOverlay').src = img.src;
-                    
-                    document.getElementById('noImagePlaceholder').classList.add('hidden');
-                    document.getElementById('canvasWrapper').classList.remove('hidden');
-                    document.getElementById('toggleOriginalContainer').classList.remove('hidden');
-                    controlsContainer.classList.remove('opacity-50', 'pointer-events-none');
-                    downloadBtn.disabled = false;
-                    downloadBtn.classList.remove('bg-gray-300', 'cursor-not-allowed');
-                    downloadBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-
-                    setMode('box'); // Default to box mode
-                    updateLayersList();
-                    render();
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-            e.target.value = ''; 
-        });
-
-        // --- Tools Switcher ---
-        function setMode(newMode) {
-            mode = newMode;
-            // Update UI
-            Object.values(tools).forEach(btn => {
-                btn.classList.remove('bg-white', 'shadow', 'text-indigo-600');
-                btn.classList.add('text-gray-500', 'hover:bg-gray-200');
-            });
-            tools[newMode].classList.add('bg-white', 'shadow', 'text-indigo-600');
-            tools[newMode].classList.remove('text-gray-500', 'hover:bg-gray-200');
-
-            // Cursor
-            if (mode === 'select') canvas.style.cursor = "default";
-            else if (mode === 'pen') canvas.style.cursor = "crosshair"; 
-            else canvas.style.cursor = "text"; // Changed to text cursor for box/click mode
-
-            // Selection logic
-            if (mode !== 'select') {
-                selectedId = null;
-                updatePropsPanel();
-                render();
-            } else {
-                updatePropsPanel();
-            }
+        // Helper: toast message
+        function showTempMessage(message, isError = false) {
+            const msg = document.createElement('div');
+            msg.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium text-sm z-50 transition-all duration-300 transform ${
+                isError ? 'bg-red-500' : 'bg-green-600'
+            }`;
+            msg.textContent = message;
+            document.body.appendChild(msg);
+            setTimeout(() => {
+                msg.style.opacity = '0';
+                msg.style.transform = 'translateY(20px)';
+                setTimeout(() => msg.remove(), 300);
+            }, 2500);
         }
 
-        Object.keys(tools).forEach(k => tools[k].addEventListener('click', () => setMode(k)));
+        // Gemini endpoint (use global key if provided)
+        const GEMINI_KEY = (window.GEMINI_API_KEY || 'AIzaSyBDFdKdSpzAJ0UklU4WxtXS4QIXh1m_oe8').trim();
+        const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
 
-        // --- Canvas Events ---
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            return {
-                x: (e.clientX - rect.left) * scaleX,
-                y: (e.clientY - rect.top) * scaleY
-            };
-        }
+        // AI Text Editing
+        let currentEditingLayer = null;
 
-        canvas.addEventListener('mousedown', (e) => {
-            if (!image || showOriginal) return;
-            const pos = getPos(e);
-            isDragging = true;
-            dragStart = pos;
-
-            if (mode === 'select') {
-                // Find top-most visible layer clicked
-                const clicked = [...layers].reverse().find(l => {
-                    if (!l.visible) return false;
-                    if (l.type === 'text') {
-                        return pos.x >= l.x && pos.x <= l.x + l.w && pos.y >= l.y && pos.y <= l.y + l.h;
-                    }
-                    if (l.type === 'drawing') {
-                        return l.points.some(p => Math.abs(p.x - pos.x) < 10 && Math.abs(p.y - pos.y) < 10);
-                    }
-                    return false;
-                });
-
-                selectedId = clicked ? clicked.id : null;
-                updatePropsPanel();
-                updateLayersList();
-                render();
-
-            } else if (mode === 'box') {
-                currentItem = { x: pos.x, y: pos.y, w: 0, h: 0 };
-            } else if (mode === 'pen') {
-                const startColor = inputs.color.value; 
-                const newLayer = {
-                    id: Date.now(),
-                    type: 'drawing',
-                    points: [{x: pos.x, y: pos.y}],
-                    color: startColor,
-                    size: parseInt(inputs.brushSize.value),
-                    visible: true
-                };
-                layers.push(newLayer);
-                selectedId = newLayer.id; 
-                currentItem = newLayer; 
-                render();
-            }
+        // Initialize app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // ...
         });
 
-        canvas.addEventListener('mousemove', (e) => {
-            if (!isDragging || showOriginal) return;
-            const pos = getPos(e);
-
-            if (mode === 'select' && selectedId) {
-                const layer = layers.find(l => l.id === selectedId);
-                if (layer && layer.type === 'text') {
-                    const dx = pos.x - dragStart.x;
-                    const dy = pos.y - dragStart.y;
-                    layer.x += dx;
-                    layer.y += dy;
-                    dragStart = pos;
-                    render();
-                }
-            } else if (mode === 'box' && currentItem) {
-                currentItem.w = pos.x - currentItem.x;
-                currentItem.h = pos.y - currentItem.y;
-                render();
-            } else if (mode === 'pen' && currentItem) {
-                currentItem.points.push({x: pos.x, y: pos.y});
-                render();
-            }
-        });
-
-        canvas.addEventListener('mouseup', () => {
-            if (mode === 'box' && currentItem) {
-                // Check if it was just a click (very small drag)
-                const isClick = Math.abs(currentItem.w) < 5 && Math.abs(currentItem.h) < 5;
-                
-                let x, y, w, h;
-
-                if (isClick) {
-                    // CLICK TO ADD MODE
-                    w = 120; // Default width
-                    h = 50;  // Default height
-                    x = currentItem.x - w/2; // Center on click
-                    y = currentItem.y - h/2;
-                } else {
-                    // DRAG MODE
-                    x = currentItem.w < 0 ? currentItem.x + currentItem.w : currentItem.x;
-                    y = currentItem.h < 0 ? currentItem.y + currentItem.h : currentItem.y;
-                    w = Math.abs(currentItem.w);
-                    h = Math.abs(currentItem.h);
-                }
-
-                // Only add if it's a click OR a decent sized box
-                if (isClick || (w > 10 && h > 10)) {
-                    const calculatedBg = getAverageBgColor(x, y, w, h);
-                    const newLayer = {
-                        id: Date.now(),
-                        type: 'text',
-                        x, y, w, h,
-                        text: "نص جديد",
-                        fontSize: Math.max(16, Math.floor(h * 0.6)),
-                        color: "#000000",
-                        bgColor: "auto",
-                        calculatedBg: calculatedBg,
-                        fontFamily: "Cairo",
-                        visible: true
-                    };
-                    layers.push(newLayer);
-                    selectedId = newLayer.id;
-                    setMode('select'); // Auto switch back to select to allow editing text immediately
-                }
-            } else if (mode === 'pen') {
-                updateLayersList(); 
-                updatePropsPanel(); 
-            }
-            
-            isDragging = false;
-            currentItem = null;
-            render();
-        });
-
-        // --- Rendering ---
-        function render() {
-            if (!canvas || !image) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(image, 0, 0);
-
-            if (showOriginal) return;
-
-            // Box creation preview
-            if (mode === 'box' && currentItem) {
-                ctx.strokeStyle = '#ef4444';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
-                // If it's tiny (click), don't draw weird box
-                if(Math.abs(currentItem.w) > 5 || Math.abs(currentItem.h) > 5) {
-                    ctx.strokeRect(currentItem.x, currentItem.y, currentItem.w, currentItem.h);
-                }
-                ctx.setLineDash([]);
-            }
-
-            layers.forEach(l => {
-                if (!l.visible) return;
-
-                if (l.type === 'text') {
-                    // 1. BG (Inpainting)
-                    ctx.fillStyle = l.bgColor === 'auto' ? (l.calculatedBg || '#fff') : l.bgColor;
-                    ctx.fillRect(l.x, l.y, l.w, l.h);
-                    
-                    // 2. Text
-                    ctx.fillStyle = l.color;
-                    ctx.font = `bold ${l.fontSize}px ${l.fontFamily}`;
-                    ctx.textBaseline = 'middle';
-                    ctx.textAlign = 'center';
-                    
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.rect(l.x, l.y, l.w, l.h);
-                    ctx.clip();
-                    ctx.fillText(l.text, l.x + l.w/2, l.y + l.h/2);
-                    ctx.restore();
-
-                    // 3. Selection
-                    if (l.id === selectedId && mode === 'select') {
-                        ctx.strokeStyle = '#4f46e5';
-                        ctx.lineWidth = 3;
-                        ctx.strokeRect(l.x, l.y, l.w, l.h);
-                    }
-                } 
-                else if (l.type === 'drawing') {
-                    if (l.points.length < 2) return;
-                    
-                    ctx.strokeStyle = l.color;
-                    ctx.lineWidth = l.size;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(l.points[0].x, l.points[0].y);
-                    for (let i = 1; i < l.points.length; i++) {
-                        ctx.lineTo(l.points[i].x, l.points[i].y);
-                    }
-                    ctx.stroke();
-
-                    if (l.id === selectedId && mode === 'select') {
-                        ctx.save();
-                        ctx.strokeStyle = 'rgba(79, 70, 229, 0.3)'; 
-                        ctx.lineWidth = l.size + 6;
-                        ctx.stroke();
-                        ctx.restore();
-                    }
-                }
-            });
-        }
-
-        // --- Properties Logic ---
+        // Update properties panel when a layer is selected
         function updatePropsPanel() {
             const layer = layers.find(l => l.id === selectedId);
             if (!layer) {
                 propsPanel.classList.add('hidden');
                 return;
             }
-            propsPanel.classList.remove('hidden');
-
-            if (layer.type === 'text') {
-                inputs.title.textContent = "خصائص النص";
-                inputs.textGroup.classList.remove('hidden');
-                inputs.bgGroup.classList.remove('hidden');
-                inputs.brushGroup.classList.add('hidden');
-
-                inputs.text.value = layer.text;
-                inputs.size.value = layer.fontSize;
-                inputs.font.value = layer.fontFamily;
-                
-                const isAuto = layer.bgColor === 'auto';
-                inputs.bgColorPreview.textContent = isAuto ? 'A' : '';
-                inputs.bgColorPreview.style.backgroundColor = isAuto ? layer.calculatedBg : layer.bgColor;
-            } 
-            else if (layer.type === 'drawing') {
-                inputs.title.textContent = "خصائص الرسم";
-                inputs.textGroup.classList.add('hidden');
-                inputs.bgGroup.classList.add('hidden');
-                inputs.brushGroup.classList.remove('hidden');
-
-                inputs.brushSize.value = layer.size;
-                inputs.brushSizeVal.textContent = layer.size + 'px';
-            }
-
-            inputs.color.value = layer.color;
-            inputs.colorPreview.style.backgroundColor = layer.color;
+            // ...
         }
 
-        // Property Change Listeners
-        function updateLayer(key, val) {
-            if (!selectedId) return;
-            const layer = layers.find(l => l.id === selectedId);
-            if (!layer) return;
-            
-            layer[key] = val;
-            render();
-            if (key === 'text') updateLayersList();
-            if (key === 'color') inputs.colorPreview.style.backgroundColor = val;
-            if (key === 'size') inputs.brushSizeVal.textContent = val + 'px';
-            if (key === 'bgColor') updatePropsPanel();
-        }
-
-        inputs.text.addEventListener('input', e => updateLayer('text', e.target.value));
-        inputs.size.addEventListener('input', e => updateLayer('fontSize', parseInt(e.target.value)));
-        inputs.font.addEventListener('change', e => updateLayer('fontFamily', e.target.value));
-        inputs.color.addEventListener('input', e => updateLayer('color', e.target.value));
-        inputs.brushSize.addEventListener('input', e => updateLayer('size', parseInt(e.target.value)));
-        
-        inputs.bgColor.addEventListener('input', e => updateLayer('bgColor', e.target.value));
-        inputs.autoBgBtn.addEventListener('click', () => {
-            const l = layers.find(l => l.id === selectedId);
-            if(l) {
-                l.calculatedBg = getAverageBgColor(l.x, l.y, l.w, l.h); 
-                updateLayer('bgColor', 'auto');
-            }
-        });
-
-        // Stamp Buttons Logic
-        document.querySelectorAll('.stamp-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const text = btn.getAttribute('data-text');
-                const textInput = document.getElementById('propText');
-                textInput.value = text;
-                updateLayer('text', text);
-                
-                // Optional: adjust font color based on stamp type
-                if(text.includes('✅')) updateLayer('color', '#16a34a'); // Green
-                if(text.includes('❌')) updateLayer('color', '#dc2626'); // Red
-            });
-        });
-
-        // --- Layers List ---
-        const layersContainer = document.getElementById('layersList');
-        const tmpl = document.getElementById('layerItemTemplate');
-
-        function updateLayersList() {
-            layersContainer.innerHTML = '';
-            if (layers.length === 0) {
-                document.getElementById('noLayersHint').classList.remove('hidden');
-                return;
-            }
-            document.getElementById('noLayersHint').classList.add('hidden');
-
-            [...layers].reverse().forEach(l => {
-                const item = tmpl.content.cloneNode(true).firstElementChild;
-                
-                if (l.id === selectedId) {
-                    item.classList.add('bg-indigo-50', 'border-indigo-200');
-                    item.classList.remove('bg-gray-50', 'border-gray-200');
-                }
-
-                const icon = item.querySelector('.layer-icon i');
-                const name = item.querySelector('.layer-name');
-                if (l.type === 'text') {
-                    icon.setAttribute('data-lucide', 'type');
-                    name.textContent = l.text || 'نص فارغ';
-                } else {
-                    icon.setAttribute('data-lucide', 'pen-tool');
-                    name.textContent = `رسم يدوي (${l.color})`;
-                }
-
-                const visBtn = item.querySelector('.layer-visible-btn i');
-                visBtn.setAttribute('data-lucide', l.visible ? 'eye' : 'eye-off');
-                if(!l.visible) item.querySelector('.layer-visible-btn').classList.add('text-gray-300');
-
-                item.querySelector('.layer-visible-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    l.visible = !l.visible;
-                    render();
-                    updateLayersList();
-                });
-                item.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    layers = layers.filter(x => x.id !== l.id);
-                    if (selectedId === l.id) {
-                        selectedId = null;
-                        updatePropsPanel();
-                    }
-                    render();
-                    updateLayersList();
-                });
-                item.addEventListener('click', () => {
-                    selectedId = l.id;
-                    setMode('select'); 
-                    updatePropsPanel();
-                    updateLayersList();
-                    render();
-                });
-
-                layersContainer.appendChild(item);
-            });
-            lucide.createIcons();
-        }
-
-        // --- Utilities ---
-        function getAverageBgColor(x, y, w, h) {
-            try {
-                // Sample slightly outside the click area if possible, or just the area itself
-                const data = ctx.getImageData(Math.max(0, x-5), Math.max(0, y), 5, Math.max(1, h)).data;
-                let r=0,g=0,b=0,c=0;
-                for(let i=0; i<data.length; i+=4){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; c++; }
-                if(c===0) return '#ffffff';
-                r=Math.floor(r/c); g=Math.floor(g/c); b=Math.floor(b/c);
-                return `rgb(${r},${g},${b})`;
-            } catch { return '#ffffff'; }
-        }
-
-        document.getElementById('toggleOriginalBtn').addEventListener('click', function() {
-            showOriginal = !showOriginal;
-            const knob = document.getElementById('toggleKnob');
-            if (showOriginal) {
-                this.classList.add('bg-indigo-500'); this.classList.remove('bg-gray-300');
-                knob.classList.add('translate-x-4');
-                document.getElementById('originalImageOverlay').classList.remove('hidden');
-                canvas.style.pointerEvents = 'none';
+        // AI Text Edit Event Listeners
+        aiEditBtn.addEventListener('click', () => {
+            if (selectedId !== null && layers.find(l => l.id === selectedId).type === 'text') {
+                currentEditingLayer = selectedId;
+                currentText.value = layers.find(l => l.id === selectedId).text || '';
+                aiInstructions.value = '';
+                aiEditModal.classList.remove('hidden');
             } else {
-                this.classList.remove('bg-indigo-500'); this.classList.add('bg-gray-300');
-                knob.classList.remove('translate-x-4');
-                document.getElementById('originalImageOverlay').classList.add('hidden');
-                canvas.style.pointerEvents = 'auto';
+                showTempMessage('الرجاء تحديد نص لتعديله', true);
+            }
+        });
+
+        closeAiModal.addEventListener('click', () => {
+            aiEditModal.classList.add('hidden');
+        });
+
+        cancelAiEdit.addEventListener('click', () => {
+            aiEditModal.classList.add('hidden');
+        });
+
+        applyAiEdit.addEventListener('click', async () => {
+            const layer = layers.find(l => l.id === selectedId && l.type === 'text');
+            if (!layer) { showTempMessage('لا توجد طبقة نصية محددة', true); return; }
+
+            const textToEdit = (currentText.value || '').trim();
+            if (!textToEdit) { showTempMessage('الرجاء إدخال نص للتحرير', true); return; }
+            if (!GEMINI_KEY) { showTempMessage('مفتاح Gemini غير موجود', true); return; }
+
+            aiLoading.classList.remove('hidden');
+            try {
+                const instructions = (aiInstructions.value || 'حسّن صياغة النص بالعربية مع الحفاظ على المعنى').trim();
+                const payload = { contents: [{ parts: [{ text: `أعد صياغة وتحسين هذا النص ليكون مناسباً للاستخدام على صورة تعليمية. أعد النص فقط دون شرح إضافي.\n\nالتعليمات: ${instructions}\n\nالنص:\n${textToEdit}` }]}] };
+                let res = await fetch(GEMINI_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+                let data = await res.json();
+                let edited = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                // Fallback to gemini-pro if 403 or empty response
+                if ((!res.ok && res.status === 403) || !edited) {
+                    const ALT_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`;
+                    res = await fetch(ALT_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+                    data = await res.json();
+                    edited = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                }
+                if (!edited) throw new Error('لا يوجد رد من النموذج');
+                layer.text = edited;
+                updatePropsPanel();
                 render();
+                aiEditModal.classList.add('hidden');
+                showTempMessage('تم تحرير النص بنجاح');
+            } catch (e) {
+                console.error(e);
+                showTempMessage('حدث خطأ أثناء معالجة النص', true);
+            } finally {
+                aiLoading.classList.add('hidden');
             }
         });
 
@@ -690,7 +399,224 @@
             render();
         });
 
+        // --- Core editor logic ---
+        uploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    image = img;
+                    layers = [];
+                    selectedId = null;
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    document.getElementById('originalImageOverlay').src = img.src;
+
+                    document.getElementById('noImagePlaceholder').classList.add('hidden');
+                    document.getElementById('canvasWrapper').classList.remove('hidden');
+                    document.getElementById('toggleOriginalContainer').classList.remove('hidden');
+                    controlsContainer.classList.remove('opacity-50', 'pointer-events-none');
+                    downloadBtn.disabled = false;
+                    downloadBtn.classList.remove('bg-gray-300', 'cursor-not-allowed');
+                    downloadBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+
+                    setMode('box');
+                    updateLayersList();
+                    render();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        });
+
+        function setMode(newMode) {
+            mode = newMode;
+            Object.values(tools).forEach(btn => {
+                btn.classList.remove('bg-white', 'shadow', 'text-indigo-600');
+                btn.classList.add('text-gray-500', 'hover:bg-gray-200');
+            });
+            tools[newMode].classList.add('bg-white', 'shadow', 'text-indigo-600');
+            tools[newMode].classList.remove('text-gray-500', 'hover:bg-gray-200');
+
+            if (mode === 'select') canvas.style.cursor = 'default';
+            else if (mode === 'pen') canvas.style.cursor = 'crosshair';
+            else canvas.style.cursor = 'text';
+
+            if (mode !== 'select') {
+                selectedId = null;
+                updatePropsPanel();
+                render();
+            } else {
+                updatePropsPanel();
+            }
+        }
+        Object.keys(tools).forEach(k => tools[k].addEventListener('click', () => setMode(k)));
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!image || showOriginal) return;
+            const pos = getPos(e);
+            isDragging = true;
+            dragStart = pos;
+
+            if (mode === 'select') {
+                const clicked = [...layers].reverse().find(l => {
+                    if (!l.visible) return false;
+                    if (l.type === 'text') return pos.x >= l.x && pos.x <= l.x + l.w && pos.y >= l.y && pos.y <= l.y + l.h;
+                    if (l.type === 'drawing') return l.points.some(p => Math.abs(p.x - pos.x) < 10 && Math.abs(p.y - pos.y) < 10);
+                    return false;
+                });
+                selectedId = clicked ? clicked.id : null;
+                updatePropsPanel();
+                updateLayersList();
+                render();
+            } else if (mode === 'box') {
+                currentItem = { x: pos.x, y: pos.y, w: 0, h: 0 };
+            } else if (mode === 'pen') {
+                const startColor = inputs.color.value;
+                const newLayer = { id: Date.now(), type: 'drawing', points: [{x: pos.x, y: pos.y}], color: startColor, size: parseInt(inputs.brushSize.value), visible: true };
+                layers.push(newLayer);
+                selectedId = newLayer.id;
+                currentItem = newLayer;
+                render();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging || showOriginal) return;
+            const pos = getPos(e);
+            if (mode === 'select' && selectedId) {
+                const layer = layers.find(l => l.id === selectedId);
+                if (layer && layer.type === 'text') {
+                    const dx = pos.x - dragStart.x; const dy = pos.y - dragStart.y;
+                    layer.x += dx; layer.y += dy; dragStart = pos; render();
+                }
+            } else if (mode === 'box' && currentItem) {
+                currentItem.w = pos.x - currentItem.x; currentItem.h = pos.y - currentItem.y; render();
+            } else if (mode === 'pen' && currentItem) {
+                currentItem.points.push({x: pos.x, y: pos.y}); render();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (mode === 'box' && currentItem) {
+                const isClick = Math.abs(currentItem.w) < 5 && Math.abs(currentItem.h) < 5;
+                let x, y, w, h;
+                if (isClick) { w = 120; h = 50; x = currentItem.x - w/2; y = currentItem.y - h/2; }
+                else { x = currentItem.w < 0 ? currentItem.x + currentItem.w : currentItem.x; y = currentItem.h < 0 ? currentItem.y + currentItem.h : currentItem.y; w = Math.abs(currentItem.w); h = Math.abs(currentItem.h); }
+                if (isClick || (w > 10 && h > 10)) {
+                    const calculatedBg = getAverageBgColor(x, y, w, h);
+                    const newLayer = { id: Date.now(), type: 'text', x, y, w, h, text: 'نص جديد', fontSize: Math.max(16, Math.floor(h*0.6)), color: '#000000', bgColor: 'auto', calculatedBg, fontFamily: 'Cairo', visible: true };
+                    layers.push(newLayer); selectedId = newLayer.id; setMode('select');
+                }
+            } else if (mode === 'pen') { updateLayersList(); updatePropsPanel(); }
+            isDragging = false; currentItem = null; render();
+        });
+
+        function render() {
+            if (!canvas || !image) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, 0, 0);
+            if (showOriginal) return;
+            if (mode === 'box' && currentItem) {
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([5,5]);
+                if (Math.abs(currentItem.w) > 5 || Math.abs(currentItem.h) > 5) ctx.strokeRect(currentItem.x, currentItem.y, currentItem.w, currentItem.h);
+                ctx.setLineDash([]);
+            }
+            layers.forEach(l => {
+                if (!l.visible) return;
+                if (l.type === 'text') {
+                    ctx.fillStyle = l.bgColor === 'auto' ? (l.calculatedBg || '#fff') : l.bgColor;
+                    ctx.fillRect(l.x, l.y, l.w, l.h);
+                    ctx.fillStyle = l.color; ctx.font = `bold ${l.fontSize}px ${l.fontFamily}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+                    ctx.save(); ctx.beginPath(); ctx.rect(l.x, l.y, l.w, l.h); ctx.clip(); ctx.fillText(l.text, l.x + l.w/2, l.y + l.h/2); ctx.restore();
+                    if (l.id === selectedId && mode === 'select') { ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 3; ctx.strokeRect(l.x, l.y, l.w, l.h); }
+                } else if (l.type === 'drawing') {
+                    if (l.points.length < 2) return;
+                    ctx.strokeStyle = l.color; ctx.lineWidth = l.size; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                    ctx.beginPath(); ctx.moveTo(l.points[0].x, l.points[0].y); for (let i=1;i<l.points.length;i++){ ctx.lineTo(l.points[i].x, l.points[i].y);} ctx.stroke();
+                    if (l.id === selectedId && mode === 'select') { ctx.save(); ctx.strokeStyle = 'rgba(79,70,229,0.3)'; ctx.lineWidth = l.size + 6; ctx.stroke(); ctx.restore(); }
+                }
+            });
+        }
+
+        function updatePropsPanel() {
+            const layer = layers.find(l => l.id === selectedId);
+            if (!layer) { propsPanel.classList.add('hidden'); return; }
+            propsPanel.classList.remove('hidden');
+            if (layer.type === 'text') {
+                inputs.title.textContent = 'خصائص النص'; inputs.textGroup.classList.remove('hidden'); inputs.bgGroup.classList.remove('hidden'); inputs.brushGroup.classList.add('hidden');
+                inputs.text.value = layer.text; inputs.size.value = layer.fontSize; inputs.font.value = layer.fontFamily;
+                const isAuto = layer.bgColor === 'auto'; inputs.bgColorPreview.textContent = isAuto ? 'A' : ''; inputs.bgColorPreview.style.backgroundColor = isAuto ? layer.calculatedBg : layer.bgColor;
+            } else {
+                inputs.title.textContent = 'خصائص الرسم'; inputs.textGroup.classList.add('hidden'); inputs.bgGroup.classList.add('hidden'); inputs.brushGroup.classList.remove('hidden');
+                inputs.brushSize.value = layer.size; inputs.brushSizeVal.textContent = layer.size + 'px';
+            }
+            inputs.color.value = layer.color; inputs.colorPreview.style.backgroundColor = layer.color;
+        }
+
+        function updateLayer(key, val) {
+            if (!selectedId) return; const layer = layers.find(l => l.id === selectedId); if (!layer) return; layer[key] = val; render();
+            if (key === 'text') updateLayersList(); if (key === 'color') inputs.colorPreview.style.backgroundColor = val; if (key === 'size') inputs.brushSizeVal.textContent = val + 'px'; if (key === 'bgColor') updatePropsPanel();
+        }
+
+        inputs.text.addEventListener('input', e => updateLayer('text', e.target.value));
+        inputs.size.addEventListener('input', e => updateLayer('fontSize', parseInt(e.target.value)));
+        inputs.font.addEventListener('change', e => updateLayer('fontFamily', e.target.value));
+        inputs.color.addEventListener('input', e => updateLayer('color', e.target.value));
+        inputs.brushSize.addEventListener('input', e => updateLayer('size', parseInt(e.target.value)));
+        inputs.bgColor.addEventListener('input', e => updateLayer('bgColor', e.target.value));
+        inputs.autoBgBtn.addEventListener('click', () => { const l = layers.find(l => l.id === selectedId); if (l) { l.calculatedBg = getAverageBgColor(l.x, l.y, l.w, l.h); updateLayer('bgColor', 'auto'); } });
+
+        const layersContainer = document.getElementById('layersList');
+        const tmpl = document.getElementById('layerItemTemplate');
+        function updateLayersList() {
+            const noHint = document.getElementById('noLayersHint');
+            // Remove only previous layer items; keep the hint element in DOM
+            layersContainer.querySelectorAll('.layer-item').forEach(el => el.remove());
+            if (layers.length === 0) {
+                if (noHint) noHint.classList.remove('hidden');
+                return;
+            }
+            if (noHint) noHint.classList.add('hidden');
+            [...layers].reverse().forEach(l => {
+                const item = tmpl.content.cloneNode(true).firstElementChild;
+
+                if (l.id === selectedId) { item.classList.add('bg-indigo-50','border-indigo-200'); item.classList.remove('bg-gray-50','border-gray-200'); }
+                const icon = item.querySelector('.layer-icon i'); const name = item.querySelector('.layer-name');
+                if (l.type === 'text') { icon.setAttribute('data-lucide','type'); name.textContent = l.text || 'نص فارغ'; }
+                else { icon.setAttribute('data-lucide','pen-tool'); name.textContent = `رسم يدوي (${l.color})`; }
+                const visIcon = item.querySelector('.layer-visible-btn i'); visIcon.setAttribute('data-lucide', l.visible ? 'eye' : 'eye-off'); if (!l.visible) item.querySelector('.layer-visible-btn').classList.add('text-gray-300');
+                item.querySelector('.layer-visible-btn').addEventListener('click', (e) => { e.stopPropagation(); l.visible = !l.visible; render(); updateLayersList(); });
+                item.querySelector('.layer-delete-btn').addEventListener('click', (e) => { e.stopPropagation(); layers = layers.filter(x => x.id !== l.id); if (selectedId === l.id) { selectedId = null; updatePropsPanel(); } render(); updateLayersList(); });
+                item.addEventListener('click', () => { selectedId = l.id; setMode('select'); updatePropsPanel(); updateLayersList(); render(); });
+                layersContainer.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        function getAverageBgColor(x, y, w, h) {
+            try {
+                const data = ctx.getImageData(Math.max(0, x-5), Math.max(0, y), 5, Math.max(1, h)).data;
+                let r=0,g=0,b=0,c=0; for (let i=0;i<data.length;i+=4){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; c++; }
+                if (c===0) return '#ffffff'; r=Math.floor(r/c); g=Math.floor(g/c); b=Math.floor(b/c); return `rgb(${r},${g},${b})`;
+            } catch { return '#ffffff'; }
+        }
+
+        document.getElementById('toggleOriginalBtn').addEventListener('click', function(){
+            showOriginal = !showOriginal; const knob = document.getElementById('toggleKnob');
+            if (showOriginal) { this.classList.add('bg-indigo-500'); this.classList.remove('bg-gray-300'); knob.classList.add('translate-x-4'); document.getElementById('originalImageOverlay').classList.remove('hidden'); canvas.style.pointerEvents='none'; }
+            else { this.classList.remove('bg-indigo-500'); this.classList.add('bg-gray-300'); knob.classList.remove('translate-x-4'); document.getElementById('originalImageOverlay').classList.add('hidden'); canvas.style.pointerEvents='auto'; render(); }
+        });
     </script>
 </body>
-
 </html>
