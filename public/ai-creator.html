@@ -178,7 +178,7 @@
                 3. Do not wrap response in \`\`\`.
             `;
 
-            // Direct call first (matches requested behavior)
+            // Direct call first, then fallback to backend only if it fails
             try {
                 if (!apiKey) throw new Error('Missing API key');
                 const directUrl = `${GEMINI_TEXT_URL}?key=${apiKey}`;
