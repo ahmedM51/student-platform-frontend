@@ -320,20 +320,16 @@
 
         // Robust multi-model fallback to handle 403/404 or model availability
         async function geminiGenerate(payload){
+            // Use stable, widely-available models first
             const models = [
-                'gemini-2.5-flash',
-                'gemini-2.0-flash-exp',
-                'gemini-1.5-flash-latest',
                 'gemini-1.5-flash',
-                'gemini-1.5-pro-latest',
-                'gemini-1.5-pro',
-                'gemini-pro'
+                'gemini-1.5-pro'
             ];
             for (const m of models){
                 // Try query param auth
                 try{
                     const urlQP = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${GEMINI_KEY}`;
-                    const res = await fetch(urlQP, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload)});
+                    const res = await fetch(urlQP, { method:'POST', headers:{ 'Content-Type':'application/json', 'Accept':'application/json' }, body: JSON.stringify(payload)});
                     const data = await res.json();
                     const edited = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
                     if (res.ok && edited) return edited;
@@ -341,7 +337,7 @@
                 // Try header auth
                 try{
                     const urlHD = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
-                    const res2 = await fetch(urlHD, { method:'POST', headers:{ 'Content-Type':'application/json', 'x-goog-api-key': GEMINI_KEY }, body: JSON.stringify(payload)});
+                    const res2 = await fetch(urlHD, { method:'POST', headers:{ 'Content-Type':'application/json', 'Accept':'application/json', 'x-goog-api-key': GEMINI_KEY }, body: JSON.stringify(payload)});
                     const data2 = await res2.json();
                     const edited2 = data2?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
                     if (res2.ok && edited2) return edited2;
@@ -355,10 +351,18 @@
             const question = `أعد صياغة وتحسين هذا النص ليكون مناسباً للاستخدام على صورة تعليمية. أعد النص فقط دون شرح إضافي.\n\nالتعليمات: ${instructions}\n\nالنص:\n${textToEdit}`;
             // Backend first
             try{
-                const r = await fetch('/api/ai/ask', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ question, context: '' }) });
+                const r = await fetch('/api/ai/ask', { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ question, context: '' }) });
                 const j = await r.json();
                 const edited = (j && j.response || '').trim();
                 if (r.ok && edited) return edited;
+            }catch(_){ /* ignore */ }
+            // Try absolute backend on Vercel domain as a fallback (CORS enabled in server)
+            try{
+                const ABS_BASE = 'https://student-platform-frontend.vercel.app';
+                const r2 = await fetch(`${ABS_BASE}/api/ai/ask`, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ question, context: '' }) });
+                const j2 = await r2.json();
+                const edited2 = (j2 && j2.response || '').trim();
+                if (r2.ok && edited2) return edited2;
             }catch(_){ /* ignore */ }
             // Fallback to Gemini direct
             const payload = { contents: [{ parts: [{ text: question }]}] };
