@@ -4,14 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>محرر الصور الذكي (نصوص + رسم)</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (stable CDN CSS to avoid production console warning) -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Gemini API Key (provided) -->
+    <script>
+        window.GEMINI_API_KEY = 'AIzaSyBDFdKdSpzAJ0UklU4WxtXS4QIXh1m_oe8';
+    </script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
         body { font-family: 'Cairo', sans-serif; }
@@ -312,6 +318,53 @@
         const GEMINI_KEY = (window.GEMINI_API_KEY || 'AIzaSyBDFdKdSpzAJ0UklU4WxtXS4QIXh1m_oe8').trim();
         const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
 
+        // Robust multi-model fallback to handle 403/404 or model availability
+        async function geminiGenerate(payload){
+            const models = [
+                'gemini-2.5-flash',
+                'gemini-2.0-flash-exp',
+                'gemini-1.5-flash-latest',
+                'gemini-1.5-flash',
+                'gemini-1.5-pro-latest',
+                'gemini-1.5-pro',
+                'gemini-pro'
+            ];
+            for (const m of models){
+                // Try query param auth
+                try{
+                    const urlQP = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${GEMINI_KEY}`;
+                    const res = await fetch(urlQP, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload)});
+                    const data = await res.json();
+                    const edited = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    if (res.ok && edited) return edited;
+                }catch(err){ /* continue */ }
+                // Try header auth
+                try{
+                    const urlHD = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+                    const res2 = await fetch(urlHD, { method:'POST', headers:{ 'Content-Type':'application/json', 'x-goog-api-key': GEMINI_KEY }, body: JSON.stringify(payload)});
+                    const data2 = await res2.json();
+                    const edited2 = data2?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    if (res2.ok && edited2) return edited2;
+                }catch(err2){ /* continue */ }
+            }
+            throw new Error('NO_MODEL_RESPONSE');
+        }
+
+        // Try backend first (/api/ai/ask) then fallback to Gemini if backend unavailable
+        async function backendOrGemini(textToEdit, instructions){
+            const question = `أعد صياغة وتحسين هذا النص ليكون مناسباً للاستخدام على صورة تعليمية. أعد النص فقط دون شرح إضافي.\n\nالتعليمات: ${instructions}\n\nالنص:\n${textToEdit}`;
+            // Backend first
+            try{
+                const r = await fetch('/api/ai/ask', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ question, context: '' }) });
+                const j = await r.json();
+                const edited = (j && j.response || '').trim();
+                if (r.ok && edited) return edited;
+            }catch(_){ /* ignore */ }
+            // Fallback to Gemini direct
+            const payload = { contents: [{ parts: [{ text: question }]}] };
+            return await geminiGenerate(payload);
+        }
+
         // AI Text Editing
         let currentEditingLayer = null;
 
@@ -356,23 +409,11 @@
 
             const textToEdit = (currentText.value || '').trim();
             if (!textToEdit) { showTempMessage('الرجاء إدخال نص للتحرير', true); return; }
-            if (!GEMINI_KEY) { showTempMessage('مفتاح Gemini غير موجود', true); return; }
 
             aiLoading.classList.remove('hidden');
             try {
                 const instructions = (aiInstructions.value || 'حسّن صياغة النص بالعربية مع الحفاظ على المعنى').trim();
-                const payload = { contents: [{ parts: [{ text: `أعد صياغة وتحسين هذا النص ليكون مناسباً للاستخدام على صورة تعليمية. أعد النص فقط دون شرح إضافي.\n\nالتعليمات: ${instructions}\n\nالنص:\n${textToEdit}` }]}] };
-                let res = await fetch(GEMINI_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-                let data = await res.json();
-                let edited = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-                // Fallback to gemini-pro if 403 or empty response
-                if ((!res.ok && res.status === 403) || !edited) {
-                    const ALT_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`;
-                    res = await fetch(ALT_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-                    data = await res.json();
-                    edited = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-                }
-                if (!edited) throw new Error('لا يوجد رد من النموذج');
+                const edited = await backendOrGemini(textToEdit, instructions);
                 layer.text = edited;
                 updatePropsPanel();
                 render();
