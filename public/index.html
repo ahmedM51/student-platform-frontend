@@ -357,44 +357,53 @@
             </div>
 
             <!-- Mobile menu (enabled for all screens) -->
-            <div id="mobileMenu" class="hidden border-t border-white border-opacity-10">
-                <div class="px-4 pt-2 pb-4 space-y-2">
-                    <button onclick="window.location.href='subjects.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-book ml-2"></i> <span data-i18n="nav.subjects">المواد الدراسية</span>
-                    </button>
-                    <button onclick="window.location.href='planner.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-calendar-alt ml-2"></i> <span data-i18n="nav.planner">المخطط الدراسي</span>
-                    </button>
-                    <button onclick="window.location.href='study-timer.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-clock ml-2"></i> <span data-i18n="nav.timer">مؤقت المذاكرة</span>
-                    </button>
-                    <button onclick="window.location.href='ai-assistant.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-robot ml-2"></i> <span data-i18n="nav.ai">المساعد الذكي</span>
-                    </button>
-                    <button onclick="window.location.href='mind-map.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-project-diagram ml-2"></i> <span>الخريطة الذهنية</span>
-                    </button>
-                    <button onclick="window.location.href='ai-creator.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-slideshare ml-2"></i> <span>منشئ العروض</span>
-                    </button>
-                    <button onclick="window.location.href='ai-voice.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-microphone-lines ml-2"></i> <span data-i18n="nav.voice">النسخة الصوتية</span>
-                    </button>
-                    <button onclick="window.location.href='blackborad.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-chalkboard ml-2"></i> <span>السبورة</span>
-                    </button>
-                    <button onclick="window.location.href='Photo%20Editor.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-image ml-2"></i> <span>محرر الصور</span>
-                    </button>
-                    <button onclick="window.location.href='my%20note.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-microphone ml-2"></i> <span data-i18n="nav.mynotes">ملاحظاتي الصوتية</span>
-                    </button>
-                    <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-headset ml-2"></i> <span data-i18n="nav.contact">تواصل معانا</span>
-                    </button>
-                    <button onclick="window.location.href='privacy-policy.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
-                        <i class="fas fa-shield-alt ml-2"></i> <span data-i18n="nav.privacy">سياسة الخصوصية</span>
-                    </button>
+            <div id="mobileMenu" class="fixed inset-0 z-50 hidden">
+                <div id="mobileMenuOverlay" class="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm"></div>
+                <div id="mobileMenuPanel" class="absolute top-0 left-0 h-full w-80 max-w-[85vw] bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-2xl p-4 overflow-y-auto transform transition-transform duration-200 -translate-x-full rounded-r-2xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="font-bold">القائمة</div>
+                        <button id="mobileMenuClose" class="p-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-2">
+                        <button onclick="window.location.href='subjects.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-book ml-2"></i> <span data-i18n="nav.subjects">المواد الدراسية</span>
+                        </button>
+                        <button onclick="window.location.href='planner.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-calendar-alt ml-2"></i> <span data-i18n="nav.planner">المخطط الدراسي</span>
+                        </button>
+                        <button onclick="window.location.href='study-timer.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-clock ml-2"></i> <span data-i18n="nav.timer">مؤقت المذاكرة</span>
+                        </button>
+                        <button onclick="window.location.href='ai-assistant.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-robot ml-2"></i> <span data-i18n="nav.ai">المساعد الذكي</span>
+                        </button>
+                        <button onclick="window.location.href='mind-map.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-project-diagram ml-2"></i> <span>الخريطة الذهنية</span>
+                        </button>
+                        <button onclick="window.location.href='ai-creator.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-slideshare ml-2"></i> <span>منشئ العروض</span>
+                        </button>
+                        <button onclick="window.location.href='ai-voice.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-microphone-lines ml-2"></i> <span data-i18n="nav.voice">النسخة الصوتية</span>
+                        </button>
+                        <button onclick="window.location.href='blackborad.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-chalkboard ml-2"></i> <span>السبورة</span>
+                        </button>
+                        <button onclick="window.location.href='Photo%20Editor.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-image ml-2"></i> <span>محرر الصور</span>
+                        </button>
+                        <button onclick="window.location.href='my%20note.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-microphone ml-2"></i> <span data-i18n="nav.mynotes">ملاحظاتي الصوتية</span>
+                        </button>
+                        <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-headset ml-2"></i> <span data-i18n="nav.contact">تواصل معانا</span>
+                        </button>
+                        <button onclick="window.location.href='privacy-policy.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-shield-alt ml-2"></i> <span data-i18n="nav.privacy">سياسة الخصوصية</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -1045,15 +1054,23 @@
         console.log('✅ Index page script loaded - Real Supabase mode only');
     </script>
     <script>
-        // Toggle mobile navbar without interfering existing scripts
         (function(){
             const btn = document.getElementById('mobileMenuBtn');
             const menu = document.getElementById('mobileMenu');
-            if (btn && menu) {
-                btn.addEventListener('click', function(){
-                    menu.classList.toggle('hidden');
-                });
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const closeBtn = document.getElementById('mobileMenuClose');
+            const panel = document.getElementById('mobileMenuPanel');
+            if (!btn || !menu || !panel) return;
+            btn.addEventListener('click', function(){
+                menu.classList.remove('hidden');
+                requestAnimationFrame(()=> panel.classList.remove('-translate-x-full'));
+            });
+            function hide(){
+                panel.classList.add('-translate-x-full');
+                setTimeout(()=> menu.classList.add('hidden'), 200);
             }
+            overlay && overlay.addEventListener('click', hide);
+            closeBtn && closeBtn.addEventListener('click', hide);
         })();
     </script>
     <!-- Site Footer -->
