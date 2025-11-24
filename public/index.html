@@ -359,14 +359,14 @@
             <!-- Mobile menu (enabled for all screens) -->
             <div id="mobileMenu" class="fixed inset-0 z-50 hidden">
                 <div id="mobileMenuOverlay" class="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm"></div>
-                <div id="mobileMenuPanel" class="absolute top-0 left-0 h-full w-80 max-w-[85vw] bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-2xl p-4 overflow-y-auto transform transition-transform duration-200 -translate-x-full rounded-r-2xl">
+                <div id="mobileMenuPanel" class="absolute top-0 right-0 h-full w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-2xl p-4 overflow-y-auto transform transition-transform duration-200 translate-x-full">
                     <div class="flex items-center justify-between mb-3">
                         <div class="font-bold">القائمة</div>
                         <button id="mobileMenuClose" class="p-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <div class="space-y-2">
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <button onclick="window.location.href='subjects.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
                             <i class="fas fa-book ml-2"></i> <span data-i18n="nav.subjects">المواد الدراسية</span>
                         </button>
@@ -623,7 +623,7 @@
 
     <script>
         // Gemini API key (same as used in ai-assistant.html)
-        window.GEMINI_API_KEY = window.GEMINI_API_KEY || 'AIzaSyD6DFzzl67mbj8JzsB4zn1wnuakJ--XgV0';
+        window.GEMINI_API_KEY = window.GEMINI_API_KEY || 'AIzaSyCYHRvrcRdLbQhn-swZYBy-siMJM4ZosPc';
         // Help panel toggle with animation
         function toggleHelp(force) {
             const panel = document.getElementById('helpPanel');
@@ -1063,10 +1063,10 @@
             if (!btn || !menu || !panel) return;
             btn.addEventListener('click', function(){
                 menu.classList.remove('hidden');
-                requestAnimationFrame(()=> panel.classList.remove('-translate-x-full'));
+                requestAnimationFrame(()=> panel.classList.remove('translate-x-full'));
             });
             function hide(){
-                panel.classList.add('-translate-x-full');
+                panel.classList.add('translate-x-full');
                 setTimeout(()=> menu.classList.add('hidden'), 200);
             }
             overlay && overlay.addEventListener('click', hide);
