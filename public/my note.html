@@ -4,210 +4,214 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ملاحظاتي - المساعد الصوتي الذكي</title>
-    <script>try{var t=localStorage.getItem('theme');var d=t?t==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark')}}catch(e){}</script>
-    <link href="css/dark-mode.css" rel="stylesheet">
-    <!-- تحميل Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- تحميل خط Inter -->
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        /* إخفاء شريط التمرير ولكن السماح بالتمرير */
-        ::-webkit-scrollbar { display: none; }
-        * { -ms-overflow-style: none; scrollbar-width: none; }
-        /* أنماط خاصة لحالة التسجيل */
-        .recording-pulse {
-            animation: pulse-red 1s infinite;
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    
+    <script>
+        // إعداد Tailwind للوضع الليلي
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'Inter', 'sans-serif'],
+                    }
+                }
+            }
         }
+
+        // منطق الترجمة البسيط (i18n Mock)
+        const translations = {
+            'mynote.form.choose_category': 'اختر فئة...',
+            'mynote.sidebar.all': 'كل الملاحظات',
+            'mynote.empty': 'لا توجد ملاحظات في هذه القائمة.',
+            'mynote.note.transcription': 'النص المستخرج',
+            'mynote.note.translation': 'الترجمة العربية'
+        };
+        window.t = (key) => translations[key] || key;
+
+        // التحقق من الوضع الليلي عند التحميل
+        try {
+            var storedTheme = localStorage.getItem('theme');
+            var d = storedTheme ? storedTheme === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (d) document.documentElement.classList.add('dark');
+        } catch (e) {}
+    </script>
+
+    <style>
+        /* أنماط مخصصة */
+        body { font-family: 'Cairo', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+        /* نبض التسجيل */
+        .recording-pulse { animation: pulse-red 1.5s infinite; }
         @keyframes pulse-red {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
+            0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
     </style>
-    <script src="js/i18n.js"></script>
-    <!-- إعداد Firebase Imports -->
+
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // استيراد دوال Firestore
-        import { initializeFirestore, doc, collection, onSnapshot, setDoc, query, addDoc, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // إعداد مستوى سجل التصحيح لـ Firestore
-        setLogLevel('Debug');
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, setDoc, doc, query, deleteDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // متغيرات Firebase المتاحة عالمياً
-        window.app;
-        window.db;
-        window.auth;
-        window.userId = null;
-        window.categories = []; // قائمة الفئات المحملة
-        window.notes = []; // قائمة الملاحظات المحملة
-
-        // ** التعديل الضروري: تعريض دوال Firestore الأساسية لكتلة النص البرمجي العامة **
-        window.firestoreCollection = collection;
-        window.firestoreAddDoc = addDoc;
-        window.firestoreServerTimestamp = serverTimestamp;
-        window.firestoreSetDoc = setDoc;
-        window.firestoreDoc = doc;
-
-
-        // المتغيرات العامة التي يوفرها Canvas (يجب استخدامها دائمًا)
-        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-        const firebaseConfig = {
-          apiKey: "AIzaSyBM7Y6ZEFwMOOPno1ighvtVumHB1f3keVA",
-          authDomain: "pharmacy-769cb.firebaseapp.com",
-          projectId: "pharmacy-769cb",
-          storageBucket: "pharmacy-769cb.firebasestorage.app",
-          messagingSenderId: "1024742648973",
-          appId: "1:1024742648973:web:d45439f85a8e3eca0146c4",
-          measurementId: "G-2EN0X2SL8P"
+        // إعداد Firebase
+        const configFromEnv = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const firebaseConfig = Object.keys(configFromEnv).length > 0 ? configFromEnv : {
+             apiKey: "AIzaSyBM7Y6ZEFwMOOPno1ighvtVumHB1f3keVA",
+             authDomain: "pharmacy-769cb.firebaseapp.com",
+             projectId: "pharmacy-769cb",
+             storageBucket: "pharmacy-769cb.firebasestorage.app",
+             appId: "1:1024742648973:web:d45439f85a8e3eca0146c4"
         };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        /**
-         * تهيئة Firebase والمصادقة
-         */
-        async function initializeFirebase() {
-            try {
-                // 1. تهيئة التطبيق
-                window.app = initializeApp(firebaseConfig);
-                window.db = initializeFirestore(window.app, { experimentalForceLongPolling: true, useFetchStreams: false });
-                window.auth = getAuth(window.app);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-                // 2. تسجيل الدخول باستخدام الرمز المميز أو كمجهول
-                onAuthStateChanged(window.auth, async (user) => {
-                    if (user) {
-                        window.userId = user.uid;
-                        document.getElementById('user-id-display').textContent = window.userId;
-                        console.log("Firebase Auth Ready. User ID:", window.userId);
-                        // بعد المصادقة، ابدأ بتحميل البيانات
-                        setupDataListeners();
-                    } else {
-                        // إذا لم يتم العثور على مستخدم، حاول تسجيل الدخول بالرمز المميز أو مجهولاً
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(window.auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(window.auth);
-                        }
-                    }
-                });
+        let currentUser = null;
 
-                // ابدأ محاولة تسجيل الدخول
-                if (initialAuthToken) {
-                    await signInWithCustomToken(window.auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(window.auth);
-                }
-
-            } catch (error) {
-                console.error("Firebase Initialization Error:", error);
-                document.getElementById('main-content').innerHTML = `
-                    <div class="p-4 text-center text-red-600 bg-red-100 rounded-lg">
-                        خطأ في تهيئة Firebase. تحقق من إعدادات المفتاح.
-                    </div>
-                `;
+        // تهيئة المصادقة
+        async function initAuth() {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
             }
         }
 
-        /**
-         * إعداد المستمعين (onSnapshot) لقواعد البيانات
-         */
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                window.userId = user.uid; // تعريض المعرف للنطاق العام
+                console.log("Logged in:", user.uid);
+                setupDataListeners();
+                document.getElementById('loading-screen').classList.add('hidden');
+            }
+        });
+
+        initAuth();
+
+        // متغيرات البيانات العامة
+        window.categories = [];
+        window.notes = [];
+
+        // الاستماع للبيانات
         function setupDataListeners() {
-            if (!window.db || !window.userId) return;
+            if (!currentUser) return;
+            const baseCollectionPath = `artifacts/${appId}/users/${currentUser.uid}`;
 
-            const baseCollectionPath = `/artifacts/${window.appId}/users/${window.userId}`;
-
-            // 1. الاستماع إلى الفئات
-            const categoriesRef = collection(window.db, `${baseCollectionPath}/categories`);
-            onSnapshot(categoriesRef, (snapshot) => {
-                window.categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderCategories();
-            }, (error) => {
-                console.error("Error listening to categories:", error);
+            // الفئات
+            const catQuery = query(collection(db, baseCollectionPath, 'categories'));
+            onSnapshot(catQuery, (snapshot) => {
+                window.categories = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                
+                // إذا لم تكن هناك فئات، قم بإنشاء الفئات الافتراضية
+                if (window.categories.length === 0) {
+                    initializeDefaultCategories();
+                } else {
+                    window.renderCategories();
+                }
             });
 
-            // 2. الاستماع إلى الملاحظات
-            const notesRef = query(collection(window.db, `${baseCollectionPath}/notes`));
-            onSnapshot(notesRef, (snapshot) => {
-                // فرز الملاحظات حسب أحدث تاريخ أولاً
-                window.notes = snapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-                renderNotes();
-            }, (error) => {
-                console.error("Error listening to notes:", error);
+            // الملاحظات
+            const notesQuery = query(collection(db, baseCollectionPath, 'notes'), orderBy('createdAt', 'desc'));
+            onSnapshot(collection(db, baseCollectionPath, 'notes'), (snapshot) => {
+                window.notes = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                window.notes.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                window.renderNotes();
             });
         }
 
-        /**
-         * تهيئة البيانات الافتراضية للفئات
-         */
+        // الفئات الافتراضية
         async function initializeDefaultCategories() {
+            const baseCollectionPath = `artifacts/${appId}/users/${currentUser.uid}`;
             const defaultCategories = [
                 { name: 'اجتماع', icon: '🗣️', color: 'blue' },
                 { name: 'محاضرة', icon: '🎓', color: 'green' },
                 { name: 'سفر', icon: '✈️', color: 'purple' },
                 { name: 'فكرة سريعة', icon: '💡', color: 'yellow' },
             ];
-
-            const baseCollectionPath = `/artifacts/${window.appId}/users/${window.userId}`;
-            const categoriesRef = collection(window.db, `${baseCollectionPath}/categories`);
-
-            // تحقق مما إذا كانت هناك أي فئات موجودة، إذا لم يكن كذلك، قم بإضافة الافتراضية
-            if (window.categories.length === 0) {
-                for (const cat of defaultCategories) {
-                    // استخدام اسم الفئة كـ ID للتفرد (تجنب التكرار)
-                    await setDoc(doc(categoriesRef, cat.name), cat);
-                }
-            }
+            
+            const promises = defaultCategories.map(cat => 
+                setDoc(doc(db, baseCollectionPath, 'categories', cat.name), cat)
+            );
+            
+            await Promise.all(promises);
+            console.log("Default categories initialized");
         }
 
-        window.onload = () => {
-            initializeFirebase();
-            document.getElementById('add-note-btn').onclick = () => openAddNoteModal();
-            document.getElementById('close-modal-btn').onclick = () => closeAddNoteModal();
-            // يتم تعيين handleNewNoteSubmission في كتلة النص البرمجي غير النمطية
-            document.getElementById('new-note-form').onsubmit = handleNewNoteSubmission;
-            // يتم تعيين handleAddCategory في كتلة النص البرمجي غير النمطية
-            document.getElementById('add-category-btn').onclick = handleAddCategory;
-            document.getElementById('record-toggle-btn').onclick = toggleRecording; // تعيين وظيفة التسجيل
+        // دوال مساعدة للحفظ والحذف (معروضة للنطاق العام للوصول إليها من السكريبت الآخر)
+        // ** ملاحظة: تم تحديث هذه الدوال لتعمل بشكل صحيح مع Firebase Modules **
+        window.saveNoteToFirestore = async (noteData) => {
+            if (!currentUser) throw new Error("User not logged in");
+            const baseCollectionPath = `artifacts/${appId}/users/${currentUser.uid}`;
+            await addDoc(collection(db, baseCollectionPath, 'notes'), {
+                ...noteData,
+                createdAt: serverTimestamp()
+            });
         };
 
-        // قم بتعيين هذه الوظائف على الكائن window لجعلها متاحة لـ HTML
-        window.renderCategories = renderCategories;
-        window.renderNotes = renderNotes;
-        window.initializeDefaultCategories = initializeDefaultCategories;
+        window.saveCategoryToFirestore = async (catData) => {
+            if (!currentUser) throw new Error("User not logged in");
+            const baseCollectionPath = `artifacts/${appId}/users/${currentUser.uid}`;
+            await setDoc(doc(db, baseCollectionPath, 'categories', catData.name), catData);
+        };
+
+        window.deleteNoteFromFirestore = async (noteId) => {
+            if (!confirm('هل أنت متأكد من الحذف؟')) return;
+            const baseCollectionPath = `artifacts/${appId}/users/${currentUser.uid}`;
+            await deleteDoc(doc(db, baseCollectionPath, 'notes', noteId));
+        };
     </script>
+
+    <!-- Main Logic Script -->
     <script>
-        // المتغيرات والإعدادات الرئيسية
-        const API_KEY = "AIzaSyAS3iCmoqqhSyodCeVMD7gl42Bfgz4gemk"; 
-        const GEMINI_MODEL = 'gemini-2.5-flash-preview-05-20';
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
-        const MAX_RETRIES = 5;
-        // حد الحجم الأقصى لملف الصوت الذي يمكن لـ Gemini معالجته بكفاءة (5 ميجابايت)
-        const MAX_FILE_SIZE_MB = 5; 
-        const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+        const apiKey = "AIzaSyBks1niA75pswcefkI1dKmxLd2hNjzowgk"; 
+        const GEMINI_MODEL = 'gemini-2.5-flash-preview-09-2025';
 
-        // حالة واجهة المستخدم
-        let selectedCategoryFilter = 'all';
-
-        // حالة التسجيل المباشر
+        // --- حالة التطبيق ---
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
-        let recordedFile = null; // سيتم تخزين الملف المسجل هنا
-        let recordingStartTime = 0; // لبدء حساب المدة
+        let recordingStartTime = 0;
+        let recordingInterval;
+        let recordedFile = null;
+        let selectedCategoryFilter = 'all';
 
-        /**
-         * تحويل ملف الصوت إلى Base64
-         * @param {File} file - ملف الصوت
-         * @returns {Promise<string>} Base64 data string
-         */
+        // --- دوال مساعدة ---
+        function formatDuration(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-5 left-5 px-6 py-3 rounded-lg text-white shadow-lg z-50 transform transition-all duration-300 translate-y-10 opacity-0 ${type === 'error' ? 'bg-red-500' : 'bg-green-600'}`;
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        }
+
+        // --- معالجة الصوت والذكاء الاصطناعي ---
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -216,614 +220,424 @@
                 reader.onerror = error => reject(error);
             });
         }
-        
-        /**
-         * تنسيق المدة من الثواني إلى دقيقة وثانية
-         * @param {number} totalSeconds - إجمالي الثواني
-         * @returns {string} المدة المنسقة
-         */
-        function formatDuration(totalSeconds) {
-            const totalSecondsRounded = Math.round(totalSeconds);
-            const minutes = Math.floor(totalSecondsRounded / 60);
-            const seconds = totalSecondsRounded % 60;
-            if (minutes > 0) {
-                return `${minutes} دقيقة و ${seconds} ثانية`;
-            }
-            return `${seconds} ثانية`;
-        }
 
-        /**
-         * محاكاة منطق التحويل النصي والترجمة باستخدام Gemini API
-         * @param {string} base64Audio - بيانات الصوت بترميز Base64
-         * @param {string} mimeType - نوع MIME للملف (مثل audio/mpeg)
-         * @returns {Promise<{text: string, translation: string}>}
-         */
-        async function processAudioWithGemini(base64Audio, mimeType) {
-            console.log(`Sending audio to Gemini. MimeType: ${mimeType}. Payload size (Base64 length): ${base64Audio.length}`);
+        async function processWithGemini(base64Data, mimeType) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
             
-            if (!API_KEY) {
-                return {
-                    text: '⚠️ النص المحوّل: تم تشغيل وضع المحاكاة. الرجاء توفير مفتاح Gemini API للتحويل الفعلي.',
-                    translation: '⚠️ الترجمة: يتم عرض هذا النص كترجمة افتراضية لأنه لا يوجد مفتاح API.',
-                };
-            }
+            const prompt = `
+            You are an expert transcriber and translator.
+            1. Transcribe the audio exactly as spoken (Arabic or English).
+            2. Translate the transcription to Arabic (if it's not already Arabic).
+            3. Return ONLY a valid JSON object without markdown formatting:
+            { "transcription": "...", "translation": "..." }
+            `;
 
-            const prompt = "Please transcribe the attached audio and then provide a direct Arabic translation of the transcription. Format the response as a JSON object with two fields: 'transcription' and 'arabicTranslation'.";
-            
             const payload = {
                 contents: [{
                     parts: [
                         { text: prompt },
-                        {
-                            inlineData: {
-                                mimeType: mimeType,
-                                data: base64Audio
-                            }
-                        }
+                        { inlineData: { mimeType: mimeType, data: base64Data } }
                     ]
                 }],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            "transcription": { "type": "STRING", "description": "The full transcribed text in the original language." },
-                            "arabicTranslation": { "type": "STRING", "description": "The translation of the transcription into Arabic." }
-                        }
-                    },
-                }
+                generationConfig: { responseMimeType: "application/json" }
             };
 
-            let lastError = null;
-            for (let i = 0; i < MAX_RETRIES; i++) {
+            for (let i = 0; i < 3; i++) {
                 try {
-                    const response = await fetch(API_URL, {
+                    const response = await fetch(url, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(payload)
                     });
 
-                    if (!response.ok) {
-                        const errorBody = await response.json();
-                        throw new Error(`API response error: ${response.statusText}. Details: ${JSON.stringify(errorBody)}`);
-                    }
-
-                    const result = await response.json();
-                    const jsonString = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!response.ok) throw new Error(`Gemini API Error: ${response.status}`);
                     
-                    if (jsonString) {
-                        const parsedJson = JSON.parse(jsonString);
-                        console.log("Gemini API successful.");
-                        return { 
-                            text: parsedJson.transcription || 'لم يتم العثور على نص محوّل.', 
-                            translation: parsedJson.arabicTranslation || 'لم يتم العثور على ترجمة عربية.' 
-                        };
-                    }
-                    throw new Error("Invalid response structure from Gemini or empty content.");
-
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`Attempt ${i + 1} failed. Retrying in ${1000 * (2 ** i)}ms...`, error);
-                    await new Promise(resolve => setTimeout(resolve, 1000 * (2 ** i)));
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!text) throw new Error("Empty response from Gemini");
+                    
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.warn(`Attempt ${i+1} failed:`, e);
+                    if (i === 2) throw e;
+                    await new Promise(r => setTimeout(r, 1000 * (i+1)));
                 }
             }
-            console.error("All retries failed.", lastError);
-            throw new Error(`Failed to process audio after ${MAX_RETRIES} attempts. Last error: ${lastError?.message || "Unknown error"}`);
         }
 
-        /**
-         * بدء أو إيقاف التسجيل الصوتي
-         */
+        // --- التسجيل الصوتي ---
         async function toggleRecording() {
-            const recordBtn = document.getElementById('record-toggle-btn');
-            const audioUploadInput = document.getElementById('audio-upload');
-            const recordStatus = document.getElementById('record-status');
-            const recordingTime = document.getElementById('recording-time');
-            const audioFileNameDisplay = document.getElementById('audio-file-name');
-
+            const btn = document.getElementById('record-btn');
+            const statusText = document.getElementById('record-status');
+            const timer = document.getElementById('record-timer');
 
             if (!isRecording) {
-                // محاولة بدء التسجيل
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    // نستخدم webm/ogg لضمان التوافق الأفضل مع المتصفحات وGemini
-                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); 
+                    mediaRecorder = new MediaRecorder(stream);
                     audioChunks = [];
-                    recordedFile = null; // مسح الملف المسجل السابق
-                    audioUploadInput.disabled = true; // تعطيل التحميل أثناء التسجيل
-                    audioFileNameDisplay.classList.add('hidden');
                     
-                    mediaRecorder.ondataavailable = (event) => {
-                        audioChunks.push(event.data);
-                    };
-
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
                     mediaRecorder.onstop = () => {
-                        const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                        // إنشاء كائن File وهمي ليتناسب مع منطق الإرسال
-                        recordedFile = new File([audioBlob], `recorded-note-${Date.now()}.webm`, { type: mediaRecorder.mimeType });
-                        
-                        // إظهار الملف المسجل في شريط الحالة
-                        audioFileNameDisplay.textContent = `تم تسجيل: ${formatDuration((Date.now() - recordingStartTime) / 1000)}`;
-                        audioFileNameDisplay.classList.remove('hidden');
-
-                        // إيقاف مسارات الميكروفون
-                        stream.getTracks().forEach(track => track.stop());
+                        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                        recordedFile = new File([blob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
+                        document.getElementById('file-info').classList.remove('hidden');
+                        document.getElementById('filename-display').textContent = "تم تسجيل مقطع صوتي";
+                        // Reset file input if recording is used
+                        document.getElementById('file-upload').value = '';
+                        stream.getTracks().forEach(t => t.stop());
                     };
 
                     mediaRecorder.start();
                     isRecording = true;
                     recordingStartTime = Date.now();
                     
-                    // تحديث الواجهة
-                    recordBtn.innerHTML = '<span class="recording-pulse">🔴</span> إيقاف التسجيل';
-                    recordBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
-                    recordBtn.classList.add('bg-gray-500', 'hover:bg-gray-600');
-                    recordStatus.textContent = 'جاري التسجيل...';
-                    recordStatus.classList.add('text-red-500');
+                    btn.innerHTML = '<i class="fas fa-stop"></i>';
+                    btn.classList.add('bg-red-600', 'animate-pulse');
+                    statusText.textContent = "جاري التسجيل...";
                     
-                    // بدء عداد الوقت
-                    let seconds = 0;
-                    window.recordingInterval = setInterval(() => {
-                        seconds++;
-                        recordingTime.textContent = formatDuration(seconds);
+                    recordingInterval = setInterval(() => {
+                        const seconds = (Date.now() - recordingStartTime) / 1000;
+                        timer.textContent = formatDuration(seconds);
                     }, 1000);
 
-                    showMessage("بدأ التسجيل. الرجاء التحدث بوضوح.", 'bg-blue-500');
-
-                } catch (error) {
-                    console.error("Error accessing microphone:", error);
-                    showMessage(`فشل الوصول إلى الميكروفون. تأكد من إعطاء إذن استخدام الميكروفون للمتصفح: ${error.message}`, 'bg-red-600');
-                    // إعادة تعيين الواجهة في حالة الفشل
-                    isRecording = false;
-                    recordBtn.innerHTML = '<span class="ml-1">🎤</span> بدء التسجيل';
-                    recordBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-                    recordBtn.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+                } catch (e) {
+                    showToast("تعذر الوصول للميكروفون", "error");
+                    console.error(e);
                 }
-
             } else {
-                // إيقاف التسجيل
                 mediaRecorder.stop();
                 isRecording = false;
+                clearInterval(recordingInterval);
                 
-                // إيقاف عداد الوقت
-                clearInterval(window.recordingInterval);
-
-                // تحديث الواجهة
-                recordBtn.innerHTML = '<span class="ml-1">🎤</span> بدء التسجيل';
-                recordBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-                recordBtn.classList.remove('bg-gray-500', 'hover:bg-gray-600');
-                audioUploadInput.disabled = true; // يبقى معطلاً لأن هناك ملف مُسجل
-                recordStatus.textContent = 'تم الإيقاف. جاهز للحفظ.';
-                recordStatus.classList.remove('text-red-500');
-                
-                showMessage("تم إيقاف التسجيل. يمكنك الآن حفظ الملاحظة.", 'bg-green-600');
+                btn.innerHTML = '<i class="fas fa-microphone"></i>';
+                btn.classList.remove('bg-red-600', 'animate-pulse');
+                btn.classList.add('bg-indigo-600');
+                statusText.textContent = "تم الإيقاف";
             }
         }
 
-        /**
-         * معالجة إرسال ملاحظة جديدة
-         */
-        async function handleNewNoteSubmission(e) {
-            e.preventDefault();
+        // --- إدارة الواجهة ---
+        window.renderCategories = () => {
+            const list = document.getElementById('category-list');
+            const select = document.getElementById('category-select');
             
-            const form = e.target;
-            const categoryId = form.elements['category-select'].value;
-            const submitButton = form.elements['submit-note-btn'];
-            const loadingIndicator = document.getElementById('loading-spinner');
-            
-            // تحديد مصدر الملف
-            let sourceFile = null;
-            
-            const uploadedFile = form.elements['audio-upload'].files[0];
-            
-            // الأولوية للملف المُحمَّل، ثم الملف المُسجَّل
-            if (uploadedFile) {
-                sourceFile = uploadedFile;
-            } else if (recordedFile) {
-                sourceFile = recordedFile;
-            } else {
-                showMessage("الرجاء إما تحميل ملف أو التسجيل مباشرة.", 'bg-red-500');
-                return;
-            }
-
-            if (!categoryId) {
-                showMessage("الرجاء اختيار فئة للملاحظة.", 'bg-red-500');
-                return;
-            }
-            if (!window.userId) {
-                showMessage("الرجاء الانتظار حتى يتم تحميل حساب المستخدم.", 'bg-red-500');
-                return;
-            }
-            if (isRecording) {
-                 showMessage("الرجاء إيقاف التسجيل أولاً قبل الحفظ.", 'bg-red-500');
-                 return;
-            }
-            
-            // التحقق من حجم الملف
-            if (sourceFile.size > MAX_FILE_SIZE_BYTES) {
-                showMessage(`حجم الملف (${(sourceFile.size / 1024 / 1024).toFixed(2)}MB) يتجاوز الحد الأقصى المسموح به (${MAX_FILE_SIZE_MB}MB). الرجاء تسجيل مقطع أقصر أو تحميل ملف أصغر.`, 'bg-red-500');
-                return;
-            }
-
-            submitButton.disabled = true;
-            loadingIndicator.classList.remove('hidden');
-
-            try {
-                // 1. تحويل الملف إلى Base64
-                const base64Audio = await fileToBase64(sourceFile);
-                const mimeType = sourceFile.type || 'audio/webm'; 
-
-                // 2. معالجة الصوت باستخدام Gemini
-                const results = await processAudioWithGemini(base64Audio, mimeType);
-
-                // 3. حفظ الملاحظة في Firestore
-                const baseCollectionPath = `/artifacts/${window.appId}/users/${window.userId}`;
-                // ** استخدام المرجع العام لـ collection **
-                const notesRef = window.firestoreCollection(window.db, `${baseCollectionPath}/notes`);
-                
-                // حساب المدة
-                const durationSeconds = (Date.now() - recordingStartTime) / 1000;
-                const durationDisplay = formatDuration(durationSeconds);
-                
-                const newNote = {
-                    categoryId: categoryId,
-                    audioFileName: sourceFile.name,
-                    duration: durationDisplay,
-                    transcription: results.text,
-                    translation: results.translation,
-                    // ** استخدام المرجع العام لـ serverTimestamp **
-                    createdAt: window.firestoreServerTimestamp(),
-                };
-
-                // ** استخدام المرجع العام لـ addDoc **
-                await window.firestoreAddDoc(notesRef, newNote);
-                showMessage("تم حفظ الملاحظة بنجاح! جاري معالجة النص والترجمة.", 'bg-green-600');
-                closeAddNoteModal();
-
-            } catch (error) {
-                console.error("Submission Error:", error);
-                showMessage(`فشل حفظ الملاحظة. رسالة الخطأ: ${error.message}. يرجى التحقق من وحدة التحكم.`, 'bg-red-500');
-            } finally {
-                submitButton.disabled = false;
-                loadingIndicator.classList.add('hidden');
-            }
-        }
-
-        /**
-         * معالجة إضافة فئة جديدة
-         */
-        async function handleAddCategory() {
-            const categoryNameInput = document.getElementById('new-category-name');
-            const newName = categoryNameInput.value.trim();
-
-            if (!newName) {
-                showMessage("الرجاء إدخال اسم للفئة.", 'bg-red-500');
-                return;
-            }
-
-            // تحقق من عدم تكرار الفئة
-            if (window.categories.some(cat => cat.name === newName)) {
-                showMessage("هذه الفئة موجودة بالفعل.", 'bg-yellow-500');
-                return;
-            }
-
-            try {
-                const baseCollectionPath = `/artifacts/${window.appId}/users/${window.userId}`;
-                // ** استخدام المرجع العام لـ collection **
-                const categoriesRef = window.firestoreCollection(window.db, `${baseCollectionPath}/categories`);
-                
-                const newCategory = { 
-                    name: newName, 
-                    icon: '🔖', // أيقونة افتراضية
-                    color: 'pink' // لون افتراضي
-                };
-                
-                // استخدام اسم الفئة كـ ID لضمان التفرد
-                // ** استخدام المراجع العامة لـ setDoc و doc **
-                await window.firestoreSetDoc(window.firestoreDoc(categoriesRef, newName), newCategory); 
-                showMessage(`تمت إضافة فئة "${newName}" بنجاح!`, 'bg-indigo-500');
-                categoryNameInput.value = '';
-
-            } catch (error) {
-                console.error("Error adding category:", error);
-                showMessage(`فشل إضافة الفئة: ${error.message}`, 'bg-red-500');
-            }
-        }
-
-        /**
-         * عرض رسائل للمستخدم (بديل لـ alert)
-         */
-        function showMessage(message, bgColor) {
-            const messageBox = document.getElementById('message-box');
-            messageBox.textContent = message;
-            messageBox.className = `${bgColor} text-white p-3 rounded-lg fixed top-4 right-4 z-50 shadow-xl transition-opacity duration-300`;
-            messageBox.classList.remove('opacity-0', 'pointer-events-none');
-            
-            setTimeout(() => {
-                messageBox.classList.add('opacity-0', 'pointer-events-none');
-            }, 3000);
-        }
-
-        // ------------------ إدارة واجهة المستخدم ------------------
-
-        /**
-         * عرض قائمة الفئات وتحديث القائمة المنسدلة
-         */
-        function renderCategories() {
-            const categoriesContainer = document.getElementById('categories-list');
-            const categorySelect = document.getElementById('category-select');
-            
-            categoriesContainer.innerHTML = '';
-            categorySelect.innerHTML = `<option value="" disabled selected>${t('mynote.form.choose_category')}</option>`;
-            
-            // إضافة زر "عرض الكل"
-            categoriesContainer.innerHTML += `
-                <button onclick="setSelectedCategoryFilter('all')" class="p-2 w-full text-right text-sm rounded-lg transition duration-200 ${selectedCategoryFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-gray-100'}">
-                    <span class="ml-2">📂</span> ${t('mynote.sidebar.all')}
+            // Sidebar List
+            let html = `
+                <button onclick="filterNotes('all')" 
+                    class="w-full text-right px-4 py-2 rounded-lg mb-2 transition-colors flex items-center gap-2 
+                    ${selectedCategoryFilter === 'all' ? 'bg-indigo-600 text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200'}">
+                    <i class="fas fa-layer-group"></i> ${t('mynote.sidebar.all')}
                 </button>
             `;
+            
+            // Select Options
+            let options = `<option value="" disabled selected>${t('mynote.form.choose_category')}</option>`;
 
             window.categories.forEach(cat => {
-                // عرض الفئات في الشريط الجانبي (للتصفية)
-                categoriesContainer.innerHTML += `
-                    <button onclick="setSelectedCategoryFilter('${cat.id}')" class="p-2 w-full text-right text-sm rounded-lg transition duration-200 ${selectedCategoryFilter === cat.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-gray-100'}">
-                        <span class="ml-2">${cat.icon || '🔖'}</span> ${cat.name}
+                html += `
+                    <button onclick="filterNotes('${cat.id}')" 
+                        class="w-full text-right px-4 py-2 rounded-lg mb-2 transition-colors flex items-center gap-2 
+                        ${selectedCategoryFilter === cat.id ? 'bg-indigo-600 text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200'}">
+                        <span>${cat.icon}</span> ${cat.name}
                     </button>
                 `;
-                
-                // عرض الفئات في القائمة المنسدلة (لإضافة ملاحظة)
-                categorySelect.innerHTML += `<option value="${cat.id}">${cat.icon || '🔖'} ${cat.name}</option>`;
+                options += `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`;
             });
 
-            // ضمان وجود الفئات الافتراضية إذا كانت قاعدة البيانات فارغة
-            if (window.categories.length === 0 && window.userId) {
-                initializeDefaultCategories();
-            }
-            
-            renderNotes(); // تحديث قائمة الملاحظات بعد تحديث الفئات
-        }
-
-        window.setSelectedCategoryFilter = (categoryId) => {
-            selectedCategoryFilter = categoryId;
-            // إعادة عرض الفئات لتحديث حالة الزر النشط
-            renderCategories(); 
-            // إعادة عرض الملاحظات لتطبيق الفلتر
-            renderNotes(); 
+            list.innerHTML = html;
+            select.innerHTML = options;
         };
 
-        /**
-         * عرض قائمة الملاحظات بناءً على الفلتر المحدد
-         */
-        function renderNotes() {
-            const notesContainer = document.getElementById('notes-list');
-            notesContainer.innerHTML = '';
-            
-            const filteredNotes = window.notes.filter(note => 
-                selectedCategoryFilter === 'all' || note.categoryId === selectedCategoryFilter
-            );
+        window.filterNotes = (catId) => {
+            selectedCategoryFilter = catId;
+            renderCategories(); // لتحديث الزر النشط
+            renderNotes();
+        };
 
-            if (filteredNotes.length === 0) {
-                notesContainer.innerHTML = `
-                    <div class="p-6 text-center text-gray-500 bg-white rounded-xl shadow-md" data-i18n="mynote.empty">
-                        ${t('mynote.empty')}
+        window.renderNotes = () => {
+            const container = document.getElementById('notes-grid');
+            const filtered = window.notes.filter(n => selectedCategoryFilter === 'all' || n.categoryId === selectedCategoryFilter);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-10 text-gray-400">
+                        <i class="fas fa-inbox text-4xl mb-3"></i>
+                        <p>${t('mynote.empty')}</p>
                     </div>
                 `;
                 return;
             }
 
-            filteredNotes.forEach(note => {
-                const category = window.categories.find(c => c.id === note.categoryId);
-                const categoryName = category ? category.name : 'فئة محذوفة';
-                const categoryIcon = category ? category.icon : '❓';
-                const colorClass = category?.color || 'gray';
+            container.innerHTML = filtered.map(note => {
+                const cat = window.categories.find(c => c.id === note.categoryId) || {name: 'غير مصنف', icon: '❓', color: 'gray'};
+                const date = note.createdAt ? new Date(note.createdAt.seconds * 1000).toLocaleDateString('ar-EG') : '...';
                 
-                // دالة مساعدة لتحديد لون الشريط الجانبي
-                const colorMap = {
-                    'blue': 'bg-blue-100 text-blue-700 border-blue-500',
-                    'green': 'bg-green-100 text-green-700 border-green-500',
-                    'purple': 'bg-purple-100 text-purple-700 border-purple-500',
-                    'yellow': 'bg-yellow-100 text-yellow-700 border-yellow-500',
-                    'pink': 'bg-pink-100 text-pink-700 border-pink-500',
-                    'gray': 'bg-gray-100 text-gray-700 border-gray-500'
-                };
-                const tagColorClass = colorMap[colorClass] || colorMap['gray'];
+                return `
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow border-t-4 border-${cat.color}-500 relative group">
+                    <button onclick="deleteNoteFromFirestore('${note.id}')" class="absolute top-3 left-3 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-semibold px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-600 dark:text-gray-300">
+                            ${cat.icon} ${cat.name}
+                        </span>
+                        <span class="text-xs text-gray-400">${date}</span>
+                    </div>
 
-                const noteCard = `
-                    <div class="bg-white p-4 rounded-xl shadow-lg border-r-4 border-${colorClass}-500">
-                        <!-- العنوان والفئة -->
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="text-lg font-bold text-gray-800">${note.audioFileName}</h3>
-                            <span class="text-xs font-medium px-3 py-1 ${tagColorClass} rounded-full">
-                                ${categoryIcon} ${categoryName}
-                            </span>
+                    <h3 class="font-bold text-gray-800 dark:text-white mb-2 truncate">${note.audioFileName || 'ملاحظة نصية'}</h3>
+                    
+                    <div class="space-y-3">
+                        <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                            <p class="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                                <i class="fas fa-align-right"></i> ${t('mynote.note.transcription')}
+                            </p>
+                            <p class="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
+                                ${note.transcription || '...'}
+                            </p>
                         </div>
-                        
-                        <!-- التاريخ والمدة -->
-                        <p class="text-xs text-gray-500 mb-4">
-                            ${note.createdAt ? new Date(note.createdAt.toDate()).toLocaleString('ar-EG') : 'جارٍ التحميل...'} | المدة: ${note.duration}
-                        </p>
 
-                        <!-- النص المحوّل -->
-                        <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <p class="font-semibold text-sm text-gray-700 mb-1 flex items-center">
-                                <span class="ml-1 text-xl">📝</span> ${t('mynote.note.transcription')}
+                        <div class="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg">
+                            <p class="text-xs text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
+                                <i class="fas fa-language"></i> ${t('mynote.note.translation')}
                             </p>
-                            <p class="text-sm text-gray-600">${note.transcription || 'جاري معالجة النص بواسطة الذكاء الاصطناعي...'}</p>
-                        </div>
-                        
-                        <!-- الترجمة العربية -->
-                        <div class="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-                            <p class="font-semibold text-sm text-indigo-800 mb-1 flex items-center">
-                                <span class="ml-1 text-xl">🌐</span> ${t('mynote.note.translation')}
+                            <p class="text-sm text-indigo-800 dark:text-indigo-200 leading-relaxed">
+                                ${note.translation || '...'}
                             </p>
-                            <p class="text-sm text-indigo-700">${note.translation || 'جاري معالجة الترجمة...'}</p>
                         </div>
                     </div>
+                </div>
                 `;
-                notesContainer.innerHTML += noteCard;
-            });
-        }
+            }).join('');
+        };
 
-        /**
-         * فتح وإغلاق المودال
-         */
-        function openAddNoteModal() {
-            document.getElementById('add-note-modal').classList.remove('hidden');
+        // --- التعامل مع النموذج ---
+        window.openModal = () => {
+            document.getElementById('modal').classList.remove('hidden');
+            recordedFile = null;
+            document.getElementById('file-upload').value = '';
+            document.getElementById('file-info').classList.add('hidden');
+            // إعادة تعيين وقت التسجيل في الواجهة
+            document.getElementById('record-timer').textContent = "0:00";
+        };
+
+        window.closeModal = () => {
+            document.getElementById('modal').classList.add('hidden');
+            if (isRecording) toggleRecording(); // إيقاف التسجيل إذا كان يعمل
+        };
+
+        window.handleFileSelect = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // استخدام الملف المرفوع وتجاهل المسجل
+                recordedFile = null; 
+                document.getElementById('file-info').classList.remove('hidden');
+                document.getElementById('filename-display').textContent = file.name;
+            }
+        };
+
+        window.submitNote = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            const catId = document.getElementById('category-select').value;
+            const fileInput = document.getElementById('file-upload');
             
-            // إعادة تعيين حالة التسجيل عند الفتح
-            recordedFile = null; 
-            document.getElementById('audio-upload').value = ''; // مسح ملف التحميل
-            document.getElementById('audio-upload').disabled = false; // تفعيل التحميل
-            document.getElementById('audio-file-name').classList.add('hidden');
-            document.getElementById('recording-time').textContent = '0 ثانية';
-            document.getElementById('record-status').textContent = 'جاهز للتسجيل';
-            document.getElementById('record-status').classList.remove('text-red-500');
+            // تحديد مصدر الملف: الأولوية للمرفوع ثم المسجل
+            let finalFile = fileInput.files[0] || recordedFile;
 
-            // تأكد من أن زر التسجيل يعرض الحالة الافتراضية
-            const recordBtn = document.getElementById('record-toggle-btn');
-            recordBtn.innerHTML = '<span class="ml-1">🎤</span> بدء التسجيل';
-            recordBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-            recordBtn.classList.remove('bg-gray-500', 'hover:bg-gray-600');
-
-            if (isRecording) {
-                 mediaRecorder.stop();
-                 isRecording = false;
-                 clearInterval(window.recordingInterval);
+            // 1. التحقق من الحقول
+            if (!catId) {
+                showToast("الرجاء اختيار فئة للملاحظة", "error");
+                return;
             }
-        }
-
-        function closeAddNoteModal() {
-            document.getElementById('add-note-modal').classList.add('hidden');
-            document.getElementById('new-note-form').reset();
-             // إيقاف التسجيل في حال كان مازال يعمل عند الإغلاق
-            if (isRecording && mediaRecorder) {
-                mediaRecorder.stop();
-                isRecording = false;
-                clearInterval(window.recordingInterval);
+            if (!finalFile) {
+                showToast("الرجاء تسجيل صوت أو رفع ملف", "error");
+                return;
             }
-             // إعادة تعيين الحالة بعد الإغلاق
-            recordedFile = null; 
-            document.getElementById('audio-upload').disabled = false;
-            document.getElementById('audio-file-name').classList.add('hidden');
-        }
+
+            if (finalFile.size > 10 * 1024 * 1024) {
+                showToast("حجم الملف كبير جداً (الحد الأقصى 10 ميجابايت)", "error");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
+
+            try {
+                // 2. التحويل إلى Base64
+                const base64 = await fileToBase64(finalFile);
+                
+                // 3. المعالجة مع Gemini
+                const result = await processWithGemini(base64, finalFile.type || 'audio/webm');
+
+                // 4. الحفظ في Firestore (باستخدام الدالة المساعدة المعرفة مسبقاً)
+                await saveNoteToFirestore({
+                    categoryId: catId,
+                    audioFileName: finalFile.name,
+                    transcription: result.transcription,
+                    translation: result.translation,
+                    duration: finalFile === recordedFile ? formatDuration((Date.now() - recordingStartTime)/1000) : "ملف مرفق"
+                });
+
+                showToast("تم الحفظ بنجاح!");
+                closeModal();
+            } catch (error) {
+                console.error(error);
+                showToast("حدث خطأ: " + error.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'حفظ الملاحظة';
+            }
+        };
+
+        window.addCategory = async () => {
+            const input = document.getElementById('new-cat-input');
+            const name = input.value.trim();
+            if (!name) return;
+            
+            // التحقق من التكرار
+            if (window.categories.some(c => c.name === name)) {
+                showToast("هذه الفئة موجودة بالفعل", "error");
+                return;
+            }
+
+            try {
+                await saveCategoryToFirestore({
+                    name: name,
+                    icon: '🔖',
+                    color: 'pink'
+                });
+                input.value = '';
+                showToast("تمت إضافة الفئة");
+            } catch (e) {
+                showToast("خطأ في إضافة الفئة: " + e.message, "error");
+            }
+        };
+
+        // إغلاق المودال عند النقر خارجه
+        window.onclick = (e) => {
+            const modal = document.getElementById('modal');
+            if (e.target === modal) closeModal();
+        };
     </script>
 </head>
-<body class="bg-gray-50 flex flex-col min-h-screen">
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-white min-h-screen transition-colors duration-300">
 
-    <!-- رسالة التنبيه (بديل لـ alert) -->
-    <div id="message-box" class="opacity-0 pointer-events-none transition duration-300"></div>
-
-    <!-- الشريط الجانبي للفئات -->
-    <div class="hidden md:block fixed right-0 top-0 h-full w-64 bg-white border-l shadow-xl p-4 overflow-y-auto">
-        <h2 class="text-xl font-extrabold text-indigo-700 mb-6 border-b pb-2" data-i18n="mynote.sidebar.categories">📂 الفئات</h2>
-        
-        <!-- إضافة فئة جديدة -->
-        <div class="mb-6 p-3 bg-gray-50 rounded-lg shadow-inner">
-            <input type="text" id="new-category-name" data-i18n-attr="placeholder:mynote.form.new_category_placeholder" placeholder="اسم فئة جديدة..." class="w-full p-2 text-sm border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
-            <button id="add-category-btn" class="mt-2 w-full bg-indigo-500 text-white p-2 text-sm font-semibold rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md">
-                + <span data-i18n="mynote.btn.add_category">إضافة فئة</span>
-            </button>
-        </div>
-
-        <!-- قائمة الفئات للتصفية -->
-        <div id="categories-list" class="space-y-2">
-            <!-- الفئات يتم تحميلها بواسطة renderCategories() -->
-        </div>
-        
-        <div class="mt-8 pt-4 border-t text-xs text-gray-400">
-             <p><span data-i18n="mynote.user.label">المستخدم:</span> <span id="user-id-display" class="font-mono text-gray-500 text-sm break-all" data-i18n="mynote.user.loading">جاري التحميل...</span></p>
-        </div>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 bg-white dark:bg-gray-900 z-50 flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+        <p class="text-gray-500 dark:text-gray-400">جاري الاتصال بقاعدة البيانات...</p>
     </div>
 
-    <!-- المحتوى الرئيسي للملاحظات -->
-    <main class="flex-grow p-4 md:mr-64 transition-all duration-300" id="main-content">
-        <header class="mb-8 p-4 bg-white rounded-xl shadow-lg flex justify-between items-center">
-            <h1 class="text-3xl font-extrabold text-gray-800" data-i18n="mynote.title">ملاحظاتي 🎧</h1>
-            <button id="add-note-btn" class="flex items-center bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition duration-150 transform hover:scale-105">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                <span data-i18n="mynote.btn.add_note">ملاحظة صوتية جديدة</span>
-            </button>
-        </header>
-
-        <!-- قائمة الملاحظات -->
-        <div id="notes-list" class="space-y-6">
-            <!-- سيتم ملؤها بواسطة renderNotes() -->
-            <div class="p-6 text-center text-gray-500 bg-white rounded-xl shadow-md" data-i18n="mynote.loading_notes">
-                جاري تحميل الملاحظات...
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex-shrink-0 hidden md:flex flex-col">
+            <div class="p-6 border-b dark:border-gray-700">
+                <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                    <i class="fas fa-brain"></i> ملاحظاتي
+                </h1>
             </div>
-        </div>
-
-    </main>
-
-    <!-- Site Footer -->
-    <footer class="mt-10 border-t bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex flex-col md:flex-row items-center justify-between gap-3">
-        <div>© <span id="footerYear"></span> منصة الطالب الذكي</div>
-        <div class="space-x-4 space-x-reverse">
-        </div>
-      </div>
-    </footer>
-    <script>try{document.getElementById('footerYear').textContent=new Date().getFullYear()}catch(e){}</script>
-
-    <!-- مودال إضافة ملاحظة جديدة -->
-    <div id="add-note-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md mx-auto rounded-xl shadow-2xl p-6 transform transition-all duration-300">
             
-            <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 class="text-xl font-bold text-indigo-700" data-i18n="mynote.modal.title">إضافة ملاحظة صوتية</h3>
-                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+            <div class="p-4 flex-1 overflow-y-auto">
+                <div class="mb-4">
+                    <h2 class="text-xs font-semibold text-gray-400 uppercase mb-3 px-2">الفئات</h2>
+                    <div id="category-list">
+                        <!-- Categories injected here -->
+                    </div>
+                </div>
+                
+                <div class="mt-4 pt-4 border-t dark:border-gray-700">
+                    <div class="flex gap-2">
+                        <input id="new-cat-input" type="text" placeholder="فئة جديدة..." class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 ring-indigo-500">
+                        <button onclick="addCategory()" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg transition-colors">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <form id="new-note-form" class="space-y-4">
-                
-                <!-- اختيار الفئة -->
-                <div>
-                    <label for="category-select" class="block text-sm font-medium text-gray-700 mb-1" data-i18n="mynote.form.category_label">اختر فئة الملاحظة:</label>
-                    <select id="category-select" name="category-select" required 
-                            class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <!-- الخيارات يتم ملؤها بواسطة JS -->
-                    </select>
-                </div>
-                
-                <!-- خيار التسجيل المباشر -->
-                <div class="border-t pt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="mynote.form.live_recording">التسجيل المباشر:</label>
-                    <div class="flex items-center justify-between space-x-2 rtl:space-x-reverse mb-2 p-2 bg-gray-50 rounded-lg">
-                        <span id="record-status" class="text-sm font-semibold text-gray-600" data-i18n="mynote.form.status.ready">جاهز للتسجيل</span>
-                        <span id="recording-time" class="text-lg font-mono text-gray-800" data-i18n="mynote.form.time_zero">0 ثانية</span>
-                    </div>
-                    
-                    <button type="button" id="record-toggle-btn"
-                            class="w-full flex items-center justify-center bg-red-500 text-white p-3 rounded-lg font-semibold hover:bg-red-600 transition duration-150 shadow-md">
-                        <span class="ml-1">🎤</span> بدء التسجيل
-                    </button>
-                    <p class="text-xs text-gray-500 mt-2 text-center" data-i18n="mynote.form.record_hint">انقر للبدء، ثم انقر مجدداً للإيقاف.</p>
-                </div>
-
-                <div class="border-t pt-4">
-                     <!-- خيار التحميل (يتم تعطيله أثناء التسجيل) -->
-                    <label for="audio-upload" class="block text-sm font-medium text-gray-700 mb-1" data-i18n="mynote.form.upload_audio">أو تحميل ملف صوتي</label>
-                    <input type="file" id="audio-upload" name="audio-upload" accept="audio/*"
-                           class="w-full p-3 border border-gray-300 rounded-lg shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                    <p id="audio-file-name" class="text-xs text-green-600 mt-1 hidden font-medium" data-i18n="mynote.form.uploaded_audio">تم تسجيل ملف صوتي.</p>
-                </div>
-
-                <!-- زر الإرسال وحالة التحميل -->
-                <button type="submit" id="submit-note-btn"
-                        class="w-full flex items-center justify-center bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition duration-150 shadow-lg disabled:bg-gray-400">
-                <span id="loading-spinner" class="hidden animate-spin h-5 w-5 ml-2 border-2 border-white border-t-transparent rounded-full"></span>
-                    <span data-i18n="mynote.form.submit">${t('mynote.form.submit')}</span>
+            <div class="p-4 border-t dark:border-gray-700">
+                <button onclick="toggleTheme()" class="w-full flex items-center justify-center gap-2 py-2 text-gray-500 hover:text-gray-800 dark:hover:text-white transition-colors">
+                    <i class="fas fa-adjust"></i> تغيير المظهر
                 </button>
-            </form>
+            </div>
+        </aside>
 
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            <!-- Mobile Header -->
+            <header class="md:hidden bg-white dark:bg-gray-800 p-4 flex justify-between items-center shadow-sm z-10">
+                <h1 class="font-bold text-lg text-indigo-600">ملاحظاتي</h1>
+                <button onclick="toggleTheme()" class="text-gray-500"><i class="fas fa-adjust"></i></button>
+            </header>
+
+            <!-- Scrollable Area -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-8">
+                <div id="notes-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
+                    <!-- Notes injected here -->
+                </div>
+            </div>
+
+            <!-- Floating Action Button -->
+            <button onclick="openModal()" class="fixed bottom-6 left-6 md:bottom-8 md:left-8 bg-indigo-600 hover:bg-indigo-700 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-xl transition-transform hover:scale-110 z-20">
+                <i class="fas fa-microphone"></i>
+            </button>
+        </main>
+
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transform transition-all scale-100">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">تسجيل ملاحظة جديدة</h2>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+                </div>
+
+                <form onsubmit="submitNote(event)">
+                    <!-- Category Select -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">التصنيف</label>
+                        <select id="category-select" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 outline-none focus:ring-2 ring-indigo-500 transition-all">
+                            <!-- Options injected -->
+                        </select>
+                    </div>
+
+                    <!-- Audio Controls -->
+                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 mb-6 text-center border-2 border-dashed border-gray-200 dark:border-gray-600">
+                        <div class="mb-4">
+                            <span id="record-timer" class="text-3xl font-mono font-bold text-gray-700 dark:text-gray-200">0:00</span>
+                            <p id="record-status" class="text-xs text-gray-400 mt-1">جاهز للتسجيل</p>
+                        </div>
+
+                        <div class="flex justify-center gap-4 items-center">
+                            <button type="button" id="record-btn" onclick="toggleRecording()" class="w-16 h-16 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-2xl shadow-lg transition-all flex items-center justify-center">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                            
+                            <div class="text-gray-400">أو</div>
+                            
+                            <label class="cursor-pointer bg-white dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-700 dark:text-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-500 transition-colors">
+                                <i class="fas fa-upload mr-2"></i> رفع ملف
+                                <input type="file" id="file-upload" accept="audio/*" class="hidden" onchange="handleFileSelect(event)">
+                            </label>
+                        </div>
+
+                        <div id="file-info" class="hidden mt-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-2 rounded-lg text-sm truncate">
+                            <i class="fas fa-file-audio ml-2"></i> <span id="filename-display"></span>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-all">
+                        حفظ الملاحظة
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
-    <script src="js/theme.js"></script>
+
 </body>
 </html>
