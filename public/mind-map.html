@@ -66,43 +66,39 @@
         // --- AI Integration via platform backend (/api/ai/ask) ---
         const generateAIContent = async (prompt, systemInstruction = "") => {
             const question = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
-            const sameOriginUrl = '/api/ai/ask';
-            const remoteUrl = 'https://student-platform-frontend.vercel.app/api/ai/ask';
             const payload = { question, context: '' };
 
-            // Try same-origin first (avoids CORS when running on the deployed domain)
-            try {
-                const res = await fetch(sameOriginUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    mode: 'cors',
-                    body: JSON.stringify(payload)
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    return data && data.response ? data.response : "";
-                }
-            } catch (_) { /* fall back below */ }
+            // 1) نجرّب أولاً /api/ai/ask على نفس الدومين (عند نشر هذا الريبو على Vercel مع vercel.json)
+            const sameOriginUrl = '/api/ai/ask';
 
-            // Fallback to deployed backend (may be blocked by CORS if opened from localhost/127.0.0.1)
-            try {
-                const res = await fetch(remoteUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    mode: 'cors',
-                    body: JSON.stringify(payload)
-                });
-                if (!res.ok) {
-                    const text = await res.text().catch(() => '');
-                    throw new Error(`AI backend error: ${res.status} ${text}`);
+            // 2) يمكن تعريف PLATFORM_API_BASE عالمياً لو حابب تستخدم Backend على دومين مختلف
+            const configuredBase = (typeof window !== 'undefined' && window.PLATFORM_API_BASE && typeof window.PLATFORM_API_BASE === 'string')
+                ? window.PLATFORM_API_BASE.replace(/\/+$/,'') + '/api/ai/ask'
+                : null;
+
+            const candidates = [sameOriginUrl, configuredBase].filter(Boolean);
+
+            for (const url of candidates) {
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        mode: 'cors',
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        return data && data.response ? data.response : "";
+                    } else {
+                        console.warn('AI backend returned non-OK status for mind-map:', res.status, url);
+                    }
+                } catch (_) {
+                    // نجرّب العنوان اللي بعده
                 }
-                const data = await res.json();
-                return data && data.response ? data.response : "";
-            } catch (error) {
-                console.error('AI Generation Error:', error);
-                alert('تعذّر الاتصال بخادم الذكاء. من فضلك افتح الصفحة من نفس نطاق الخادم (مثلاً عبر النشر على Vercel) أو شغّل dev server يجمع الواجهة و /api في نفس الأصل لتفادي CORS.');
-                throw error;
             }
+
+            alert('تعذّر الاتصال بخادم الذكاء. تأكد أن الصفحة تعمل من نفس مشروع Vercel الذي يحتوي على /api/ai/ask أو عرّف PLATFORM_API_BASE على عنوان الـ Backend الصحيح.');
+            throw new Error('AI backend unreachable');
         };
 
         // --- PDF helper ---
