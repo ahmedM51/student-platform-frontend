@@ -1555,7 +1555,8 @@ ${original}`;
                 if (!url){
                     // Fallback to single-shot or multi-chunk neutral TTS
                     if (dialogue.length <= 1200){
-                        const j = await postJsonWithFallback('/api/tts', { text: dialogue });
+                        const BACKEND_BASE = 'https://student-platform-backend-one.vercel.app';
+                        const j = await postJsonWithFallback(`${BACKEND_BASE}/api/tts`, { text: dialogue });
                         if (j){
                             url = j.audio || j.audioUrl || j.url || '';
                             if (!url && j.base64) url = `data:audio/mpeg;base64,${j.base64}`;
