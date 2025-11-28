@@ -397,6 +397,9 @@
                         <button onclick="window.location.href='my%20note.html'" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
                             <i class="fas fa-microphone ml-2"></i> <span data-i18n="nav.mynotes">ملاحظاتي الصوتية</span>
                         </button>
+                        <button onclick="window.location.href='pricing.html'" class="w-full bg-yellow-400 bg-opacity-90 hover:bg-yellow-500 text-yellow-900 font-semibold px-4 py-3 rounded-lg text-sm text-right">
+                            <i class="fas fa-crown ml-2"></i> <span>خطط الاشتراك</span>
+                        </button>
                         <button onclick="document.getElementById('contactSection')?.scrollIntoView({behavior:'smooth'});" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg text-sm text-right">
                             <i class="fas fa-headset ml-2"></i> <span data-i18n="nav.contact">تواصل معانا</span>
                         </button>
@@ -494,6 +497,10 @@
                     <button onclick="window.location.href='Photo%20Editor.html'" class="bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
                         <i class="fas fa-image text-3xl mb-3"></i>
                         <div class="text-sm font-medium">محرر الصور</div>
+                    </button>
+                    <button onclick="window.location.href='pricing.html'" class="bg-gradient-to-br from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-yellow-900 p-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-crown text-3xl mb-3"></i>
+                        <div class="text-sm font-medium">خطط الاشتراك</div>
                     </button>
                 </div>
             </div>
@@ -623,7 +630,7 @@
 
     <script>
         // Gemini API key (same as used in ai-assistant.html)
-        window.GEMINI_API_KEY = window.GEMINI_API_KEY || 'AIzaSyBUF-u9ycQkcNs6vAOIMBQ4LsDdAT-y9w4';
+        window.GEMINI_API_KEY = window.GEMINI_API_KEY || 'AIzaSyD6DFzzl67mbj8JzsB4zn1wnuakJ--XgV0';
         // Help panel toggle with animation
         function toggleHelp(force) {
             const panel = document.getElementById('helpPanel');
