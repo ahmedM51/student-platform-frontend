@@ -15,7 +15,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Gemini API Key (provided) -->
     <script>
-        window.GEMINI_API_KEY = 'AIzaSyAh8-BSIqys9k-xkfGdX_bLsw_800f1Qy8';
+        window.GEMINI_API_KEY = 'AIzaSyBUF-u9ycQkcNs6vAOIMBQ4LsDdAT-y9w4';
     </script>
 
     <style>
@@ -257,7 +257,7 @@
 
         // Initialize UI elements
         const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const aiEditBtn = document.getElementById('aiEditBtn');
         const aiEditModal = document.getElementById('aiEditModal');
         const closeAiModal = document.getElementById('closeAiModal');
@@ -346,23 +346,16 @@
             throw new Error('NO_MODEL_RESPONSE');
         }
 
-        // Try backend first (/api/ai/ask) then fallback to Gemini if backend unavailable
+        // Try backend first (on Vercel backend domain) then fallback to Gemini if backend unavailable
         async function backendOrGemini(textToEdit, instructions){
             const question = `أعد صياغة وتحسين هذا النص ليكون مناسباً للاستخدام على صورة تعليمية. أعد النص فقط دون شرح إضافي.\n\nالتعليمات: ${instructions}\n\nالنص:\n${textToEdit}`;
-            // Backend first
+            const BACKEND_BASE = 'https://student-platform-backend-one.vercel.app';
+            // Backend first (directly to backend project)
             try{
-                const r = await fetch('/api/ai/ask', { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ question, context: '' }) });
+                const r = await fetch(`${BACKEND_BASE}/api/ai/ask`, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ question, context: '' }) });
                 const j = await r.json();
                 const edited = (j && j.response || '').trim();
                 if (r.ok && edited) return edited;
-            }catch(_){ /* ignore */ }
-            // Try absolute backend on Vercel domain as a fallback (CORS enabled in server)
-            try{
-                const ABS_BASE = 'https://student-platform-frontend.vercel.app';
-                const r2 = await fetch(`${ABS_BASE}/api/ai/ask`, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ question, context: '' }) });
-                const j2 = await r2.json();
-                const edited2 = (j2 && j2.response || '').trim();
-                if (r2.ok && edited2) return edited2;
             }catch(_){ /* ignore */ }
             // Fallback to Gemini direct
             const payload = { contents: [{ parts: [{ text: question }]}] };
@@ -665,5 +658,3 @@
     </script>
 </body>
 </html>
-
-
