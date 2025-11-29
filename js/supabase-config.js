@@ -105,9 +105,9 @@ if (!window.SUPABASE_INITIALIZED) {
                     throw new Error('Supabase client not initialized. Please check your configuration.');
                 }
                 
-                // Get current domain for redirect
+                // Get current domain for redirect - send users to pricing page after Google login
                 const currentDomain = window.location.origin;
-                const redirectUrl = `${currentDomain}/index.html`;
+                const redirectUrl = `${currentDomain}/pricing.html`;
                 
                 console.log('🔐 Google OAuth redirect URL:', redirectUrl);
                 
@@ -331,7 +331,6 @@ if (!window.SUPABASE_INITIALIZED) {
                         code: subjectData.code?.trim(),
                         description: subjectData.description?.trim() || '',
                         color: subjectData.color || 'blue',
-                        user_id: subjectData.user_id,
                         status: subjectData.status || 'نشط',
                         lectures: parseInt(subjectData.lectures) || 0,
                         files: parseInt(subjectData.files) || 0,
@@ -339,7 +338,7 @@ if (!window.SUPABASE_INITIALIZED) {
                     };
 
                     // Validate required fields
-                    if (!cleanData.name || !cleanData.code || !cleanData.user_id) {
+                    if (!cleanData.name || !cleanData.code) {
                         throw new Error('الحقول المطلوبة مفقودة');
                     }
 
@@ -464,13 +463,22 @@ if (!window.SUPABASE_INITIALIZED) {
                 try {
                     const client = window.supabaseClient || window.initializeSupabase();
                     
-                    // Get lecture details
-                    const { data: lecture, error: lectureError } = await client
-                        .from('lectures')
-                        .select('*')
-                        .eq('id', lectureId)
-                        .single();
-                    
+                    // Get lecture details with simple retry (handles transient network issues)
+                    let lecture = null;
+                    let lectureError = null;
+                    for (let attempt = 0; attempt < 3; attempt++) {
+                        const { data, error } = await client
+                            .from('lectures')
+                            .select('*')
+                            .eq('id', lectureId)
+                            .single();
+                        lecture = data;
+                        lectureError = error;
+                        if (!lectureError && lecture) break;
+                        const delay = Math.pow(2, attempt) * 500; // 0.5s, 1s, 2s
+                        console.warn(`Retry getWithContent(${lectureId}) attempt ${attempt + 1} due to error:`, lectureError?.message || 'unknown');
+                        await new Promise(r => setTimeout(r, delay));
+                    }
                     if (lectureError) throw lectureError;
                     
                     console.log('Lecture data:', lecture);
@@ -1008,7 +1016,7 @@ ${lecture.description ? `الوصف: ${lecture.description}` : ''}
                 try {
                     const client = window.supabaseClient || window.initializeSupabase();
                     const { data, error } = await client
-                        .from('activities')
+                        .from('ai_conversations')
                         .select('*')
                         .eq('user_id', userId)
                         .order('created_at', { ascending: false })
@@ -1033,7 +1041,7 @@ ${lecture.description ? `الوصف: ${lecture.description}` : ''}
                 try {
                     const client = window.supabaseClient || window.initializeSupabase();
                     const { data, error } = await client
-                        .from('activities')
+                        .from('ai_conversations')
                         .insert([activityData])
                         .select()
                         .single();
