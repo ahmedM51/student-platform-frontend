@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>صديق الدراسة الذكي - النسخة الصوتية</title>
   <meta name="description" content="صديق الدراسة الذكي (Voice-First): محاكاة جلسة دراسية مباشرة مع مرشد ودود. تفاعل صوتي بالعربية مع دعم للنص والصوت." />
+  <script>try{var t=localStorage.getItem('theme');var d=t?t==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark')}}catch(e){}</script>
+  <link href="css/dark-mode.css" rel="stylesheet">
   <style>
 
     :root {
@@ -81,6 +83,36 @@
   <!-- PDF.js for client-side PDF text extraction -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script>
+    // Simple per-plan daily usage limiter for voice AI features
+    function canUseVoice(featureLabel) {
+      try {
+        var plan = localStorage.getItem('subscriptionPlan') || 'free';
+        var today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        var key = 'voice_usage_' + today;
+        var usage;
+        try {
+          usage = JSON.parse(localStorage.getItem(key) || '{"count":0}');
+        } catch (e) {
+          usage = { count: 0 };
+        }
+
+        var limit = 3; // free
+        if (plan === 'plus' || plan === 'خطة برو' || plan === 'خطة برو (بلس)') limit = 20;
+        if (plan === 'pro_plus' || plan === 'خطة برو بلس') limit = 100;
+        if (plan === 'teachers' || plan === 'خطة المدرسين') limit = 300;
+
+        if (usage.count >= limit) {
+          alert('لقد وصلت إلى الحد الأقصى لاستخدام المساعد الصوتي اليوم في خطتك الحالية. يمكنك الترقية من صفحة الاشتراك لتفعيل استخدام أعلى.');
+          return false;
+        }
+
+        usage.count += 1;
+        localStorage.setItem(key, JSON.stringify(usage));
+        return true;
+      } catch (e) {
+        return true;
+      }
+    }
     if (window['pdfjsLib']) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     }
@@ -88,7 +120,15 @@
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script src="js/i18n.js"></script>
 </head>
-<body>
+<body class="bg-gray-50 min-h-screen">
+    <script>
+        try {
+            var plan = localStorage.getItem('subscriptionPlan');
+            if (!plan) {
+                localStorage.setItem('subscriptionPlan', 'free');
+            }
+        } catch (e) {}
+    </script>
   <header>
     <div class="container stack-h" style="justify-content: space-between;">
       <div class="stack-h">
@@ -799,6 +839,7 @@
     }
 
     async function summarizeLecture(){
+      if (!canUseVoice('summarize')) return;
       const content = getLecture();
       if(!content || content.length < 30){
         appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة عشان أقدر أعمل تلخيص دقيق.`);
@@ -818,6 +859,7 @@
     }
 
     async function explainLecture(){
+      if (!canUseVoice('explain')) return;
       const content = getLecture();
       if(!content || content.length < 30){ appendMsg('ai', `${persona.prefix} محتاج نص كفاية من المحاضرة عشان أشرح.`); speak('محتاج نص كفاية من المحاضرة عشان أشرح.'); return; }
       // Full dialogue covering entire lecture
@@ -833,6 +875,7 @@
 
     // Generate a single MP3 file that contains the Arabic explanation of the lecture (full lecture dialogue up to ~10MB)
     async function generateAudioFromLecture(){
+      if (!canUseVoice('audio_summary')) return;
       try{
         const content = getLecture();
         if(!content || content.length < 30){ appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة الأول (ارفع PDF أو الصق النص).`); return; }
@@ -922,6 +965,7 @@
     }
 
     async function startAutoExplain(){
+      if (!canUseVoice('auto_explain')) return;
       const content = getLecture();
       if(!content || content.length < 30){
         appendMsg('ai', `${persona.prefix} محتاج نص المحاضرة الأول عشان أبدأ أشرح. ارفع PDF أو الصق النص.`);
@@ -1076,7 +1120,8 @@
     function resetLecture(){ lectureInput.value=''; }
 
     // --------------- Adaptive Quiz (very light) ---------------
-    function makeAdaptiveQuestion(){
+    async function makeAdaptiveQuestion(){
+      if (!canUseVoice('adaptive_question')) return;
       const lecture = getLecture();
       const sents = splitSentences(lecture);
       if(!sents.length){ quizSlot.textContent = 'أضف نص المحاضرة أولاً.'; return; }
@@ -1240,5 +1285,6 @@
     });
     
   </script>
+  <script src="js/theme.js"></script>
 </body>
 </html>
