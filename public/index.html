@@ -645,7 +645,7 @@
 
     <script>
         // Gemini API key (same as used in ai-assistant.html)
-        window.GEMINI_API_KEY = window.GEMINI_API_KEY || 'AIzaSyDIXhBpkL6ykuxMe0lJMYB_9AYCWP-Va7U';
+        window.GEMINI_API_KEY = window.GEMINI_API_KEY || 'AIzaSyD6DFzzl67mbj8JzsB4zn1wnuakJ--XgV0';
         // Help panel toggle with animation
         function toggleHelp(force) {
             const panel = document.getElementById('helpPanel');
@@ -768,17 +768,30 @@
                 
                 // Check if user is authenticated
                 const isAuthenticated = await checkAuthentication();
-                
+
                 if (isAuthenticated) {
                     console.log('✅ User authenticated, loading dashboard...');
                     await loadDashboardData();
                     hideLoadingScreen();
                 } else {
-                    console.log('⚠️ User not authenticated, redirecting...');
-                    hideLoadingScreen();
-                    setTimeout(() => {
-                        window.location.href = '/auth.html';
-                    }, 1000);
+                    // Allow guest access for users who have selected the free plan
+                    let hasFreePlan = false;
+                    try {
+                        const plan = localStorage.getItem('subscriptionPlan');
+                        hasFreePlan = !!plan; // any plan (especially 'free') allows basic access
+                    } catch (e) {}
+
+                    if (hasFreePlan) {
+                        console.log('⚠️ No Supabase session but subscriptionPlan found, loading dashboard in free/guest mode...');
+                        await loadDashboardData();
+                        hideLoadingScreen();
+                    } else {
+                        console.log('⚠️ User not authenticated and no plan found, redirecting to auth...');
+                        hideLoadingScreen();
+                        setTimeout(() => {
+                            window.location.href = '/auth.html';
+                        }, 1000);
+                    }
                 }
                 
             } catch (error) {
