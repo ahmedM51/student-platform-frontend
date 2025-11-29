@@ -49,7 +49,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="js/supabase-config.js"></script>
 </head>
-<body class="p-4 sm:p-6 min-h-screen flex flex-col items-center">
+<body class="bg-gray-100 min-h-screen">
+    <script>
+        try {
+            var plan = localStorage.getItem('subscriptionPlan');
+            if (!plan) {
+                localStorage.setItem('subscriptionPlan', 'free');
+            }
+        } catch (e) {}
+    </script>
+    <div class="p-4 sm:p-6 min-h-screen flex flex-col items-center">
 
     <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b-4 border-blue-500 pb-2">سبورة المحاضر الذكية</h1>
 
@@ -1071,22 +1080,35 @@
                 offctx.drawImage(canvas, 0, 0);
                 offctx.drawImage(overlayCanvas, 0, 0, overlayCanvas.width, overlayCanvas.height, 0, 0, off.width, off.height);
                 const blob = await new Promise(res=> off.toBlob(res, 'image/png'));
+                if (!blob){ alert('تعذر إنشاء الصورة'); return; }
                 const dateStr = new Date().toISOString().replace(/[:.]/g,'-');
                 const sid = roomId || 'solo';
                 const ft = (document.getElementById('fileTitle') && document.getElementById('fileTitle').value) || '';
                 const title = ft || (document.getElementById('sessionTitle') && document.getElementById('sessionTitle').value) || '';
                 const safe = title ? title.replace(/[^\u0600-\u06FF0-9A-Za-z-_ ]+/g,'').replace(/\s+/g,'-') : '';
-                const fileName = (safe ? safe + '-' : '') + `snapshot-${dateStr}.png`;
-                const path = `${userId || 'anonymous'}/${sid}/${fileName}`;
-                const { error } = await supa.storage.from('whiteboards').upload(path, blob, { contentType: 'image/png', upsert: false });
-                if (error){ alert('تعذر الحفظ في السحابة'); return; }
-                const { data } = supa.storage.from('whiteboards').getPublicUrl(path);
+                const fileNameAr = (safe ? safe + '-' : '') + `snapshot-${dateStr}.png`;
+                const asciiBase = (safe || 'snapshot').replace(/[^0-9A-Za-z-_ ]+/g,'').replace(/\s+/g,'-') || 'snapshot';
+                const fileNameAscii = `${asciiBase}-snapshot-${dateStr}.png`;
+                const buckets = ['whiteboards','uploads','files','documents','exports','public'];
+                let uploaded = false; let usedBucket = ''; let usedPath = ''; let lastErr = null;
+                for (let b of buckets){
+                    for (let name of [fileNameAr, fileNameAscii]){
+                        const p = `${userId || 'anonymous'}/${sid}/${name}`;
+                        try{
+                            const { error } = await supa.storage.from(b).upload(p, blob, { contentType: 'image/png', upsert: false });
+                            if (!error){ uploaded = true; usedBucket = b; usedPath = p; break; } else { lastErr = error; }
+                        }catch(e){ lastErr = e; }
+                    }
+                    if (uploaded) break;
+                }
+                if (!uploaded){ alert('تعذر الحفظ في السحابة' + (lastErr && lastErr.message ? ('\n'+lastErr.message) : '')); return; }
+                const { data } = supa.storage.from(usedBucket).getPublicUrl(usedPath);
                 const url = (data && data.publicUrl) || '';
                 try{ await supa.from('whiteboard_snapshots').insert({ session_id: sid, owner_id: userId || null, title: title || null, image_url: url || null }); }catch(_){ }
                 alert('تم الحفظ في السحابة' + (url ? `\n${url}` : ''));
             }catch(_){ alert('تعذر الحفظ في السحابة'); }
         }
-
+        
         // ********** معالجات الأحداث **********
 
         // ضبط حجم اللوحة عند التحميل وتغيير الحجم
