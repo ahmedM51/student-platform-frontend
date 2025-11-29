@@ -105,9 +105,9 @@ if (!window.SUPABASE_INITIALIZED) {
                     throw new Error('Supabase client not initialized. Please check your configuration.');
                 }
                 
-                // Get current domain for redirect
+                // Get current domain for redirect - send users to pricing page after Google login
                 const currentDomain = window.location.origin;
-                const redirectUrl = `${currentDomain}/index.html`;
+                const redirectUrl = `${currentDomain}/pricing.html`;
                 
                 console.log('🔐 Google OAuth redirect URL:', redirectUrl);
                 
