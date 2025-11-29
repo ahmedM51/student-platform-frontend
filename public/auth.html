@@ -21,7 +21,9 @@
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://student-platform-frontend.vercel.app/auth.html">
-    
+    <script>try{var t=localStorage.getItem('theme');var d=t?t==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark')}}catch(e){}</script>
+    <link href="css/dark-mode.css" rel="stylesheet">
+
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -371,6 +373,10 @@
                 if (data?.user) {
                     console.log('✅ Login successful');
                     showNotification('تم تسجيل الدخول بنجاح!', 'success');
+                    // تعيين الخطة المجانية تلقائيًا ثم الدخول للوحة التحكم
+                    try {
+                        localStorage.setItem('subscriptionPlan', 'free');
+                    } catch (e) {}
                     setTimeout(() => window.location.href = 'index.html', 1000);
                 } else {
                     showNotification('حدث خطأ في تسجيل الدخول', 'error');
@@ -469,7 +475,10 @@
 
                         showNotification('تم تسجيل الدخول بنجاح!', 'success');
                         
-                        // Redirect to dashboard
+                        // تعيين الخطة المجانية تلقائيًا ثم الدخول للوحة التحكم بعد التسجيل
+                        try {
+                            localStorage.setItem('subscriptionPlan', 'free');
+                        } catch (e) {}
                         setTimeout(() => {
                             window.location.href = 'index.html';
                         }, 1000);
@@ -563,8 +572,13 @@
                         localStorage.setItem('userId', data.session.user.id);
                         localStorage.setItem('userName', data.session.user.user_metadata?.full_name || data.session.user.email.split('@')[0]);
                         
+                        // تعيين الخطة المجانية افتراضياً للمستخدم الموجود ثم الدخول للوحة التحكم
+                        try {
+                            localStorage.setItem('subscriptionPlan', 'free');
+                        } catch (e) {}
+                        
                         // Show success notification before redirect
-                        showNotification('مرحباً بك! جاري تحميل المنصة...', 'success');
+                        showNotification('مرحباً بك! جاري تحويلك للوحة التحكم...', 'success');
                         
                         // Delay redirect to allow notification to show
                         setTimeout(() => {
@@ -587,5 +601,6 @@
 
         console.log('✅ Real Supabase authentication system ready');
     </script>
+    <script src="js/theme.js"></script>
 </body>
 </html>
