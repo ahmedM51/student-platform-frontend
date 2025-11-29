@@ -11,6 +11,14 @@
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Optional: Configure backend base URL for AI API -->
+    <script>
+        // TODO: استبدل هذا الرابط إن كان لديك مشروع Backend منفصل يحتوي على /api/ai/ask
+        // مثال: "https://your-backend-project.vercel.app"
+        // إن كان /api/ai/ask موجوداً داخل نفس هذا المشروع على Vercel يمكنك ترك القيمة كما هي أو جعلها فارغة.
+        window.PLATFORM_API_BASE = window.PLATFORM_API_BASE || "";
+    </script>
+
     <!-- Import Map for Modules -->
     <script type="importmap">
     {
@@ -100,6 +108,37 @@
             alert('تعذّر الاتصال بخادم الذكاء. تأكد أن الصفحة تعمل من نفس مشروع Vercel الذي يحتوي على /api/ai/ask أو عرّف PLATFORM_API_BASE على عنوان الـ Backend الصحيح.');
             throw new Error('AI backend unreachable');
         };
+
+        // --- Per-plan daily AI usage limiter for mind-map ---
+        function canUseMindmapAI() {
+            try {
+                var plan = localStorage.getItem('subscriptionPlan') || 'free';
+                var today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+                var key = 'mindmap_ai_usage_' + today;
+                var usage;
+                try {
+                    usage = JSON.parse(localStorage.getItem(key) || '{"count":0}');
+                } catch (e) {
+                    usage = { count: 0 };
+                }
+
+                var limit = 5; // free
+                if (plan === 'plus' || plan === 'خطة برو' || plan === 'خطة برو (بلس)') limit = 30;
+                if (plan === 'pro_plus' || plan === 'خطة برو بلس') limit = 100;
+                if (plan === 'teachers' || plan === 'خطة المدرسين') limit = 300;
+
+                if (usage.count >= limit) {
+                    alert('لقد وصلت إلى الحد الأقصى لاستخدام الذكاء الاصطناعي في صفحة الخريطة الذهنية اليوم في خطتك الحالية. يمكنك الترقية من صفحة الاشتراك لزيادة الحد.');
+                    return false;
+                }
+
+                usage.count += 1;
+                localStorage.setItem(key, JSON.stringify(usage));
+                return true;
+            } catch (e) {
+                return true;
+            }
+        }
 
         // --- PDF helper ---
         const readPdfTextFromFile = async (file) => {
@@ -466,6 +505,7 @@
             
             const generateMindMapFromText = async () => {
                 if (!aiPrompt.trim()) return;
+                if (!canUseMindmapAI()) return;
                 setIsLoading(true);
                 setIsGenerateModalOpen(false);
 
@@ -543,6 +583,7 @@
 
             const expandNodeWithAI = async () => {
                 if (!selectedNodeId) return;
+                if (!canUseMindmapAI()) return;
                 const node = nodes.find(n => n.id === selectedNodeId);
                 if (!node) return;
 
@@ -584,6 +625,7 @@
 
             const askAIChat = async () => {
                 if (!chatInput.trim()) return;
+                if (!canUseMindmapAI()) return;
                 const userMsg = { role: 'user', text: chatInput };
                 setChatMessages(prev => [...prev, userMsg]);
                 setChatInput("");
