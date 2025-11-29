@@ -99,6 +99,14 @@
     <script src="js/i18n.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <script>
+        try {
+            var plan = localStorage.getItem('subscriptionPlan');
+            if (!plan) {
+                localStorage.setItem('subscriptionPlan', 'free');
+            }
+        } catch (e) {}
+    </script>
     <!-- Header -->
     <header class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -307,6 +315,37 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script>
+        // Simple per-plan daily usage limiter for AI assistant
+        function canAskQuestion() {
+            try {
+                var plan = localStorage.getItem('subscriptionPlan') || 'free';
+                var today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+                var key = 'ai_usage_' + today;
+                var usage;
+                try {
+                    usage = JSON.parse(localStorage.getItem(key) || '{"count":0}');
+                } catch (e) {
+                    usage = { count: 0 };
+                }
+
+                var limit = 10; // free
+                if (plan === 'plus' || plan === 'خطة برو' || plan === 'خطة برو (بلس)') limit = 60;
+                if (plan === 'pro_plus' || plan === 'خطة برو بلس') limit = 300;
+                if (plan === 'teachers' || plan === 'خطة المدرسين') limit = 1000;
+
+                if (usage.count >= limit) {
+                    alert('لقد وصلت إلى الحد الأقصى للأسئلة اليوم في خطتك الحالية. يمكنك الترقية من صفحة الاشتراك لزيادة الحدود.');
+                    return false;
+                }
+
+                usage.count += 1;
+                localStorage.setItem(key, JSON.stringify(usage));
+                return true;
+            } catch (e) {
+                return true; // في حالة أي خطأ لا نمنع المستخدم
+            }
+        }
+
         // -------- Lecture content enrichment (PDF/Text extraction) --------
         function normalizePdfUrl(url) {
             try {
@@ -1213,6 +1252,7 @@ ${original}`;
 
         // Send message
         async function sendMessage() {
+            if (!canAskQuestion()) return;
             const input = document.getElementById('questionInput');
             const message = input.value.trim();
             
