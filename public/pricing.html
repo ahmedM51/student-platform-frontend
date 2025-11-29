@@ -72,7 +72,7 @@
                         <li class="flex items-center"><i class="fas fa-minus text-gray-400 ml-2"></i> بدون تصدير PDF/PowerPoint</li>
                         <li class="flex items-center"><i class="fas fa-minus text-gray-400 ml-2"></i> بدون رفع ملفات متعددة</li>
                     </ul>
-                    <button onclick="openInvoiceForm('الخطة المجانية')" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2.5 rounded-lg border border-purple-200 transition-colors mt-2">
+                    <button onclick="startFreePlan()" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2.5 rounded-lg border border-purple-200 transition-colors mt-2">
                         ابدأ بالخطة المجانية
                     </button>
                 </div>
@@ -211,6 +211,15 @@
     </div>
 
     <script>
+        // تفعيل الخطة المجانية مباشرة بدون واتساب أو نموذج فاتورة
+        function startFreePlan() {
+            try {
+                localStorage.setItem('subscriptionPlan', 'free');
+            } catch (e) {}
+            alert('تم تفعيل الخطة المجانية. يمكنك الآن استخدام المنصة بحدود الاستخدام المجاني.');
+            window.location.href = 'index.html';
+        }
+
         function openInvoiceForm(planName){
             document.getElementById('selectedPlan').value = planName;
             document.getElementById('selectedPlanLabel').textContent = planName;
@@ -233,6 +242,12 @@
             const url = `https://wa.me/${phone}?text=${text}`;
 
             window.open(url, '_blank');
+            try {
+                if (plan) {
+                    localStorage.setItem('subscriptionPlan', plan);
+                    alert('تم إرسال طلب الاشتراك وحفظ الخطة محليًا. قد تحتاج الإدارة لتفعيل الاشتراك نهائيًا.');
+                }
+            } catch (e) {}
             closeInvoiceForm();
         }
     </script>
