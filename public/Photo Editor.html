@@ -15,7 +15,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Gemini API Key (provided) -->
     <script>
-        window.GEMINI_API_KEY = 'AIzaSyBUF-u9ycQkcNs6vAOIMBQ4LsDdAT-y9w4';
+        window.GEMINI_API_KEY = 'AIzaSyDDQDLVkJkqQJgEUOEe0sF3bp77u5bQvCM';
     </script>
 
     <style>
@@ -315,7 +315,7 @@
         }
 
         // Gemini endpoint (use global key if provided)
-        const GEMINI_KEY = (window.GEMINI_API_KEY || 'AIzaSyBUF-u9ycQkcNs6vAOIMBQ4LsDdAT-y9w4').trim();
+        const GEMINI_KEY = (window.GEMINI_API_KEY || 'AIzaSyDDQDLVkJkqQJgEUOEe0sF3bp77u5bQvCM').trim();
         const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
 
         // Robust multi-model fallback to handle 403/404 or model availability
@@ -658,3 +658,4 @@
     </script>
 </body>
 </html>
+
