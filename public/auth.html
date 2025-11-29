@@ -373,11 +373,11 @@
                 if (data?.user) {
                     console.log('✅ Login successful');
                     showNotification('تم تسجيل الدخول بنجاح!', 'success');
-                    // تعيين الخطة المجانية تلقائيًا ثم الدخول للوحة التحكم
+                    // تعيين الخطة المجانية تلقائيًا ثم الانتقال لصفحة الاشتراك
                     try {
                         localStorage.setItem('subscriptionPlan', 'free');
                     } catch (e) {}
-                    setTimeout(() => window.location.href = 'index.html', 1000);
+                    setTimeout(() => window.location.href = 'pricing.html', 1000);
                 } else {
                     showNotification('حدث خطأ في تسجيل الدخول', 'error');
                 }
@@ -475,12 +475,12 @@
 
                         showNotification('تم تسجيل الدخول بنجاح!', 'success');
                         
-                        // تعيين الخطة المجانية تلقائيًا ثم الدخول للوحة التحكم بعد التسجيل
+                        // تعيين الخطة المجانية تلقائيًا ثم الانتقال لصفحة الاشتراك بعد التسجيل
                         try {
                             localStorage.setItem('subscriptionPlan', 'free');
                         } catch (e) {}
                         setTimeout(() => {
-                            window.location.href = 'index.html';
+                            window.location.href = 'pricing.html';
                         }, 1000);
 
                     } catch (loginError) {
@@ -572,17 +572,17 @@
                         localStorage.setItem('userId', data.session.user.id);
                         localStorage.setItem('userName', data.session.user.user_metadata?.full_name || data.session.user.email.split('@')[0]);
                         
-                        // تعيين الخطة المجانية افتراضياً للمستخدم الموجود ثم الدخول للوحة التحكم
+                        // تعيين الخطة المجانية افتراضياً للمستخدم الموجود ثم الانتقال لصفحة الاشتراك
                         try {
                             localStorage.setItem('subscriptionPlan', 'free');
                         } catch (e) {}
                         
                         // Show success notification before redirect
-                        showNotification('مرحباً بك! جاري تحويلك للوحة التحكم...', 'success');
+                        showNotification('مرحباً بك! جاري تحويلك لصفحة الاشتراك...', 'success');
                         
                         // Delay redirect to allow notification to show
                         setTimeout(() => {
-                            window.location.href = 'index.html';
+                            window.location.href = 'pricing.html';
                         }, 1500);
                         return;
                     }
