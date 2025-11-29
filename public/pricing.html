@@ -210,6 +210,33 @@
         </div>
     </div>
 
+    <!-- Supabase auth init so Google login session is persisted when redirecting to pricing.html -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js?v=2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                if (window.initializeSupabase) {
+                    await window.initializeSupabase();
+                }
+
+                if (window.supabaseAuth && typeof window.supabaseAuth.getSession === 'function') {
+                    const { data } = await window.supabaseAuth.getSession();
+                    if (data?.session?.user) {
+                        var user = data.session.user;
+                        try {
+                            localStorage.setItem('userEmail', user.email);
+                            localStorage.setItem('userId', user.id);
+                            localStorage.setItem('userName', user.user_metadata?.full_name || user.email.split('@')[0]);
+                        } catch (e) {}
+                    }
+                }
+            } catch (e) {
+                console.error('Pricing auth init error:', e);
+            }
+        });
+    </script>
+
     <script>
         // تفعيل الخطة المجانية مباشرة بدون واتساب أو نموذج فاتورة
         function startFreePlan() {
