@@ -125,6 +125,14 @@
     <script src="js/i18n.js"></script>
 </head>
 <body>
+    <script>
+        try {
+            var plan = localStorage.getItem('subscriptionPlan');
+            if (!plan) {
+                localStorage.setItem('subscriptionPlan', 'free');
+            }
+        } catch (e) {}
+    </script>
     <!-- Header -->
     <nav class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
