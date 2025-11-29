@@ -314,8 +314,23 @@
     </style>
     <script src="js/i18n.js"></script>
 </head>
-<body>
-    <!-- Loading Screen -->
+<body class="bg-gray-100 min-h-screen" dir="rtl">
+    <script>
+        (function() {
+            try {
+                var path = window.location.pathname || '';
+                var isAuth = path.indexOf('auth.html') !== -1;
+                var isPricing = path.indexOf('pricing.html') !== -1;
+                if (!isAuth && !isPricing) {
+                    var plan = localStorage.getItem('subscriptionPlan');
+                    if (!plan) {
+                        // جعل الخطة الافتراضية مجانية بدلاً من المنع التام
+                        localStorage.setItem('subscriptionPlan', 'free');
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
     <div id="loadingScreen" class="loading-screen">
         <div class="spinner"></div>
         <p class="text-white text-xl mt-4" data-i18n="loading.text">جاري تحميل المنصة...</p>
