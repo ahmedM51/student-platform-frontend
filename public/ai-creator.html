@@ -15,6 +15,7 @@
     <!-- Supabase client + platform config -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -59,6 +60,37 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // Simple per-plan daily usage limiter for creator tool
+        function canCreateProjectUse() {
+            try {
+                var plan = localStorage.getItem('subscriptionPlan') || 'free';
+                var today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+                var key = 'creator_usage_' + today;
+                var usage;
+                try {
+                    usage = JSON.parse(localStorage.getItem(key) || '{"count":0}');
+                } catch (e) {
+                    usage = { count: 0 };
+                }
+
+                var limit = 2; // free
+                if (plan === 'plus' || plan === 'خطة برو' || plan === 'خطة برو (بلس)') limit = 20;
+                if (plan === 'pro_plus' || plan === 'خطة برو بلس') limit = 100;
+                if (plan === 'teachers' || plan === 'خطة المدرسين') limit = 300;
+
+                if (usage.count >= limit) {
+                    alert('لقد وصلت إلى الحد الأقصى لعدد المشاريع التي يمكن توليدها اليوم في خطتك الحالية. يمكنك الترقية من صفحة الاشتراك لزيادة الحد.');
+                    return false;
+                }
+
+                usage.count += 1;
+                localStorage.setItem(key, JSON.stringify(usage));
+                return true;
+            } catch (e) {
+                return true;
+            }
+        }
+
         const { useState, useEffect, useRef } = React;
 
         // --- Icons (Inline SVGs) ---
@@ -385,7 +417,11 @@
                             <textarea value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="اكتب موضوع العرض هنا... (مثلاً: مستقبل الطاقة المتجددة)" className="w-full bg-black/30 border border-gray-700 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none h-32 text-right" dir="auto" />
                         </div>
                         <div className="p-6 bg-gray-900/50 border-t border-gray-800 flex justify-end">
-                            <button disabled={!topic} onClick={() => onCreate(topic, activeType)} className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition ${!topic ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500'}`}>
+                            <button
+                                disabled={!topic}
+                                onClick={() => { if (canCreateProjectUse()) onCreate(topic, activeType); }}
+                                className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition ${!topic ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+                            >
                                 توليد المحتوى <Icons.ChevronRight className="w-4 h-4 rotate-180" />
                             </button>
                         </div>
@@ -630,7 +666,7 @@
             const [showCreateModal, setShowCreateModal] = useState(false);
             const [showSettings, setShowSettings] = useState(false);
             const [isAIGenerating, setIsAIGenerating] = useState(false);
-            const DEFAULT_API_KEY = 'AIzaSyCrm9c-3rlRDde9x1KNzk-oySrDFyMdfDU';
+            const DEFAULT_API_KEY = 'AIzaSyBks1niA75pswcefkI1dKmxLd2hNjzowgk';
             const [apiKey, setApiKey] = useState(DEFAULT_API_KEY);
 
             const [projects, setProjects] = useState([]);
