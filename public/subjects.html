@@ -104,6 +104,14 @@
     <script src="js/i18n.js?v=2"></script>
 </head>
 <body class="min-h-screen bg-gray-50">
+    <script>
+        try {
+            var plan = localStorage.getItem('subscriptionPlan');
+            if (!plan) {
+                localStorage.setItem('subscriptionPlan', 'free');
+            }
+        } catch (e) {}
+    </script>
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="text-center">
