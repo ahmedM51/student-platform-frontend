@@ -768,10 +768,8 @@
         const platformContext = `المنصة تحتوي على صفحات رئيسية: الصفحة الرئيسية، المواد الدراسية، المخطط الدراسي، مؤقت المذاكرة، والمساعد الذكي. يمكن للمستخدم إضافة مواد، إضافة محاضرات وروابط ملفات لها، ثم استخدام المساعد الذكي لطرح الأسئلة وإنشاء اختبارات.`;
 
         /**
-         * Get AI text response from Gemini API for Q&A, grounded in lecture context.
-         * @param {string} textPrompt - User's question or prompt
-         * @param {object} lectureContext - Lecture context for educational responses
-         * @returns {Promise<string>} The generated text response.
+         * Get AI text response via backend /api/ai/ask for Q&A, grounded in lecture context.
+         * لا يتم استدعاء Gemini مباشرة من الواجهة، بل عبر الباك إند فقط.
          */
         async function getGeminiQaResponse(textPrompt, lectureContext) {
             // Build comprehensive context from lecture data
@@ -852,43 +850,16 @@ Rules:
         }
 
         /**
-         * Get AI structured JSON response for Quiz generation.
+         * Get AI structured JSON response for Quiz generation via backend /api/ai/ask.
+         * لا يوجد أي اتصال مباشر بـ Gemini من المتصفح.
          */
         async function getGeminiQuiz(lectureContent, questionCount, questionType) {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-            
-            // Define the JSON schema for the quiz structure (ensures 100% valid JSON output)
-            const quizSchema = {
-                type: "OBJECT",
-                properties: {
-                    title: { type: "STRING", description: "عنوان جذاب ومناسب للاختبار." },
-                    questions: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                question: { type: "STRING", description: "نص السؤال." },
-                                type: { type: "STRING", description: "نوع السؤال: 'multiple' أو 'truefalse'." },
-                                options: { 
-                                    type: "ARRAY", 
-                                    items: { type: "STRING" },
-                                    description: "قائمة بالخيارات (مثلاً: أ) الخيار الأول، ب) الخيار الثاني، ج) الخيار الثالث، د) الخيار الرابع) أو (صح، خطأ)."
-                                },
-                                correct: { type: "INTEGER", description: "مؤشر الإجابة الصحيحة في قائمة الخيارات (0، 1، 2، 3 أو 0، 1)." }
-                            },
-                            required: ["question", "type", "options", "correct"]
-                        }
-                    }
-                },
-                required: ["title", "questions"]
-            };
-
             const lang = detectLanguage(lectureContent);
             let questionTypeInstructions = '';
             if (questionType === 'multiple') {
                 questionTypeInstructions = (lang === 'ar')
-                    ? `أنشئ ${questionCount} سؤال اختيار من متعدد (multiple) بـ 4 خيارات لكل سؤال.`
-                    : `Create ${questionCount} multiple-choice (multiple) questions with 4 options each.`;
+                    ? `أنشئ ${questionCount} سؤال اختيار من متعدد (multiple) بـ 4 خيارات لكل سؤال، مع إجابة واحدة صحيحة فقط لكل سؤال.`
+                    : `Create ${questionCount} multiple-choice (multiple) questions with exactly 4 options each and one correct answer.`;
             } else if (questionType === 'truefalse') {
                 questionTypeInstructions = (lang === 'ar')
                     ? `أنشئ ${questionCount} سؤال صح وخطأ (truefalse) بخيارين (صح أو خطأ) لكل سؤال.`
@@ -904,10 +875,10 @@ Rules:
             const quizPrompt = (lang === 'ar')
                 ? `أنت خبير في إنشاء اختبارات تعليمية. مهمتك هي إنشاء اختبار تعليمي باللغة المناسبة للمحتوى (هنا: العربية) بناءً على محتوى المحاضرة المقدم.
 
-**التعليمات:**
-- **المحتوى**: يجب أن تكون جميع الأسئلة والإجابات الصحيحة مستمدة **فقط** من محتوى المحاضرة المرفق أدناه.
-- **العدد والنوع**: ${questionTypeInstructions}
-- **التنسيق**: يجب أن يغطي الإخراج جميع المحاور المهمة في المحتوى، مع أسئلة واضحة ومنظمة، وأجوبة صحيحة واضحة، وبدون مقدمات أو خواتيم.
+التعليمات:
+- المحتوى: يجب أن تكون جميع الأسئلة والإجابات الصحيحة مستمدة فقط من محتوى المحاضرة المرفق أدناه.
+- العدد والنوع: ${questionTypeInstructions}
+- التنسيق: أخرج النتيجة بصيغة JSON فقط، بدون أي نص إضافي.
 
 محتوى المحاضرة:
 ======================================
@@ -918,54 +889,27 @@ ${lectureContent}
 Instructions:
 - Content: All questions and correct answers must be derived ONLY from the lecture content below.
 - Count and type: ${questionTypeInstructions}
-- Format: Output must be valid JSON following the provided schema, with no extra text before or after the JSON.
+- Format: Output must be valid JSON only, with no extra text before or after the JSON.
 
 Lecture content:
 ======================================
 ${lectureContent}
 ======================================`;
 
-            const payload = {
-                contents: [{ parts: [{ text: quizPrompt }] }],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: quizSchema
-                }
-            };
-
             try {
-                // Implementing simple retry mechanism for robustness
-                const MAX_RETRIES = 3;
-                let response = null;
-                for (let i = 0; i < MAX_RETRIES; i++) {
-                    response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                // اطلب من الباك إند أن يُرجع لنا JSON مباشرة من Gemini
+                const j = await postJsonWithFallback('/api/ai/ask', {
+                    question: quizPrompt,
+                    context: lectureContent || ''
+                });
+                const raw = j && j.response ? String(j.response) : '';
+                if (!raw.trim()) throw new Error('استجابة فارغة من الخادم.');
 
-                    if (response.ok) break;
-
-                    if (i < MAX_RETRIES - 1) {
-                        console.warn(`Retry attempt ${i + 1} for Gemini Quiz due to status ${response.status}`);
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000)); // Exponential backoff
-                    } else {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error?.message || `خطأ في الخادم: ${response.status}`);
-                    }
-                }
-
-                const result = await response.json();
-                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                if (jsonText) {
-                    return JSON.parse(jsonText);
-                } else {
-                    throw new Error('لم يتمكن الذكاء الاصطناعي من إنشاء JSON صالح أو كانت الاستجابة فارغة.');
-                }
+                const textResponse = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+                return JSON.parse(textResponse);
             } catch (error) {
-                console.error("Gemini API Error (Quiz):", error);
-                throw new Error(`فشل الاتصال بـ Gemini أو تحليل الاستجابة: ${error.message}`);
+                console.error('Backend Quiz Error:', error);
+                throw new Error(`فشل إنشاء الاختبار من الخادم: ${error.message}`);
             }
         }
 
