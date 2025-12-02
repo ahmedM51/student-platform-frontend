@@ -1,127 +1,162 @@
 <!DOCTYPE html>
-<html lang="ar" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindScape AI - Mind Map Tool</title>
+    <title>MindScape AI</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Babel for JSX -->
+    <!-- Babel for JSX & TypeScript in browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Import Map for Modules -->
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <!-- Import Map: Cleaned to remove React 19 conflicts -->
     <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/react@18.2.0",
-            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.263.1",
-            "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
-            "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"
-        }
-    }
-    </script>
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.263.1?deps=react@18.2.0",
+    "@google/genai": "https://esm.run/@google/genai",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
 
     <style>
         body { margin: 0; overflow: hidden; background-color: #f8f9fa; }
-        /* Smooth animation utility */
         .animate-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module">
-        import React, { useState, useEffect, useRef, useMemo } from 'react';
+    <!-- Configuration Shim -->
+    <script>
+        // Set environment variables shim for browser
+        window.process = {
+            env: {
+                // NEW API KEY ADDED HERE
+                API_KEY: "AIzaSyBBO9_wsXKC8dn-2v1eVmRIEwKe05BKYGg",
+                REACT_APP_SUPABASE_URL: "",
+                REACT_APP_SUPABASE_ANON_KEY: ""
+            }
+        };
+
+        // PDF Worker Setup
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+
+    <!-- Main Application Logic (Consolidated) -->
+    <script type="text/babel" data-type="module" data-presets="react,typescript">
+        import React, { useState, useEffect, useRef, useCallback } from 'react';
         import { createRoot } from 'react-dom/client';
         import { 
             Layout, Plus, Save, Download, Upload, Share2, 
-            Trash2, Type, Zap, MessageSquare, X, ChevronRight, 
-            MoreHorizontal, ZoomIn, ZoomOut, Maximize, Home 
+            Trash2, Zap, MessageSquare, X, ChevronRight, 
+            Maximize, Home 
         } from 'lucide-react';
-        import { initializeApp } from 'firebase/app';
-        import { 
-            getFirestore, collection, addDoc, getDocs, 
-            doc, getDoc, updateDoc, deleteDoc, serverTimestamp, 
-            query, where, orderBy 
-        } from 'firebase/firestore';
-        import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+        import { GoogleGenAI } from "@google/genai";
+        import { createClient } from '@supabase/supabase-js';
 
         // ==========================================
-        // ⚙️ إعدادات التهيئة (يجب تعديلها لتعمل)
+        // 1. SERVICES & LOGIC
         // ==========================================
+
+        // --- AI Service Logic ---
+        const apiKey = process.env.API_KEY || '';
         
-        // 1. ضع إعدادات Firebase الخاصة بك هنا
-        // يمكنك الحصول عليها من: Firebase Console -> Project Settings -> General -> Your apps -> SDK setup and configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSy...",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef"
-        };
-
-        // 2. ضع مفتاح Gemini API هنا (للميزات الذكاء الاصطناعي)
-        // احصل عليه من: https://aistudio.google.com/app/apikey
-        const GEMINI_API_KEY = ""; 
-
-        // ==========================================
-
-        // تهيئة Firebase فقط إذا تم توفير الإعدادات الصحيحة لتجنب توقف التطبيق
-        let app, db, auth;
+        // Initialize Gemini
+        let aiClient;
         try {
-            // التحقق مما إذا كانت الإعدادات افتراضية (فارغة)
-            if (firebaseConfig.apiKey === "AIzaSy...") {
-                console.warn("⚠️ تنبيه: لم يتم وضع إعدادات Firebase الحقيقية. الحفظ لن يعمل.");
-                // استخدام كائنات وهمية حتى لا ينهار التطبيق عند التشغيل بدون إعدادات
-                db = { type: 'dummy' };
-                auth = { type: 'dummy' };
-            } else {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-            }
+            aiClient = new GoogleGenAI({ apiKey: apiKey || 'DUMMY_KEY' });
         } catch (e) {
-            console.error("Firebase init error:", e);
+            console.error("AI Client Init Error", e);
         }
 
-        // --- AI Integration (Gemini) ---
-        const generateAIContent = async (prompt, systemInstruction = "") => {
-            if (!GEMINI_API_KEY) {
-                alert("Please add your Gemini API Key in the code settings.");
-                return "";
+        const simulateMockResponse = (system, userPrompt) => {
+            if (userPrompt.includes("JSON") || (system && system.includes("JSON"))) {
+                return `\`\`\`json
+                {
+                    "title": "Offline Generated Map",
+                    "nodes": [
+                        { "id": "root", "label": "Main Topic" },
+                        { "id": "1", "label": "Branch 1", "parent": "root" },
+                        { "id": "2", "label": "Branch 2", "parent": "root" },
+                        { "id": "3", "label": "Detail A", "parent": "1" }
+                    ]
+                }
+                \`\`\``;
             }
-            try {
-                const payload = {
-                    contents: [{ parts: [{ text: prompt }] }],
-                    systemInstruction: { parts: [{ text: systemInstruction }] },
-                };
-                
-                const response = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, 
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    }
-                );
+            if (userPrompt.includes("sub-topics")) {
+                return `["Offline Idea 1", "Offline Idea 2", "Offline Idea 3"]`;
+            }
+            return "Offline mode active. Please check internet or API Key.";
+        };
 
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
-                return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const generateAIContent = async (prompt, systemInstruction = "") => {
+            if (!apiKey || apiKey === 'DUMMY_KEY') {
+                console.warn("No API Key provided, using mock response.");
+                await new Promise(r => setTimeout(r, 800));
+                return simulateMockResponse(systemInstruction, prompt);
+            }
+
+            try {
+                const response = await aiClient.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt,
+                    config: { systemInstruction }
+                });
+                return response.text || "";
             } catch (error) {
-                console.error("AI Generation Error:", error);
-                alert("AI Error: " + error.message);
-                throw error;
+                console.error("Gemini API Error:", error);
+                return simulateMockResponse(systemInstruction, prompt);
             }
         };
 
-        // --- Helper Components ---
+        // --- Supabase Service ---
+        const sbUrl = process.env.REACT_APP_SUPABASE_URL;
+        const sbKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        let supabase = null;
+        if (sbUrl && sbKey && sbUrl.startsWith('http')) {
+            try { supabase = createClient(sbUrl, sbKey); } catch (e) { console.warn("Supabase init error", e); }
+        }
+
+        // --- PDF Utils ---
+        const readPdfTextFromFile = async (file) => {
+            if (!window.pdfjsLib) throw new Error('PDF.js not loaded');
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await window.pdfjsLib.getDocument(arrayBuffer).promise;
+            let fullText = '';
+            const maxPages = Math.min(pdf.numPages, 10);
+            for (let i = 1; i <= maxPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + '\n';
+            }
+            return fullText;
+        };
+
+        // ==========================================
+        // 2. UI COMPONENTS
+        // ==========================================
 
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
@@ -157,17 +192,20 @@
             );
         };
 
-        // --- Main Application Component ---
+        // ==========================================
+        // 3. MAIN APP COMPONENT
+        // ==========================================
 
-        function AmyMindClone() {
-            // -- State --
+        function App() {
+            // State
             const [user, setUser] = useState(null);
-            const [view, setView] = useState('dashboard'); // dashboard | editor
+            const [view, setView] = useState('dashboard');
             const [maps, setMaps] = useState([]);
             const [currentMap, setCurrentMap] = useState(null);
             const [nodes, setNodes] = useState([]);
             const [edges, setEdges] = useState([]);
             const [isLoading, setIsLoading] = useState(false);
+            const [lang, setLang] = useState(localStorage.getItem('lang') || 'ar');
             
             // Editor UI State
             const [scale, setScale] = useState(1);
@@ -177,7 +215,7 @@
             const [draggingNode, setDraggingNode] = useState(null);
             const [selectedNodeId, setSelectedNodeId] = useState(null);
             
-            // AI & Modals
+            // AI & Chat
             const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
             const [aiPrompt, setAiPrompt] = useState("");
             const [isChatOpen, setIsChatOpen] = useState(false);
@@ -186,252 +224,112 @@
 
             const containerRef = useRef(null);
 
-            // -- Auth & Init --
-            useEffect(() => {
-                if (auth && auth.type !== 'dummy') {
-                    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-                        if (currentUser) {
-                            setUser(currentUser);
-                            fetchMaps(currentUser.uid);
-                        } else {
-                            signInAnonymously(auth).catch(console.error);
-                        }
-                    });
-                    return () => unsubscribe();
-                } else {
-                    // وضع المستخدم في وضع عدم الاتصال (للتجربة بدون فايربيس)
-                    setUser({ uid: 'offline-user', isAnonymous: true });
-                    // تحميل بيانات وهمية للتجربة
-                    setMaps([{ id: 'demo', title: 'Demo Map (Offline)', updatedAt: { seconds: Date.now()/1000 } }]);
+            // Localization
+            const i18n = {
+                ar: {
+                    app_title: 'MindScape AI',
+                    new_map: 'خريطة جديدة',
+                    create_from_scratch: 'إنشاء من الصفر',
+                    import_pdf: 'استيراد PDF',
+                    generate_with_ai: 'توليد بالذكاء',
+                    try_now: 'جرّب الآن',
+                    save: 'حفظ',
+                    saving: 'جارِ الحفظ...',
+                    export_json: 'تصدير',
+                    share: 'مشاركة',
+                    ai_generation: 'توليد بالذكاء',
+                    add_node: 'إضافة عقدة',
+                    delete_node: 'حذف العقدة',
+                    reset_zoom: 'إعادة التوسيط',
+                    ai_chat: 'محادثة الذكاء',
+                    map_placeholder: 'خريطة بدون عنوان',
+                    pdf: 'PDF',
+                    png: 'PNG'
+                },
+                en: {
+                    app_title: 'MindScape AI',
+                    new_map: 'New Map',
+                    create_from_scratch: 'Create from scratch',
+                    import_pdf: 'Import PDF',
+                    generate_with_ai: 'Generate with AI',
+                    try_now: 'Try it now',
+                    save: 'Save',
+                    saving: 'Saving...',
+                    export_json: 'Export',
+                    share: 'Share',
+                    ai_generation: 'AI Generation',
+                    add_node: 'Add Node',
+                    delete_node: 'Delete Node',
+                    reset_zoom: 'Reset Zoom',
+                    ai_chat: 'AI Chat',
+                    map_placeholder: 'Untitled Map',
+                    pdf: 'PDF',
+                    png: 'PNG'
                 }
-            }, []);
+            };
+            const t = (k) => (i18n[lang] && i18n[lang][k]) ? i18n[lang][k] : k;
+            
+            const setLangAndSave = (l) => { 
+                setLang(l); 
+                localStorage.setItem('lang', l); 
+                try { 
+                    document.documentElement.lang = l === 'ar' ? 'ar' : 'en'; 
+                    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr'; 
+                } catch(_){} 
+            };
 
-            // -- Database Operations --
-            const fetchMaps = async (userId) => {
-                if (db.type === 'dummy') return;
+            // Init
+            const fetchMaps = useCallback(async (client, userId) => {
+                if (!client || userId === 'offline-user') return;
                 try {
-                    const q = query(
-                        collection(db, `users/${userId}/mindmaps`), 
-                        orderBy('updatedAt', 'desc')
-                    );
-                    const querySnapshot = await getDocs(q);
-                    const loadedMaps = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setMaps(loadedMaps);
+                    const { data, error } = await client
+                        .from('mindmaps')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order('updated_at', { ascending: false });
+                    if (error) throw error;
+                    setMaps(data || []);
                 } catch (error) {
                     console.error("Error fetching maps:", error);
                 }
-            };
+            }, []);
 
-            const saveMap = async () => {
-                if (!user) return;
-                
-                if (db.type === 'dummy') {
-                    alert("Saving is disabled in Demo mode. Please configure Firebase keys in the code.");
+            const initUser = useCallback(async () => {
+                if (!supabase) {
+                    setUser({ id: 'offline-user', isOffline: true });
+                    setMaps([
+                        { 
+                            id: 'demo-1', 
+                            title: 'Demo Map (Offline)', 
+                            nodes: [{id: 'root', label: 'Welcome', x: window.innerWidth/2, y: window.innerHeight/2, type: 'root'}], 
+                            edges: [],
+                            updated_at: new Date().toISOString()
+                        }
+                    ]);
                     return;
                 }
 
-                setIsLoading(true);
-                try {
-                    const mapData = {
-                        title: currentMap.title,
-                        nodes,
-                        edges,
-                        updatedAt: serverTimestamp()
-                    };
-
-                    if (currentMap.id && currentMap.id !== 'demo') {
-                        await updateDoc(doc(db, `users/${user.uid}/mindmaps`, currentMap.id), mapData);
-                    } else {
-                        const docRef = await addDoc(collection(db, `users/${user.uid}/mindmaps`), {
-                            ...mapData,
-                            createdAt: serverTimestamp()
-                        });
-                        setCurrentMap(prev => ({ ...prev, id: docRef.id }));
-                    }
-                    fetchMaps(user.uid);
-                } catch (error) {
-                    console.error("Error saving map:", error);
-                    alert("Error saving: " + error.message);
-                } finally {
-                    setIsLoading(false);
+                const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
+                if (error || !supabaseUser) {
+                    setUser({ id: 'offline-user', isOffline: true });
+                    setMaps([{ 
+                        id: 'demo-1', 
+                        title: 'Demo Map (Offline)', 
+                        nodes: [{id: 'root', label: 'Start Here', x: window.innerWidth/2, y: window.innerHeight/2, type: 'root'}], 
+                        edges: [] 
+                    }]);
+                } else {
+                    setUser({ id: supabaseUser.id, email: supabaseUser.email });
+                    await fetchMaps(supabase, supabaseUser.id);
                 }
-            };
+            }, [fetchMaps]);
 
-            const createNewMap = () => {
-                const initialNode = { id: 'root', label: 'Central Idea', x: window.innerWidth/2 - 75, y: window.innerHeight/2 - 25, type: 'root' };
-                setNodes([initialNode]);
-                setEdges([]);
-                setCurrentMap({ title: 'Untitled Mind Map' });
-                setView('editor');
-                setScale(1);
-                setOffset({ x: 0, y: 0 });
-            };
+            useEffect(() => {
+                initUser();
+                setLangAndSave(lang);
+            }, [initUser, lang]);
 
-            const deleteMap = async (mapId, e) => {
-                e.stopPropagation();
-                if (!confirm("Are you sure you want to delete this map?")) return;
-                
-                if (db.type === 'dummy') {
-                    setMaps(maps.filter(m => m.id !== mapId));
-                    return;
-                }
-
-                try {
-                    await deleteDoc(doc(db, `users/${user.uid}/mindmaps`, mapId));
-                    fetchMaps(user.uid);
-                } catch (error) {
-                    console.error("Error deleting map:", error);
-                }
-            };
-
-            // -- AI Functions --
-            
-            const generateMindMapFromText = async () => {
-                if (!aiPrompt.trim()) return;
-                setIsLoading(true);
-                setIsGenerateModalOpen(false);
-
-                try {
-                    const systemPrompt = `
-                        You are a JSON generator for a mind map application. 
-                        Output ONLY valid JSON. No markdown formatting, no code blocks.
-                        Structure: { "nodes": [{ "id": "string", "label": "string", "parent": "string (optional)" }], "title": "string" }
-                        Root node should not have a parent.
-                        Keep labels concise (under 5 words).
-                        Generate at least 10 nodes for a comprehensive map.
-                    `;
-                    
-                    const responseText = await generateAIContent(aiPrompt, systemPrompt);
-                    if (!responseText) return;
-
-                    // Clean cleanup to ensure valid JSON
-                    const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-                    const data = JSON.parse(jsonStr);
-
-                    // Auto-layout algorithm
-                    const newNodes = [];
-                    const newEdges = [];
-                    const rootX = window.innerWidth / 2;
-                    const rootY = window.innerHeight / 2;
-
-                    // Process nodes to add coordinates
-                    const processedNodes = {};
-                    
-                    // Find root
-                    const rootNode = data.nodes.find(n => !n.parent) || data.nodes[0];
-                    newNodes.push({ ...rootNode, x: rootX, y: rootY, type: 'root' });
-                    processedNodes[rootNode.id] = { level: 0, index: 0, x: rootX, y: rootY };
-
-                    // Process children recursively-ish or level by level
-                    const processChildren = (parentId, level, parentX, parentY, angleRange = { start: 0, end: Math.PI * 2 }) => {
-                        const children = data.nodes.filter(n => n.parent === parentId);
-                        if (children.length === 0) return;
-
-                        const angleStep = (angleRange.end - angleRange.start) / children.length;
-                        const radius = 200 + (level * 50); // Increase radius for outer layers
-
-                        children.forEach((child, index) => {
-                            const angle = angleRange.start + (index * angleStep) + (angleStep / 2);
-                            // Basic radial layout logic
-                            const x = parentX + Math.cos(angle) * radius;
-                            const y = parentY + Math.sin(angle) * radius;
-
-                            newNodes.push({ ...child, x, y, type: 'child' });
-                            newEdges.push({ id: `e-${parentId}-${child.id}`, source: parentId, target: child.id });
-
-                            // Recurse for grandchildren
-                            // Restrict angle for children to avoid overlap (simple heuristic)
-                            processChildren(child.id, level + 1, x, y, { 
-                                start: angle - angleStep/2, 
-                                end: angle + angleStep/2 
-                            });
-                        });
-                    };
-
-                    processChildren(rootNode.id, 0, rootX, rootY);
-
-                    setNodes(newNodes);
-                    setEdges(newEdges);
-                    setCurrentMap({ ...currentMap, title: data.title || "AI Generated Map" });
-                    setAiPrompt("");
-
-                } catch (error) {
-                    console.error("AI Parse Error:", error);
-                    alert("Failed to generate mind map. Please check API Key or try a simpler prompt.");
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-
-            const expandNodeWithAI = async () => {
-                if (!selectedNodeId) return;
-                const node = nodes.find(n => n.id === selectedNodeId);
-                if (!node) return;
-
-                setIsLoading(true);
-                try {
-                    const systemPrompt = `
-                        You are a mind map expander. Given a topic, generate 3-5 sub-topics.
-                        Output ONLY valid JSON array of strings: ["Subtopic 1", "Subtopic 2", ...]
-                    `;
-                    const responseText = await generateAIContent(`Generate sub-topics for: ${node.label}`, systemPrompt);
-                    const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-                    const subtopics = JSON.parse(jsonStr);
-
-                    const newNodes = [...nodes];
-                    const newEdges = [...edges];
-                    
-                    subtopics.forEach((label, i) => {
-                        const id = `ai-${Date.now()}-${i}`;
-                        const angle = Math.random() * Math.PI * 2;
-                        const dist = 150;
-                        newNodes.push({
-                            id,
-                            label,
-                            x: node.x + Math.cos(angle) * dist,
-                            y: node.y + Math.sin(angle) * dist,
-                            type: 'child'
-                        });
-                        newEdges.push({ id: `e-${node.id}-${id}`, source: node.id, target: id });
-                    });
-
-                    setNodes(newNodes);
-                    setEdges(newEdges);
-                } catch (error) {
-                    console.error("AI Expansion Error", error);
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-
-            const askAIChat = async () => {
-                if (!chatInput.trim()) return;
-                const userMsg = { role: 'user', text: chatInput };
-                setChatMessages(prev => [...prev, userMsg]);
-                setChatInput("");
-                
-                const mapContext = nodes.map(n => n.label).join(", ");
-                const systemPrompt = `You are an intelligent assistant for a mind mapping tool. The user is working on a map with these nodes: [${mapContext}]. Answer their questions concisely.`;
-                
-                try {
-                    const response = await generateAIContent(userMsg.text, systemPrompt);
-                    setChatMessages(prev => [...prev, { role: 'ai', text: response }]);
-                } catch (error) {
-                    setChatMessages(prev => [...prev, { role: 'ai', text: "Sorry, I encountered an error." }]);
-                }
-            };
-
-            // -- Canvas Interactivity --
-            
-            const screenToCanvas = (sx, sy) => {
-                if (!containerRef.current) return { x: 0, y: 0 };
-                const rect = containerRef.current.getBoundingClientRect();
-                return {
-                    x: (sx - rect.left - offset.x) / scale,
-                    y: (sy - rect.top - offset.y) / scale
-                };
-            };
-
+            // Canvas Handlers
             const handleMouseDown = (e, nodeId = null) => {
                 if (nodeId) {
                     setDraggingNode(nodeId);
@@ -444,7 +342,6 @@
 
             const handleMouseMove = (e) => {
                 if (draggingNode) {
-                    const pos = screenToCanvas(e.clientX, e.clientY);
                     setNodes(prev => prev.map(n => {
                         if (n.id === draggingNode) {
                             return { ...n, x: n.x + e.movementX / scale, y: n.y + e.movementY / scale };
@@ -465,10 +362,21 @@
             };
 
             const handleWheel = (e) => {
-                e.preventDefault();
+                e.preventDefault(); 
                 const zoomSensitivity = 0.001;
                 const newScale = Math.min(Math.max(0.1, scale - e.deltaY * zoomSensitivity), 5);
                 setScale(newScale);
+            };
+
+            // Actions
+            const createNewMap = () => {
+                const initialNode = { id: 'root', label: 'Central Idea', x: window.innerWidth/2 - 75, y: window.innerHeight/2 - 25, type: 'root' };
+                setNodes([initialNode]);
+                setEdges([]);
+                setCurrentMap({ title: t('map_placeholder') });
+                setView('editor');
+                setScale(1);
+                setOffset({ x: 0, y: 0 });
             };
 
             const addNode = () => {
@@ -477,13 +385,16 @@
                     return;
                 }
                 const parent = nodes.find(n => n.id === selectedNodeId);
+                if (!parent) return;
+
                 const id = `node-${Date.now()}`;
                 const newNode = {
                     id,
                     label: "New Node",
                     x: parent.x + 150,
                     y: parent.y + 50,
-                    type: 'child'
+                    type: 'child',
+                    parent: parent.id
                 };
                 setNodes([...nodes, newNode]);
                 setEdges([...edges, { id: `e-${parent.id}-${id}`, source: parent.id, target: id }]);
@@ -493,7 +404,6 @@
             const deleteSelected = () => {
                 if (!selectedNodeId) return;
                 const nodesToDelete = new Set([selectedNodeId]);
-                
                 let changed = true;
                 while(changed) {
                     changed = false;
@@ -504,312 +414,363 @@
                         }
                     });
                 }
-
                 setNodes(nodes.filter(n => !nodesToDelete.has(n.id)));
                 setEdges(edges.filter(e => !nodesToDelete.has(e.source) && !nodesToDelete.has(e.target)));
                 setSelectedNodeId(null);
             };
 
-            const exportMap = (format) => {
-                if (format === 'json') {
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({nodes, edges, title: currentMap.title}));
-                    const downloadAnchorNode = document.createElement('a');
-                    downloadAnchorNode.setAttribute("href", dataStr);
-                    downloadAnchorNode.setAttribute("download", `${currentMap.title}.json`);
-                    document.body.appendChild(downloadAnchorNode);
-                    downloadAnchorNode.click();
-                    downloadAnchorNode.remove();
-                } else {
-                    window.print();
+            const saveMap = async () => {
+                if (!user) return;
+                
+                if (user.isOffline || !supabase) {
+                    const updated = {
+                        ...currentMap,
+                        nodes,
+                        edges,
+                        id: currentMap.id || `local-${Date.now()}`,
+                        updated_at: new Date().toISOString()
+                    };
+                    const existingIdx = maps.findIndex(m => m.id === updated.id);
+                    if (existingIdx >= 0) {
+                        const newMaps = [...maps];
+                        newMaps[existingIdx] = updated;
+                        setMaps(newMaps);
+                    } else {
+                        setMaps([updated, ...maps]);
+                    }
+                    setCurrentMap(updated);
+                    alert("Map saved locally (Offline Mode).");
+                    return;
+                }
+
+                setIsLoading(true);
+                try {
+                    const payload = {
+                        title: (currentMap && currentMap.title) ? currentMap.title : 'Untitled Mind Map',
+                        nodes,
+                        edges,
+                        user_id: user.id
+                    };
+
+                    let savedMap;
+                    if (currentMap && currentMap.id) {
+                        const { data, error } = await supabase
+                            .from('mindmaps')
+                            .update(payload)
+                            .eq('id', currentMap.id)
+                            .eq('user_id', user.id)
+                            .select()
+                            .single();
+                        if (error) throw error;
+                        savedMap = data;
+                    } else {
+                        const { data, error } = await supabase
+                            .from('mindmaps')
+                            .insert([payload])
+                            .select()
+                            .single();
+                        if (error) throw error;
+                        savedMap = data;
+                    }
+
+                    if (savedMap) {
+                        setCurrentMap(savedMap);
+                        fetchMaps(supabase, user.id);
+                    }
+                } catch (error) {
+                    console.error("Error saving map:", error);
+                    alert("Error saving: " + error.message); 
+                } finally {
+                    setIsLoading(false);
                 }
             };
 
-            // --- Views ---
+            const deleteMap = async (mapId, e) => {
+                e.stopPropagation();
+                if (!window.confirm("Are you sure you want to delete this map?")) return;
+
+                if (!user || user.isOffline || !supabase) {
+                    setMaps(maps.filter(m => m.id !== mapId));
+                    return;
+                }
+
+                try {
+                    const { error } = await supabase.from('mindmaps').delete().eq('id', mapId).eq('user_id', user.id);
+                    if (error) throw error;
+                    fetchMaps(supabase, user.id);
+                } catch (error) {
+                    console.error("Error deleting map:", error);
+                }
+            };
+
+            const generateMindMapFromText = async () => {
+                if (!aiPrompt.trim()) return;
+                setIsLoading(true);
+                setIsGenerateModalOpen(false);
+
+                try {
+                    const systemPrompt = `
+                        You are a JSON generator for a mind map application. 
+                        Output ONLY valid JSON. No markdown formatting, no code blocks.
+                        Structure: { "nodes": [{ "id": "string", "label": "string", "parent": "string (optional)" }], "title": "string" }
+                        Root node should not have a parent.
+                        Keep labels concise (under 5 words).
+                        Generate at least 10 nodes.
+                    `;
+                    
+                    const responseText = await generateAIContent(aiPrompt, systemPrompt);
+                    const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const data = JSON.parse(jsonStr);
+
+                    const newNodes = [];
+                    const newEdges = [];
+                    const rootX = window.innerWidth / 2;
+                    const rootY = window.innerHeight / 2;
+
+                    const rootNode = data.nodes.find(n => !n.parent) || data.nodes[0];
+                    newNodes.push({ ...rootNode, x: rootX, y: rootY, type: 'root' });
+
+                    const processChildren = (parentId, level, parentX, parentY, angleRange = { start: 0, end: Math.PI * 2 }) => {
+                        const children = data.nodes.filter(n => n.parent === parentId);
+                        if (children.length === 0) return;
+
+                        const angleStep = (angleRange.end - angleRange.start) / children.length;
+                        const radius = 200 + (level * 50);
+
+                        children.forEach((child, index) => {
+                            const angle = angleRange.start + (index * angleStep) + (angleStep / 2);
+                            const x = parentX + Math.cos(angle) * radius;
+                            const y = parentY + Math.sin(angle) * radius;
+
+                            newNodes.push({ ...child, x, y, type: 'child' });
+                            newEdges.push({ id: `e-${parentId}-${child.id}`, source: parentId, target: child.id });
+
+                            processChildren(child.id, level + 1, x, y, { 
+                                start: angle - angleStep/2, 
+                                end: angle + angleStep/2 
+                            });
+                        });
+                    };
+
+                    processChildren(rootNode.id, 0, rootX, rootY);
+
+                    setNodes(newNodes);
+                    setEdges(newEdges);
+                    setCurrentMap({ ...currentMap, title: data.title || "AI Generated Map" });
+                    setAiPrompt("");
+
+                } catch (error) {
+                    console.error("AI Error:", error);
+                    alert("Failed to generate mind map. AI might be unavailable.");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const expandNodeWithAI = async () => {
+                if (!selectedNodeId) return;
+                const node = nodes.find(n => n.id === selectedNodeId);
+                if (!node) return;
+
+                setIsLoading(true);
+                try {
+                    const systemPrompt = `You are a mind map expander. Generate 3-5 sub-topics. Output ONLY JSON array of strings: ["A", "B"]`;
+                    const responseText = await generateAIContent(`Generate sub-topics for: ${node.label}`, systemPrompt);
+                    const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const subtopics = JSON.parse(jsonStr);
+
+                    const newNodes = [...nodes];
+                    const newEdges = [...edges];
+                    
+                    subtopics.forEach((label, i) => {
+                        const id = `ai-${Date.now()}-${i}`;
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = 150;
+                        newNodes.push({
+                            id,
+                            label,
+                            x: node.x + Math.cos(angle) * dist,
+                            y: node.y + Math.sin(angle) * dist,
+                            type: 'child',
+                            parent: node.id
+                        });
+                        newEdges.push({ id: `e-${node.id}-${id}`, source: node.id, target: id });
+                    });
+
+                    setNodes(newNodes);
+                    setEdges(newEdges);
+                } catch (error) {
+                    console.error("AI Expansion Error", error);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const askAIChat = async () => {
+                if (!chatInput.trim()) return;
+                const userMsg = { role: 'user', text: chatInput };
+                setChatMessages(prev => [...prev, userMsg]);
+                setChatInput("");
+                
+                const mapContext = nodes.map(n => n.label).join(", ");
+                const systemPrompt = `You are an intelligent assistant for a mind mapping tool. Context: [${mapContext}]. Be concise.`;
+                
+                try {
+                    const response = await generateAIContent(userMsg.text, systemPrompt);
+                    setChatMessages(prev => [...prev, { role: 'ai', text: response }]);
+                } catch (error) {
+                    setChatMessages(prev => [...prev, { role: 'ai', text: "Sorry, I encountered an error." }]);
+                }
+            };
+
+            const handlePdfUpload = async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                setIsLoading(true);
+                try {
+                    const text = await readPdfTextFromFile(file);
+                    setAiPrompt(`Analyze this text and generate a mind map JSON.\n\n${text.substring(0, 20000)}`);
+                    setIsGenerateModalOpen(true);
+                } catch (err) {
+                    console.error('PDF Import Error:', err);
+                    alert('PDF Import Error: ' + err.message); 
+                } finally {
+                    setIsLoading(false);
+                    e.target.value = '';
+                }
+            };
 
             if (view === 'dashboard') {
                 return (
-                <div className="min-h-screen bg-slate-50 p-8 font-sans text-slate-900 overflow-auto">
-                    <div className="max-w-6xl mx-auto">
-                    <header className="flex justify-between items-center mb-12">
-                        <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-                            <Zap size={24} />
-                        </div>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">MindScape AI</h1>
-                        </div>
-                        <div className="flex items-center gap-4">
-                        <span className="text-sm text-slate-500 hidden sm:inline">
-                            {user ? `User: ${user.uid.slice(0,6)}...` : 'Connecting...'}
-                        </span>
-                        <Button onClick={createNewMap} icon={Plus}>New Map</Button>
-                        </div>
-                    </header>
+                    <div className="min-h-screen bg-slate-50 p-8 font-sans text-slate-900 overflow-auto">
+                        <div className="max-w-6xl mx-auto">
+                            <header className="flex flex-wrap justify-between items-center mb-12 gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                                        <Zap size={24} />
+                                    </div>
+                                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">{t('app_title')}</h1>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="text-sm text-slate-500 hidden sm:inline">
+                                        {user ? `User: ${user.email || 'Guest'}` : 'Connecting...'}
+                                    </span>
+                                    <button onClick={() => setLangAndSave(lang==='ar'?'en':'ar')} className="px-3 py-1 rounded border text-slate-700 bg-white hover:bg-slate-50 transition-colors">
+                                        {lang==='ar'?'EN':'AR'}
+                                    </button>
+                                    <Button onClick={createNewMap} icon={Plus}>{t('new_map')}</Button>
+                                </div>
+                            </header>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div 
-                        onClick={createNewMap}
-                        className="group aspect-video border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition-all"
-                        >
-                        <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-blue-500 mb-3 group-hover:scale-110 transition-transform">
-                            <Plus size={24} />
-                        </div>
-                        <span className="font-medium text-slate-600">Create from scratch</span>
-                        </div>
-
-                        <div 
-                        onClick={() => { createNewMap(); setIsGenerateModalOpen(true); }}
-                        className="group aspect-video bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 flex flex-col justify-between cursor-pointer shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all text-white"
-                        >
-                        <div>
-                            <div className="w-10 h-10 bg-white/20 backdrop-blur rounded-lg flex items-center justify-center mb-4">
-                            <Zap size={20} />
-                            </div>
-                            <h3 className="text-xl font-bold mb-1">Generate with AI</h3>
-                            <p className="text-indigo-100 text-sm">Turn text or ideas into maps instantly.</p>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm font-medium opacity-90">
-                            Try it now <ChevronRight size={16} />
-                        </div>
-                        </div>
-
-                        {maps.map(map => (
-                        <div key={map.id} 
-                            onClick={() => { 
-                            setCurrentMap(map); 
-                            setNodes(map.nodes || []); 
-                            setEdges(map.edges || []); 
-                            setView('editor'); 
-                            }}
-                            className="aspect-video bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between cursor-pointer hover:shadow-lg hover:border-blue-200 transition-all relative group"
-                        >
-                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                                onClick={(e) => deleteMap(map.id, e)}
-                                className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                            </div>
-                            <div className="flex-1 flex items-center justify-center opacity-20">
-                            <Layout size={48} />
-                            </div>
-                            <div>
-                            <h3 className="font-bold text-lg truncate text-slate-800">{map.title}</h3>
-                            <p className="text-xs text-slate-400 mt-1">
-                                Updated {map.updatedAt ? (map.updatedAt.seconds ? new Date(map.updatedAt.seconds * 1000).toLocaleDateString() : 'Recently') : 'Just now'}
-                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div onClick={createNewMap} className="group aspect-video border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition-all">
+                                    <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-blue-500 mb-3 group-hover:scale-110 transition-transform"><Plus size={24} /></div>
+                                    <span className="font-medium text-slate-600">{t('create_from_scratch')}</span>
+                                </div>
+                                <div onClick={() => { createNewMap(); setIsGenerateModalOpen(true); }} className="group aspect-video bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 flex flex-col justify-between cursor-pointer shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all text-white">
+                                    <div>
+                                        <div className="w-10 h-10 bg-white/20 backdrop-blur rounded-lg flex items-center justify-center mb-4"><Zap size={20} /></div>
+                                        <h3 className="text-xl font-bold mb-1">{t('generate_with_ai')}</h3>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm font-medium opacity-90">{t('try_now')} <ChevronRight size={16} /></div>
+                                </div>
+                                {maps.map(map => (
+                                    <div key={map.id} onClick={() => { setCurrentMap(map); setNodes(map.nodes || []); setEdges(map.edges || []); setView('editor'); }} className="aspect-video bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between cursor-pointer hover:shadow-lg hover:border-blue-200 transition-all relative group">
+                                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={(e) => deleteMap(map.id, e)} className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg"><Trash2 size={16} /></button>
+                                        </div>
+                                        <div className="flex-1 flex items-center justify-center opacity-20"><Layout size={48} /></div>
+                                        <div>
+                                            <h3 className="font-bold text-lg truncate text-slate-800">{map.title}</h3>
+                                            <p className="text-xs text-slate-400 mt-1">{map.updated_at ? new Date(map.updated_at).toLocaleDateString() : 'Recently'}</p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        ))}
                     </div>
-                    </div>
-                </div>
                 );
             }
 
-            // Editor View
             return (
                 <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#F8F9FA]">
-                <header className="h-14 border-b bg-white flex items-center justify-between px-4 z-20 shadow-sm">
-                    <div className="flex items-center gap-4">
-                    <button onClick={() => setView('dashboard')} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600">
-                        <Home size={20} />
-                    </button>
-                    <div className="h-6 w-px bg-slate-200"></div>
-                    <input 
-                        value={currentMap?.title || ""} 
-                        onChange={(e) => setCurrentMap({...currentMap, title: e.target.value})}
-                        className="font-bold text-lg text-slate-800 bg-transparent outline-none focus:bg-slate-50 px-2 rounded"
-                        placeholder="Untitled Map"
-                    />
-                    </div>
-                    <div className="flex items-center gap-2">
-                    <Button variant="secondary" icon={Download} onClick={() => exportMap('json')} className="hidden sm:flex">Export</Button>
-                    <Button variant="secondary" icon={Share2} onClick={() => alert("Shared link copied!")} className="hidden sm:flex">Share</Button>
-                    <Button variant="primary" icon={Save} onClick={saveMap}>
-                        {isLoading ? "Saving..." : "Save"}
-                    </Button>
-                    </div>
-                </header>
-
-                <div className="flex-1 flex relative overflow-hidden">
-                    <div className="w-16 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 shadow-sm">
-                    <button 
-                        onClick={() => setIsGenerateModalOpen(true)}
-                        className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow hover:bg-indigo-700 transition-colors tooltip"
-                        title="AI Generation"
-                    >
-                        <Zap size={20} />
-                    </button>
-                    <div className="w-8 h-px bg-slate-200 my-1"></div>
-                    <button onClick={addNode} className="p-3 rounded-lg hover:bg-slate-100 text-slate-600" title="Add Node"><Plus size={20} /></button>
-                    <button onClick={deleteSelected} className="p-3 rounded-lg hover:bg-red-50 text-slate-600 hover:text-red-500" title="Delete Node"><Trash2 size={20} /></button>
-                    <button onClick={() => setScale(1)} className="p-3 rounded-lg hover:bg-slate-100 text-slate-600" title="Reset Zoom"><Maximize size={20} /></button>
-                    </div>
-
-                    <div 
-                    ref={containerRef}
-                    className="flex-1 relative bg-[#f8f9fa] cursor-grab active:cursor-grabbing overflow-hidden"
-                    onMouseDown={(e) => handleMouseDown(e)}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                    onWheel={handleWheel}
-                    style={{ 
-                        backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', 
-                        backgroundSize: `${20 * scale}px ${20 * scale}px`,
-                        backgroundPosition: `${offset.x}px ${offset.y}px`
-                    }}
-                    >
-                    <div style={{ 
-                        transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, 
-                        transformOrigin: '0 0',
-                        position: 'absolute',
-                        top: 0, left: 0, width: '100%', height: '100%'
-                    }}>
-                        <svg className="absolute inset-0 overflow-visible pointer-events-none" style={{ width: '10000px', height: '10000px' }}>
-                            {edges.map(edge => {
-                            const src = nodes.find(n => n.id === edge.source);
-                            const tgt = nodes.find(n => n.id === edge.target);
-                            if (!src || !tgt) return null;
-                            
-                            return (
-                                <path 
-                                key={edge.id}
-                                d={`M ${src.x + 100} ${src.y + 25} C ${src.x + 150} ${src.y + 25}, ${tgt.x - 50} ${tgt.y + 25}, ${tgt.x} ${tgt.y + 25}`}
-                                stroke="#cbd5e1" 
-                                strokeWidth="3"
-                                fill="none"
-                                />
-                            );
-                            })}
-                        </svg>
-
-                        {nodes.map(node => {
-                            const isSelected = node.id === selectedNodeId;
-                            return (
-                            <div
-                                key={node.id}
-                                onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, node.id); }}
-                                className={`absolute flex items-center justify-center px-6 py-3 rounded-xl shadow-sm border transition-all
-                                ${node.type === 'root' 
-                                    ? 'bg-indigo-600 text-white border-indigo-700 text-lg font-bold min-w-[150px]' 
-                                    : 'bg-white text-slate-700 border-slate-200 font-medium min-w-[120px]'}
-                                ${isSelected ? 'ring-2 ring-blue-500 shadow-lg z-10' : 'hover:shadow-md z-0'}
-                                `}
-                                style={{ 
-                                left: node.x, 
-                                top: node.y,
-                                cursor: 'grab'
-                                }}
-                            >
-                                <input 
-                                value={node.label}
-                                onChange={(e) => {
-                                    setNodes(nodes.map(n => n.id === node.id ? { ...n, label: e.target.value } : n));
-                                }}
-                                className={`bg-transparent text-center outline-none w-full ${node.type === 'root' ? 'text-white placeholder-indigo-200' : 'text-slate-700'}`}
-                                />
-                                
-                                {isSelected && (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); expandNodeWithAI(); }}
-                                    className="absolute -top-3 -right-3 bg-white text-indigo-600 border border-indigo-100 p-1.5 rounded-full shadow-sm hover:scale-110 transition-transform"
-                                    title="AI Expand Branch"
-                                >
-                                    <Zap size={14} fill="currentColor" />
-                                </button>
-                                )}
-                            </div>
-                            );
-                        })}
-                    </div>
-                    </div>
-
-                    <button 
-                    onClick={() => setIsChatOpen(!isChatOpen)}
-                    className="absolute bottom-6 right-6 bg-slate-900 text-white p-4 rounded-full shadow-xl hover:bg-slate-800 transition-colors z-20"
-                    >
-                    <MessageSquare size={24} />
-                    </button>
-
-                    {isChatOpen && (
-                    <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl border-l flex flex-col z-30 animate-in">
-                        <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-                        <h3 className="font-bold flex items-center gap-2"><Zap size={16} className="text-indigo-600"/> AI Assistant</h3>
-                        <button onClick={() => setIsChatOpen(false)}><X size={18} /></button>
+                    <header className="h-14 border-b bg-white flex items-center justify-between px-4 z-20 shadow-sm shrink-0">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setView('dashboard')} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><Home size={20} /></button>
+                            <div className="h-6 w-px bg-slate-200"></div>
+                            <input value={currentMap?.title || ""} onChange={(e) => setCurrentMap({...currentMap, title: e.target.value})} className="font-bold text-lg text-slate-800 bg-transparent outline-none focus:bg-slate-50 px-2 rounded" placeholder={t('map_placeholder')} />
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {chatMessages.length === 0 && (
-                            <div className="text-center text-slate-400 mt-10 text-sm">
-                            Ask me anything about your map,<br/> or ask for ideas!
+                        <div className="flex items-center gap-2">
+                            <Button variant="secondary" icon={Download} onClick={() => alert("Simulated Export")} className="hidden sm:flex">{t('export_json')}</Button>
+                            <Button variant="primary" icon={Save} onClick={saveMap}>{isLoading ? t('saving') : t('save')}</Button>
+                        </div>
+                    </header>
+
+                    <div className="flex-1 flex relative overflow-hidden">
+                        <div className="w-16 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 shadow-sm shrink-0">
+                            <button onClick={() => setIsGenerateModalOpen(true)} className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow hover:bg-indigo-700 transition-colors"><Zap size={20} /></button>
+                            <div className="w-8 h-px bg-slate-200 my-1"></div>
+                            <button onClick={addNode} className="p-3 rounded-lg hover:bg-slate-100 text-slate-600"><Plus size={20} /></button>
+                            <button onClick={deleteSelected} className="p-3 rounded-lg hover:bg-red-50 text-slate-600 hover:text-red-500"><Trash2 size={20} /></button>
+                            <label className="p-3 rounded-lg hover:bg-slate-100 text-slate-600 cursor-pointer"><Upload size={20} /><input type="file" accept=".pdf" className="hidden" onChange={handlePdfUpload} /></label>
+                            <button onClick={() => { setScale(1); setOffset({x: 0, y: 0}); }} className="p-3 rounded-lg hover:bg-slate-100 text-slate-600"><Maximize size={20} /></button>
+                        </div>
+
+                        <div ref={containerRef} className="flex-1 relative bg-[#f8f9fa] cursor-grab active:cursor-grabbing overflow-hidden" onMouseDown={(e) => handleMouseDown(e)} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onWheel={handleWheel} style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: `${20 * scale}px ${20 * scale}px`, backgroundPosition: `${offset.x}px ${offset.y}px` }}>
+                            <div style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transformOrigin: '0 0', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                                <svg className="absolute inset-0 overflow-visible pointer-events-none" style={{ width: '10000px', height: '10000px' }}>
+                                    {edges.map(edge => {
+                                        const src = nodes.find(n => n.id === edge.source);
+                                        const tgt = nodes.find(n => n.id === edge.target);
+                                        if (!src || !tgt) return null;
+                                        return <path key={edge.id} d={`M ${src.x + 100} ${src.y + 25} C ${src.x + 150} ${src.y + 25}, ${tgt.x - 50} ${tgt.y + 25}, ${tgt.x} ${tgt.y + 25}`} stroke="#cbd5e1" strokeWidth="3" fill="none" />;
+                                    })}
+                                </svg>
+                                {nodes.map(node => {
+                                    const isSelected = node.id === selectedNodeId;
+                                    return (
+                                        <div key={node.id} onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, node.id); }} className={`absolute flex items-center justify-center px-6 py-3 rounded-xl shadow-sm border transition-all ${node.type === 'root' ? 'bg-indigo-600 text-white border-indigo-700 text-lg font-bold min-w-[150px]' : 'bg-white text-slate-700 border-slate-200 font-medium min-w-[120px]'} ${isSelected ? 'ring-2 ring-blue-500 shadow-lg z-10' : 'hover:shadow-md z-0'}`} style={{ left: node.x, top: node.y, cursor: 'grab' }}>
+                                            <input value={node.label} onChange={(e) => { setNodes(nodes.map(n => n.id === node.id ? { ...n, label: e.target.value } : n)); }} className={`bg-transparent text-center outline-none w-full ${node.type === 'root' ? 'text-white placeholder-indigo-200' : 'text-slate-700'}`} />
+                                            {isSelected && <button onClick={(e) => { e.stopPropagation(); expandNodeWithAI(); }} className="absolute -top-3 -right-3 bg-white text-indigo-600 border border-indigo-100 p-1.5 rounded-full shadow-sm hover:scale-110 transition-transform"><Zap size={14} fill="currentColor" /></button>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <button onClick={() => setIsChatOpen(!isChatOpen)} className="absolute bottom-6 right-6 bg-slate-900 text-white p-4 rounded-full shadow-xl hover:bg-slate-800 transition-colors z-20"><MessageSquare size={24} /></button>
+                        
+                        {isChatOpen && (
+                            <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl border-l flex flex-col z-30 animate-in">
+                                <div className="p-4 border-b flex justify-between items-center bg-slate-50"><h3 className="font-bold flex items-center gap-2"><Zap size={16} className="text-indigo-600"/> AI Assistant</h3><button onClick={() => setIsChatOpen(false)}><X size={18} /></button></div>
+                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                    {chatMessages.length === 0 && <div className="text-center text-slate-400 mt-10 text-sm">Ask me anything about your map,<br/> or ask for ideas!</div>}
+                                    {chatMessages.map((msg, i) => <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-slate-100 text-slate-800 rounded-bl-none'}`}>{msg.text}</div></div>)}
+                                </div>
+                                <div className="p-4 border-t bg-white"><div className="flex gap-2"><input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && askAIChat()} placeholder="Ask Amy AI..." className="flex-1 border rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" /><Button onClick={askAIChat} variant="primary" className="px-3"><ChevronRight size={18}/></Button></div></div>
                             </div>
                         )}
-                        {chatMessages.map((msg, i) => (
-                            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-slate-100 text-slate-800 rounded-bl-none'}`}>
-                                {msg.text}
-                            </div>
-                            </div>
-                        ))}
-                        </div>
-                        <div className="p-4 border-t">
-                        <div className="flex gap-2">
-                            <input 
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && askAIChat()}
-                            placeholder="Ask Amy AI..."
-                            className="flex-1 border rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
-                            />
-                            <Button onClick={askAIChat} variant="primary" className="px-3"><ChevronRight size={18}/></Button>
-                        </div>
-                        </div>
                     </div>
-                    )}
-                </div>
 
-                <Modal 
-                    isOpen={isGenerateModalOpen} 
-                    onClose={() => setIsGenerateModalOpen(false)} 
-                    title="Generate Mind Map"
-                >
-                    <div className="space-y-4">
-                    <p className="text-sm text-slate-600">Enter a topic, paste text, or describe what you want to brainstorm.</p>
-                    <textarea 
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        placeholder="e.g. Marketing strategy for a coffee shop..."
-                        className="w-full h-32 border rounded-lg p-3 text-sm outline-none focus:ring-2 ring-indigo-500/20 border-slate-300 resize-none"
-                    />
-                    <div className="flex justify-end gap-2">
-                        <Button variant="ghost" onClick={() => setIsGenerateModalOpen(false)}>Cancel</Button>
-                        <Button 
-                        variant="primary" 
-                        onClick={generateMindMapFromText} 
-                        disabled={isLoading || !aiPrompt.trim()}
-                        icon={Zap}
-                        >
-                        {isLoading ? "Generating..." : "Generate Map"}
-                        </Button>
-                    </div>
-                    </div>
-                </Modal>
+                    <Modal isOpen={isGenerateModalOpen} onClose={() => setIsGenerateModalOpen(false)} title={t('generate_with_ai')}>
+                        <div className="space-y-4">
+                            <p className="text-sm text-slate-600">Enter a topic, paste text, or describe what you want to brainstorm.</p>
+                            <textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder="e.g. Marketing strategy..." className="w-full h-32 border rounded-lg p-3 text-sm outline-none focus:ring-2 ring-indigo-500/20 border-slate-300 resize-none" />
+                            <div className="flex justify-end gap-2">
+                                <Button variant="ghost" onClick={() => setIsGenerateModalOpen(false)}>Cancel</Button>
+                                <Button variant="primary" onClick={generateMindMapFromText} disabled={isLoading || !aiPrompt.trim()} icon={Zap}>{isLoading ? "Thinking..." : "Generate"}</Button>
+                            </div>
+                        </div>
+                    </Modal>
 
-                {isLoading && (
-                    <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex items-center justify-center flex-col">
-                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="text-indigo-900 font-medium animate-pulse">Thinking...</p>
-                    </div>
-                )}
+                    {isLoading && <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex items-center justify-center flex-col"><div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div><p className="text-indigo-900 font-medium animate-pulse">Thinking...</p></div>}
                 </div>
             );
         }
 
-        // Mount the app
         const root = createRoot(document.getElementById('root'));
-        root.render(<AmyMindClone />);
+        root.render(<App />);
     </script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
-
