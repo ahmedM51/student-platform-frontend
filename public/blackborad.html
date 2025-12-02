@@ -1,1284 +1,1099 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>السبورة الذكية التفاعلية (نسخة المحاضر)</title>
-    <!-- تحميل مكتبة Tailwind CSS للتصميم -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>السبورة الذكية التفاعلية (برو)</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* تعريف خط Cairo ودعم النصوص العربية */
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #f7f7f7;
-            padding: 0;
-            margin: 0;
-        }
-        #whiteboard {
-            touch-action: none; /* لمنع التمرير الافتراضي على اللمس أثناء الرسم */
-            cursor: crosshair;
-            border: 2px solid #3b82f6; /* إطار أزرق جذاب */
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); /* ظل أعمق */
-        }
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        /* تصميم صندوق النص العائم */
-        #floatingTextBox {
-            position: absolute;
-            z-index: 100;
-            padding: 8px;
-            border: 2px dashed #1d4ed8;
-            background: rgba(255, 255, 255, 0.95);
-            resize: none;
-            outline: none;
-            border-radius: 6px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            font-family: 'Cairo', sans-serif;
-            cursor: move; /* لجعل النص قابلاً للسحب */
-        }
-    </style>
+    
+    <!-- Babel Standalone for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Supabase global client (uses real project config from supabase-config.js) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="js/supabase-config.js"></script>
-</head>
-<body class="bg-gray-100 min-h-screen">
-    <script>
-        try {
-            var plan = localStorage.getItem('subscriptionPlan');
-            if (!plan) {
-                localStorage.setItem('subscriptionPlan', 'free');
-            }
-        } catch (e) {}
-    </script>
-    <div class="p-4 sm:p-6 min-h-screen flex flex-col items-center">
-
-    <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b-4 border-blue-500 pb-2">سبورة المحاضر الذكية</h1>
-
-    <!-- لوحة التحكم -->
-    <div class="w-full max-w-7xl bg-white p-4 rounded-xl shadow-2xl mb-4 flex flex-wrap justify-center items-center gap-4 sm:gap-6">
-
-        <!-- مجموعة اللون والسمك -->
-        <div class="flex flex-row gap-4">
-            <div class="control-group">
-                <label for="colorPicker" class="text-sm font-medium text-gray-700 mb-1">اللون</label>
-                <input type="color" id="colorPicker" value="#000000" class="w-16 h-10 border-2 border-gray-300 rounded-lg p-0.5 cursor-pointer">
-            </div>
-            <div class="control-group">
-                <label for="thicknessRange" class="text-sm font-medium text-gray-700 mb-1">السمك / حجم النص</label>
-                <input type="range" id="thicknessRange" min="1" max="50" value="5" class="w-24 h-10 cursor-pointer">
-                <span id="thicknessValue" class="text-xs text-gray-500 mt-1">5</span>
-            </div>
-        </div>
-        
-        <!-- أزرار أوضاع الرسم (القلم والممحاة) -->
-        <div class="control-group flex-row gap-2 mt-4 sm:mt-0">
-             <button id="penModeButton" class="tool-button bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
-                القلم (نشط)
-            </button>
-            <button id="eraserModeButton" class="tool-button bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
-                الممحاة
-            </button>
-        </div>
-
-        <!-- زر إضافة نص (الوضع الاحترافي) -->
-        <div class="control-group mt-4 sm:mt-0">
-            <button id="textModeButton" class="tool-button bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
-                إضافة نص
-            </button>
-        </div>
     
-        <!-- التراجع والإعادة -->
-        <div class="control-group flex-row gap-2 mt-4 sm:mt-0">
-            <button id="undoButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105 disabled:opacity-50" disabled>
-                تراجع
-            </button>
-            <button id="redoButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105 disabled:opacity-50" disabled>
-                إعادة
-            </button>
-        </div>
+    <style>
+      body {
+        font-family: 'Cairo', sans-serif;
+        overscroll-behavior: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      /* Prevent pull-to-refresh on mobile */
+      html, body {
+        overflow: hidden;
+        height: 100%;
+        width: 100%;
+        touch-action: none;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+      /* Custom cursor styles */
+      .cursor-pen { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>') 0 24, crosshair; }
+      .cursor-eraser { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z"/></svg>') 12 12, cell; }
+      
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
 
-        <!-- رفع صورة ومسح وتصدير -->
-        <div class="control-group flex-row gap-2 mt-4 sm:mt-0">
-            <label for="imageUpload" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105 cursor-pointer text-center">
-                رفع صورة
-            </label>
-            <input type="file" id="imageUpload" accept="image/*" class="hidden">
-            
-            <button id="clearButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
-                مسح الكل
-            </button>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.263.1",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+  }
+}
+</script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root" class="h-full w-full"></div>
 
-            <button id="exportButton" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">
-                تصدير (PNG)
-            </button>
-        </div>
+    <script type="text/babel" data-type="module">
+        import React, { useState, useRef, useEffect, useCallback } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            Pen, Eraser, Type, Square, 
+            Highlighter, Move, Wand2, Image as ImageIcon,
+            Undo2, Redo2, Download, Trash2, 
+            ChevronRight, ChevronLeft, FilePlus,
+            Users, Link, Settings, LogOut, Loader2
+        } from 'lucide-react';
 
-        <div class="control-group mt-4 sm:mt-0">
-            <label class="text-sm font-medium text-gray-700 mb-1">جلسة</label>
-            <div class="flex items-center gap-2">
-                <input id="sessionTitle" type="text" placeholder="عنوان الجلسة" class="w-44 px-3 py-2 border rounded-lg text-sm" />
-                <button id="createSessionBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">بدء</button>
-            </div>
-        </div>
+        // --- 1. UTILS & HELPERS ---
 
-        <div class="control-group mt-4 sm:mt-0">
-            <label class="text-sm font-medium text-gray-700 mb-1">انضمام</label>
-            <div class="flex items-center gap-2">
-                <input id="roomIdInput" type="text" placeholder="رمز الجلسة" class="w-40 px-3 py-2 border rounded-lg text-sm" />
-                <button id="joinSessionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">انضمام</button>
-            </div>
-        </div>
+        const generateId = () => Math.random().toString(36).substr(2, 9);
 
-        <div class="control-group mt-4 sm:mt-0">
-            <label class="text-sm font-medium text-gray-700 mb-1">المشاركة والحفظ</label>
-            <div class="flex items-center gap-2">
-                <span id="roomBadge" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">لا توجد جلسة</span>
-                <button id="copyLinkBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">نسخ الرابط</button>
-                <button id="saveCloudBtn" class="bg-purple-700 hover:bg-purple-800 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 transform hover:scale-105">حفظ في السحابة</button>
-            </div>
-        </div>
-
-    </div>
-
-    <div class="w-full max-w-7xl bg-white p-3 rounded-xl shadow-md mb-4 flex flex-wrap items-center gap-3">
-        <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600">عنوان الملف</label>
-            <input id="fileTitle" type="text" placeholder="اكتب عنوان اللقطة" class="w-56 px-3 py-2 border rounded-lg text-sm" />
-        </div>
-        <div class="flex items-center gap-2">
-            <button id="boldBtn" class="px-3 py-2 rounded-lg border text-sm">B</button>
-            <button id="italicBtn" class="px-3 py-2 rounded-lg border text-sm">I</button>
-            <button id="underlineBtn" class="px-3 py-2 rounded-lg border text-sm">U</button>
-            <button id="bulletsBtn" class="px-3 py-2 rounded-lg border text-sm">•</button>
-            <button id="numberedBtn" class="px-3 py-2 rounded-lg border text-sm">1.</button>
-            <button id="alignRightBtn" class="px-3 py-2 rounded-lg border text-sm">يمين</button>
-            <button id="alignCenterBtn" class="px-3 py-2 rounded-lg border text-sm">وسط</button>
-            <button id="alignLeftBtn" class="px-3 py-2 rounded-lg border text-sm">يسار</button>
-            <button id="highlighterBtn" class="px-3 py-2 rounded-lg border text-sm">مبرز</button>
-        </div>
-        <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600">أشكال</label>
-            <select id="shapeSelect" class="px-2 py-2 border rounded-lg text-sm">
-                <option value="none">—</option>
-                <option value="check">صح</option>
-                <option value="cross">غلط</option>
-                <option value="circle">دائرة</option>
-                <option value="rect">مستطيل</option>
-                <option value="arrow">سهم</option>
-                <option value="star">نجمة</option>
-            </select>
-        </div>
-        <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600">خلفية</label>
-            <select id="bgSelect" class="px-2 py-2 border rounded-lg text-sm">
-                <option value="plain">بيضاء</option>
-                <option value="lined">سطرية</option>
-                <option value="grid">شبكة</option>
-                <option value="dots">منقطة</option>
-            </select>
-        </div>
-        <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600">ألوان المبرز</label>
-            <button class="w-6 h-6 rounded-full border" style="background:#f59e0b" title="أصفر" data-hi-color="#f59e0b"></button>
-            <button class="w-6 h-6 rounded-full border" style="background:#34d399" title="أخضر" data-hi-color="#34d399"></button>
-            <button class="w-6 h-6 rounded-full border" style="background:#60a5fa" title="أزرق" data-hi-color="#60a5fa"></button>
-            <button class="w-6 h-6 rounded-full border" style="background:#f472b6" title="وردي" data-hi-color="#f472b6"></button>
-        </div>
-        <div class="flex items-center gap-2">
-            <button id="laserBtn" class="px-3 py-2 rounded-lg border text-sm">ليزر</button>
-        </div>
-        <div class="flex items-center gap-2">
-            <label for="shapeFill" class="text-sm text-gray-600">تعبئة الشكل</label>
-            <input id="shapeFill" type="checkbox" class="w-5 h-5">
-        </div>
-        <div class="flex items-center gap-2">
-            <button id="prevPageBtn" class="px-3 py-2 rounded-lg border text-sm">السابق</button>
-            <span id="pageInfo" class="text-sm text-gray-600">صفحة 1 / 1</span>
-            <button id="nextPageBtn" class="px-3 py-2 rounded-lg border text-sm">التالي</button>
-            <button id="newPageBtn" class="px-3 py-2 rounded-lg border text-sm">صفحة جديدة</button>
-        </div>
-    </div>
-
-    <!-- حاوية السبورة -->
-    <div class="w-full max-w-7xl flex-grow bg-white rounded-xl overflow-hidden relative">
-        <canvas id="whiteboard" class="w-full h-full"></canvas>
-        <canvas id="overlay" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
-    </div>
-
-    <script>
-        // تهيئة المتغيرات الأساسية
-        const canvas = document.getElementById('whiteboard');
-        const ctx = canvas.getContext('2d');
-        const overlayCanvas = document.getElementById('overlay');
-        const octx = overlayCanvas.getContext('2d');
-        const colorPicker = document.getElementById('colorPicker');
-        const thicknessRange = document.getElementById('thicknessRange');
-        const thicknessValue = document.getElementById('thicknessValue');
-        const clearButton = document.getElementById('clearButton');
-        const penModeButton = document.getElementById('penModeButton');
-        const eraserModeButton = document.getElementById('eraserModeButton');
-        const textModeButton = document.getElementById('textModeButton');
-        const undoButton = document.getElementById('undoButton');
-        const redoButton = document.getElementById('redoButton');
-        const exportButton = document.getElementById('exportButton');
-        const imageUpload = document.getElementById('imageUpload');
-
-        let supa = null;
-        let userId = 'anonymous';
-        let roomId = null;
-        let channel = null;
-        let isRemoteDrawing = false;
-
-        let textBold = false;
-        let textItalic = false;
-        let textUnderline = false;
-        let listType = 'none';
-        let textAlignMode = 'right';
-        let bgType = 'plain';
-        let shapeType = 'none';
-        let highlighterActive = false;
-        let shapeFillFlag = false;
-        let laserActive = false;
-        let laserColor = '#ef4444';
-        let laserDots = [];
-        let laserRAF = null;
-        let pages = [];
-        let pageIndex = 0;
-
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
-        let currentMode = 'pen'; // 'pen', 'eraser', 'text'
-        let uploadedImage = null; // لحفظ كائن الصورة المُحمّلة
-
-        // متغيرات تاريخ التراجع/الإعادة
-        let history = [];
-        let historyStep = -1;
-        const MAX_HISTORY = 30; // الحد الأقصى لخطوات التراجع
-
-        // تهيئة خصائص الرسم الأولية
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        // 1. وظيفة حفظ حالة السبورة في التاريخ
-        function saveState() {
-            // إزالة أي خطوات إعادة لاحقة
-            if (historyStep < history.length - 1) {
-                history = history.slice(0, historyStep + 1);
-            }
-
-            // منع التضخم الزائد للتاريخ
-            if (history.length >= MAX_HISTORY) {
-                history.shift(); // إزالة أقدم خطوة
-            } else {
-                historyStep++;
-            }
-
-            // حفظ صورة البيانات الحالية للـ Canvas
-            history.push(canvas.toDataURL());
-            
-            updateUndoRedoButtons();
-        }
-
-        // 2. وظيفة لتحديث أزرار التراجع والإعادة
-        function updateUndoRedoButtons() {
-            undoButton.disabled = historyStep <= 0;
-            redoButton.disabled = historyStep >= history.length - 1;
-        }
-
-        // 3. وظيفة لإعادة رسم حالة معينة من التاريخ
-        function restoreState(index) {
-            if (index < 0 || index >= history.length) return;
-
-            const base64Image = history[index];
-            const img = new Image();
-            img.onload = () => {
-                // يجب أولاً مسح السبورة وإعادة رسم الخلفية قبل تطبيق حالة التاريخ
-                const displayWidth = canvas.parentElement.clientWidth;
-                const displayHeight = canvas.parentElement.clientHeight;
-                
-                // مسح اللوحة (بدون التأثير على التحجيم)
-                ctx.save(); 
-                ctx.setTransform(1, 0, 0, 1, 0, 0); 
-                ctx.clearRect(0, 0, canvas.width, canvas.height); 
-                ctx.restore(); 
-
-                // إعادة رسم الصورة الخلفية (إن وجدت)
-                if (uploadedImage) {
-                    drawBackgroundImage(displayWidth, displayHeight);
-                } else {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, displayWidth, displayHeight);
-                }
-
-                // رسم حالة التاريخ فوق الخلفية
-                ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
-                
-                historyStep = index;
-                updateUndoRedoButtons();
-            };
-            img.src = base64Image;
-        }
-
-        // 4. وظيفة مساعدة لرسم الصورة الخلفية
-        function drawBackgroundImage(displayWidth, displayHeight) {
-             // رسم الصورة بحيث تغطي السبورة بالكامل مع الحفاظ على نسبة العرض إلى الارتفاع (Cover)
-            const canvasRatio = displayWidth / displayHeight;
-            const imageRatio = uploadedImage.width / uploadedImage.height;
-            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-            if (imageRatio > canvasRatio) { // الصورة أوسع من السبورة
-                drawHeight = displayHeight;
-                drawWidth = imageRatio * displayHeight;
-                offsetX = (displayWidth - drawWidth) / 2;
-            } else { // الصورة أطول من السبورة
-                drawWidth = displayWidth;
-                drawHeight = displayWidth / imageRatio;
-                offsetY = (displayHeight - drawHeight) / 2;
-            }
-            ctx.drawImage(uploadedImage, offsetX, offsetY, drawWidth, drawHeight);
-        }
-
-        function drawBaseBackground(displayWidth, displayHeight){
+        const drawBackground = (ctx, width, height, type) => {
+            ctx.save();
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, displayWidth, displayHeight);
-        }
-        
-        function drawPatternOverlayOnOverlay(displayWidth, displayHeight){
-            octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-            if (bgType === 'plain') return;
-            octx.save();
-            if (bgType === 'lined'){
-                octx.strokeStyle = '#e5e7eb';
-                octx.lineWidth = 1;
-                for (let y=32; y<displayHeight; y+=32){
-                    octx.beginPath(); octx.moveTo(0,y); octx.lineTo(displayWidth,y); octx.stroke();
+            ctx.fillRect(0, 0, width, height);
+            ctx.strokeStyle = '#e2e8f0'; 
+            ctx.lineWidth = 1;
+
+            if (type === 'lines') {
+                const spacing = 40;
+                ctx.beginPath();
+                for (let y = spacing; y < height; y += spacing) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
                 }
-            } else if (bgType === 'grid'){
-                octx.strokeStyle = '#f1f5f9';
-                octx.lineWidth = 1;
-                for (let y=32; y<displayHeight; y+=32){ octx.beginPath(); octx.moveTo(0,y); octx.lineTo(displayWidth,y); octx.stroke(); }
-                for (let x=32; x<displayWidth; x+=32){ octx.beginPath(); octx.moveTo(x,0); octx.lineTo(x,displayHeight); octx.stroke(); }
-            } else if (bgType === 'dots'){
-                const prevFill = octx.fillStyle;
-                octx.fillStyle = '#e5e7eb';
-                for (let y=24; y<displayHeight; y+=32){
-                    for (let x=24; x<displayWidth; x+=32){
-                        octx.beginPath(); octx.arc(x, y, 1.2, 0, Math.PI*2); octx.fill();
+                ctx.stroke();
+            } else if (type === 'grid') {
+                const spacing = 40;
+                ctx.beginPath();
+                for (let x = spacing; x < width; x += spacing) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                }
+                for (let y = spacing; y < height; y += spacing) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                }
+                ctx.stroke();
+            } else if (type === 'dots') {
+                const spacing = 40;
+                ctx.fillStyle = '#cbd5e1'; 
+                for (let x = spacing; x < width; x += spacing) {
+                    for (let y = spacing; y < height; y += spacing) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
                     }
                 }
-                octx.fillStyle = prevFill;
             }
-            octx.restore();
-        }
+            ctx.restore();
+        };
 
-        function redrawOverlay(){
-            const displayWidth = canvas.parentElement.clientWidth;
-            const displayHeight = canvas.parentElement.clientHeight;
-            drawPatternOverlayOnOverlay(displayWidth, displayHeight);
-            // laser dots will be drawn in RAF, so we don't draw them here
-        }
-
-        function applyBackground(type){
-            const displayWidth = canvas.parentElement.clientWidth;
-            const displayHeight = canvas.parentElement.clientHeight;
-            const tempCanvas = document.createElement('canvas');
-            const tctx = tempCanvas.getContext('2d');
-            tempCanvas.width = displayWidth; tempCanvas.height = displayHeight;
-            tctx.drawImage(canvas, 0, 0, displayWidth, displayHeight);
-            ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore();
-            if (uploadedImage) { drawBackgroundImage(displayWidth, displayHeight); } else { drawBaseBackground(displayWidth, displayHeight); }
-            ctx.drawImage(tempCanvas, 0, 0, displayWidth, displayHeight);
-            redrawOverlay();
-        }
-
-        // 5. وظيفة لضبط حجم اللوحة ليتناسب مع الحاوية ويدعم وضوح الشاشة (DPI)
-        function resizeCanvas() {
-            const displayWidth = canvas.parentElement.clientWidth;
-            const displayHeight = canvas.parentElement.clientHeight;
+        const drawShape = (ctx, start, end, type, fill) => {
+            const width = end.x - start.x;
+            const height = end.y - start.y;
+            const centerX = start.x + width / 2;
+            const centerY = start.y + height / 2;
             
-            // حفظ المحتوى الحالي قبل تغيير الحجم
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            tempCtx.setTransform(1, 0, 0, 1, 0, 0); 
-            tempCtx.drawImage(canvas, 0, 0);
-
-            // تطبيق التحجيم الجديد
-            const scale = window.devicePixelRatio;
-            canvas.width = displayWidth * scale;
-            canvas.height = displayHeight * scale;
-            ctx.scale(scale, scale);
-            overlayCanvas.width = displayWidth;
-            overlayCanvas.height = displayHeight;
-            
-            // 1. مسح وإعادة رسم الخلفية الأساسية
-            if (uploadedImage) { drawBackgroundImage(displayWidth, displayHeight); } else { drawBaseBackground(displayWidth, displayHeight); }
-
-            // 2. إعادة رسم المحتوى المحفوظ (الرسم/النص)
-            if (tempCanvas.width > 0 && tempCanvas.height > 0) {
-                 // رسم المحتوى المحفوظ بعد ضبط الحجم
-                 ctx.drawImage(tempCanvas, 0, 0, displayWidth, displayHeight);
-            }
-
-            // 3. رسم طبقة الخلفية (سطور/شبكة/نقاط) فوق المحتوى على Canvas العلوي
-            redrawOverlay();
-
-            // 4. إعادة تعيين إعدادات الفرشاة بعد إعادة التحجيم
-            setMode(currentMode);
-            ctx.strokeStyle = colorPicker.value;
-            ctx.lineWidth = thicknessRange.value;
-        }
-
-        // 6. وظيفة لتبديل وضع الرسم
-        function setMode(mode) {
-            currentMode = mode;
-            
-            // تحديث وضع الدمج والمؤشر
-            if (mode === 'eraser') {
-                ctx.globalCompositeOperation = 'destination-out';
-                canvas.style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWVyYXNlciI+PHBhdGggZD0iTTE0LjQ4NSA3LjE0TDE1Ljc1IDhjLjk5Ljk5Ljk5IDIuMDYgMCAzLjA1TDUuMjkgMjIuNTFHMi4xMTkgMi4xMTkgMCAwMSAyLjI0IDIyLjVMMCAyMC4yNiAzLjQ5IDE2Ljc3TDEwLjQ4IDkuNzlIMTkuOTRDLjQ2LTIuMTQuNTItMi4wOSAxLjc4LTguOTciIHN0cm9rZT0icmVkIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2ZyI+"), auto';
-                ctx.globalAlpha = 1;
-            } else if (mode === 'pen') {
-                ctx.globalCompositeOperation = 'source-over';
-                canvas.style.cursor = 'crosshair';
-                ctx.globalAlpha = 1;
-            } else if (mode === 'text') {
-                ctx.globalCompositeOperation = 'source-over';
-                canvas.style.cursor = 'crosshair'; // سنستخدم الكروس هير للإشارة إلى مكان بدء النص
-                ctx.globalAlpha = 1;
-            } else if (mode === 'highlighter') {
-                ctx.globalCompositeOperation = 'source-over';
-                canvas.style.cursor = 'crosshair';
-                ctx.globalAlpha = 0.3;
-            } else if (mode === 'shape') {
-                ctx.globalCompositeOperation = 'source-over';
-                canvas.style.cursor = 'crosshair';
-                ctx.globalAlpha = 1;
-            } else {
-                ctx.globalCompositeOperation = 'source-over';
-                canvas.style.cursor = 'crosshair';
-                ctx.globalAlpha = 1;
-            }
-            
-            // تحديث أزرار الوضع
-            document.querySelectorAll('.tool-button').forEach(btn => {
-                btn.classList.remove('bg-blue-500', 'bg-red-500', 'bg-indigo-500');
-                btn.classList.add('bg-gray-400');
-                let newText = '';
-                if (btn.id === 'penModeButton') newText = 'القلم';
-                if (btn.id === 'eraserModeButton') newText = 'الممحاة';
-                if (btn.id === 'textModeButton') newText = 'إضافة نص';
-                btn.textContent = newText;
-            });
-
-            if (mode === 'pen') {
-                penModeButton.classList.remove('bg-gray-400');
-                penModeButton.classList.add('bg-blue-500');
-                penModeButton.textContent = 'القلم (نشط)';
-            } else if (mode === 'eraser') {
-                eraserModeButton.classList.remove('bg-gray-400');
-                eraserModeButton.classList.add('bg-red-500');
-                eraserModeButton.textContent = 'الممحاة (نشطة)';
-            } else if (mode === 'text') {
-                textModeButton.classList.remove('bg-gray-400');
-                textModeButton.classList.add('bg-indigo-500');
-                textModeButton.textContent = 'إضافة نص (نشط)';
-            }
-        }
-
-        async function setupSupabaseAndRealtime(){
-            try{
-                supa = window.supabaseClient || (window.initializeSupabase && window.initializeSupabase());
-            }catch(_){}
-            try{
-                if (window.supabaseAuth && typeof window.supabaseAuth.getCurrentUser === 'function'){
-                    const { data } = await window.supabaseAuth.getCurrentUser();
-                    if (data && data.id) userId = data.id;
-                }
-            }catch(_){
-                try{ userId = localStorage.getItem('userId') || 'anonymous'; }catch(__){}
-            }
-            try{
-                const params = new URLSearchParams(window.location.search);
-                const qRoom = params.get('room');
-                if (qRoom) joinRoom(qRoom);
-            }catch(_){ }
-        }
-
-        function uiSetRoom(id){
-            roomId = id;
-            const badge = document.getElementById('roomBadge');
-            if (badge) badge.textContent = id ? `رمز الجلسة: ${id}` : 'لا توجد جلسة';
-        }
-
-        function cryptoRandomId(){
-            try{ return (crypto.randomUUID && crypto.randomUUID().slice(0,8)) || Math.random().toString(36).slice(2,10); }catch(_){ return Math.random().toString(36).slice(2,10); }
-        }
-
-        function joinRoom(id){
-            if (!supa) return;
-            uiSetRoom(id);
-            try{ if (channel && supa.removeChannel) supa.removeChannel(channel); }catch(_){ }
-            channel = supa.channel(`whiteboard:${id}`, { config: { broadcast: { self: false } } });
-            channel.on('broadcast', { event: 'stroke-start' }, ({ payload })=> startRemoteStroke(payload));
-            channel.on('broadcast', { event: 'draw' }, ({ payload })=> applyRemoteDraw(payload));
-            channel.on('broadcast', { event: 'stroke-end' }, ({ payload })=> endRemoteStroke(payload));
-            channel.on('broadcast', { event: 'text' }, ({ payload })=> applyRemoteText(payload));
-            channel.on('broadcast', { event: 'clear' }, ()=> clearCanvas(true));
-            channel.on('broadcast', { event: 'image' }, ({ payload })=> applyRemoteImage(payload));
-            channel.on('broadcast', { event: 'shape' }, ({ payload })=> applyRemoteShape(payload));
-            channel.on('broadcast', { event: 'bg' }, ({ payload })=> applyRemoteBg(payload));
-            channel.on('broadcast', { event: 'laser' }, ({ payload })=> applyRemoteLaser(payload));
-            channel.on('broadcast', { event: 'page' }, ({ payload })=> applyRemotePage(payload));
-            channel.subscribe();
-            try{
-                const url = new URL(window.location.href);
-                url.searchParams.set('room', id);
-                window.history.replaceState({}, '', url);
-            }catch(_){ }
-        }
-
-        function send(event, payload){
-            try{ if (channel && channel.send) channel.send({ type: 'broadcast', event, payload }); }catch(_){ }
-        }
-
-        function startRemoteStroke(p){
-            try{
-                const rect = canvas.getBoundingClientRect();
-                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
-                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
-                ctx.save();
-                ctx.lineWidth = (p && p.lineWidth) || thicknessRange.value;
-                ctx.strokeStyle = (p && p.color) || colorPicker.value;
-                if (p && p.mode === 'eraser') {
-                    ctx.globalCompositeOperation = 'destination-out';
-                    ctx.globalAlpha = 1;
-                } else if (p && p.mode === 'highlighter') {
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.globalAlpha = 0.3;
-                } else {
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.globalAlpha = 1;
-                }
-                isRemoteDrawing = true;
-                lastX = x; lastY = y;
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-            }catch(_){ }
-        }
-
-        function applyRemoteDraw(p){
-            try{
-                if (!isRemoteDrawing) return;
-                const rect = canvas.getBoundingClientRect();
-                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
-                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
-                ctx.lineTo(x, y);
-                ctx.stroke();
-                lastX = x; lastY = y;
-            }catch(_){ }
-        }
-
-        function endRemoteStroke(){
-            try{
-                if (isRemoteDrawing){
-                    isRemoteDrawing = false;
-                    ctx.closePath();
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.globalAlpha = 1;
-                }
-            }catch(_){ }
-        }
-
-        function applyRemoteText(p){
-            try{
-                const rect = canvas.getBoundingClientRect();
-                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
-                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
-                const w = (p && p.wRatio != null) ? (p.wRatio * rect.width) : rect.width * 0.5;
-                const h = (p && p.hRatio != null) ? (p.hRatio * rect.height) : 40;
-                const prevColor = colorPicker.value;
-                const prevThickness = thicknessRange.value;
-                if (p && p.color) colorPicker.value = p.color;
-                if (p && p.fontSize) thicknessRange.value = Math.max(1, Math.round(p.fontSize / 2.5));
-                drawText((p && p.text) || '', x, y, w, h, { bold: !!(p&&p.bold), italic: !!(p&&p.italic), underline: !!(p&&p.underline), align: (p&&p.align)||'right', listType: (p&&p.listType)||'none', fontSizePx: (p&&p.fontSize)||undefined, color: colorPicker.value });
-                colorPicker.value = prevColor;
-                thicknessRange.value = prevThickness;
-                saveState();
-            }catch(_){ }
-        }
-
-        function applyRemoteShape(p){
-            try{
-                const rect = canvas.getBoundingClientRect();
-                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
-                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
-                const size = (p && p.sizeRatio != null) ? (p.sizeRatio * Math.min(rect.width, rect.height)) : 40;
-                const prev = colorPicker.value;
-                if (p && p.color) colorPicker.value = p.color;
-                drawShapeAt((p&&p.type)||'check', x, y, size, colorPicker.value, +thicknessRange.value, !!(p&&p.fill));
-                colorPicker.value = prev;
-                saveState();
-            }catch(_){ }
-        }
-
-        function applyRemoteImage(p){
-            try{
-                if (!p || !p.dataURL) return;
-                const img = new Image();
-                img.onload = ()=>{ uploadedImage = img; resizeCanvas(); saveState(); };
-                img.src = p.dataURL;
-            }catch(_){ }
-        }
-
-        function applyRemoteBg(p){
-            try{
-                const t = (p && p.type) || 'plain';
-                bgType = t;
-                applyBackground(t);
-            }catch(_){ }
-        }
-
-        function applyRemoteLaser(p){
-            try{
-                const rect = canvas.getBoundingClientRect();
-                const x = (p && p.xRatio != null) ? (p.xRatio * rect.width) : 0;
-                const y = (p && p.yRatio != null) ? (p.yRatio * rect.height) : 0;
-                addLaserDot(x, y, (p && p.color) || '#ef4444');
-            }catch(_){ }
-        }
-
-        function addLaserDot(x, y, color){
-            laserDots.push({ x, y, color, t: performance.now() });
-            if (!laserRAF) startLaserRAF();
-        }
-
-        function startLaserRAF(){
-            const maxAge = 1000; // ms
-            function frame(){
-                const now = performance.now();
-                // clear overlay then redraw pattern and lasers
-                octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                const dw = canvas.parentElement.clientWidth;
-                const dh = canvas.parentElement.clientHeight;
-                drawPatternOverlayOnOverlay(dw, dh);
-                // draw laser dots
-                laserDots = laserDots.filter(d => (now - d.t) < maxAge);
-                for (const d of laserDots){
-                    const age = now - d.t;
-                    const a = Math.max(0, 1 - age / maxAge);
-                    octx.save();
-                    octx.globalAlpha = a;
-                    octx.fillStyle = d.color;
-                    octx.beginPath();
-                    octx.arc(d.x, d.y, 10, 0, Math.PI*2);
-                    octx.fill();
-                    octx.restore();
-                }
-                if (laserDots.length > 0 || laserActive){
-                    laserRAF = requestAnimationFrame(frame);
-                } else {
-                    laserRAF = null;
-                }
-            }
-            laserRAF = requestAnimationFrame(frame);
-        }
-
-        // 7. إنشاء صندوق نص عائم (Floating Textbox)
-        function createFloatingTextBox(x, y) {
-            // إزالة أي صندوق نص موجود مسبقاً
-            removeFloatingTextBox();
-            
-            const textBox = document.createElement('textarea');
-            textBox.id = 'floatingTextBox';
-            textBox.style.left = `${x}px`;
-            textBox.style.top = `${y}px`;
-            // حجم الخط بناءً على شريط التمرير
-            textBox.style.fontSize = `${thicknessRange.value * 2.5}px`;
-            textBox.style.color = colorPicker.value;
-            textBox.placeholder = 'اكتب هنا واضغط Enter للرسم...';
-            
-            document.body.appendChild(textBox);
-            textBox.focus();
-
-            // عند الضغط على مفتاح (مثل Enter)
-            textBox.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    commitTextToCanvas(textBox, x, y);
-                    setMode('pen'); 
-                }
-            });
-
-            // عند فقدان التركيز (Click outside)
-            textBox.addEventListener('blur', () => {
-                commitTextToCanvas(textBox, x, y);
-                setMode('pen'); 
-            });
-
-            // جعل صندوق النص قابلاً للسحب
-            let isDragging = false;
-            let currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
-
-            textBox.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                initialX = e.clientX;
-                initialY = e.clientY;
-                const rect = textBox.getBoundingClientRect();
-                xOffset = initialX - rect.left;
-                yOffset = initialY - rect.top;
-                e.stopPropagation(); // منع انتقال الحدث للـ Canvas
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    e.preventDefault();
-                    currentX = e.clientX;
-                    currentY = e.clientY;
-                    
-                    let newX = currentX - xOffset;
-                    let newY = currentY - yOffset;
-
-                    textBox.style.left = `${newX}px`;
-                    textBox.style.top = `${newY}px`;
-                }
-            });
-
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-        }
-        
-        // 8. وظيفة لتنفيذ النص على السبورة
-        function commitTextToCanvas(textBox) {
-            const text = textBox.value.trim();
-            if (text.length > 0) {
-                // حساب إحداثيات الصندوق بالنسبة للـ Canvas
-                const rect = canvas.getBoundingClientRect();
-                const textRect = textBox.getBoundingClientRect();
-                const scale = window.devicePixelRatio;
-
-                // إحداثيات الزاوية العلوية اليسرى للصندوق، مقسومة على معامل التحجيم
-                const drawX = (textRect.left - rect.left);
-                const drawY = (textRect.top - rect.top);
-                
-                drawText(text, drawX, drawY, textRect.width, textRect.height, { bold: textBold, italic: textItalic, underline: textUnderline, align: textAlignMode, listType, fontSizePx: thicknessRange.value * 2.5, color: colorPicker.value });
-                saveState();
-                try{
-                    const xRatio = rect.width ? (drawX / rect.width) : 0;
-                    const yRatio = rect.height ? (drawY / rect.height) : 0;
-                    const wRatio = rect.width ? (textRect.width / rect.width) : 0.5;
-                    const hRatio = rect.height ? (textRect.height / rect.height) : 0.1;
-                    send('text', { text, xRatio, yRatio, wRatio, hRatio, color: colorPicker.value, fontSize: thicknessRange.value * 2.5, bold: textBold, italic: textItalic, underline: textUnderline, align: textAlignMode, listType });
-                }catch(_){ }
-            }
-            removeFloatingTextBox();
-        }
-
-        // 9. وظيفة لإزالة صندوق النص
-        function removeFloatingTextBox() {
-            const existingTextBox = document.getElementById('floatingTextBox');
-            if (existingTextBox) {
-                existingTextBox.remove();
-            }
-        }
-
-        // 10. وظيفة للبدء بالرسم أو إضافة نص
-        function startDrawing(e) {
-            e.preventDefault();
-            // تجاهل أحداث اللمس الثانوية
-            if (e.touches && e.touches.length > 1) return;
-            
-            const { x, y, clientX, clientY } = getCoordinates(e, true);
-            removeFloatingTextBox(); // إزالة أي صندوق نص قبل بدء رسم جديد
-
-            if (currentMode === 'shape' && shapeType !== 'none') {
-                const rect = canvas.getBoundingClientRect();
-                const size = Math.max(20, +thicknessRange.value * 8);
-                drawShapeAt(shapeType, x, y, size, colorPicker.value, +thicknessRange.value, !!shapeFillFlag);
-                saveState();
-                try{
-                    const xRatio = rect.width ? ((clientX - rect.left) / rect.width) : 0;
-                    const yRatio = rect.height ? ((clientY - rect.top) / rect.height) : 0;
-                    const sizeRatio = Math.min(rect.width, rect.height) ? (size / Math.min(rect.width, rect.height)) : 0.1;
-                    send('shape', { type: shapeType, xRatio, yRatio, sizeRatio, color: colorPicker.value, fill: !!shapeFillFlag });
-                }catch(_){ }
-                return;
-            }
-
-            if (currentMode === 'text') {
-                // إنشاء صندوق نص عائم في مكان النقر (باستخدام إحداثيات الشاشة)
-                createFloatingTextBox(clientX, clientY);
-                return;
-            }
-
-            // وضع القلم أو الممحاة
-            if (currentMode === 'pen' || currentMode === 'eraser') {
-                isDrawing = true;
-                [lastX, lastY] = [x, y];
-                ctx.lineWidth = thicknessRange.value;
-                if(currentMode === 'pen') {
-                    ctx.strokeStyle = colorPicker.value;
-                }
-                try{
-                    const rect = canvas.getBoundingClientRect();
-                    const xRatio = rect.width ? ((clientX - rect.left) / rect.width) : 0;
-                    const yRatio = rect.height ? ((clientY - rect.top) / rect.height) : 0;
-                    send('stroke-start', { xRatio, yRatio, color: colorPicker.value, lineWidth: +thicknessRange.value, mode: currentMode });
-                }catch(_){ }
-            }
-            
-            // حفظ الحالة قبل البدء بالرسم الجديد
-            saveState(); 
-        }
-
-        // 11. وظيفة للرسم الفعلي
-        function draw(e) {
-            if (!isDrawing) return;
-            if (currentMode !== 'pen' && currentMode !== 'eraser') return;
-            
-            e.preventDefault();
-
-            const { x, y, clientX, clientY } = getCoordinates(e, true);
-
             ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            
-            [lastX, lastY] = [x, y];
-            try{
-                const rect = canvas.getBoundingClientRect();
-                const xRatio = rect.width ? ((clientX - rect.left) / rect.width) : 0;
-                const yRatio = rect.height ? ((clientY - rect.top) / rect.height) : 0;
-                send('draw', { xRatio, yRatio });
-            }catch(_){ }
-        }
-
-        // 12. وظيفة لإنهاء الرسم
-        function stopDrawing() {
-            if (isDrawing) {
-                isDrawing = false;
-            }
-            try{ send('stroke-end', {}); }catch(_){ }
-        }
-
-        // 13. وظيفة لتنفيذ النص على Canvas
-        function drawText(text, x, y, width, height, style) {
-            ctx.save();
-            const fontSize = (style && style.fontSizePx) || (thicknessRange.value * 2.5);
-            const color = (style && style.color) || colorPicker.value;
-            const bold = !!(style && style.bold);
-            const italic = !!(style && style.italic);
-            const underline = !!(style && style.underline);
-            const align = (style && style.align) || 'right';
-            const list = (style && style.listType) || 'none';
-            ctx.fillStyle = color;
-            ctx.font = `${bold ? 'bold ' : ''}${italic ? 'italic ' : ''}${fontSize}px Cairo, sans-serif`;
-            ctx.textBaseline = 'top';
-            let anchorX = x;
-            if (align === 'right') anchorX = x + width;
-            else if (align === 'center') anchorX = x + width/2;
-            else anchorX = x;
-            ctx.textAlign = align === 'right' ? 'right' : (align === 'center' ? 'center' : 'left');
-            
-            const scale = window.devicePixelRatio;
-            const drawY = y / scale;
-
-            const lines = text.split('\n');
-            let currentY = drawY + (fontSize / scale);
-            let lineIndex = 1;
-            lines.forEach((line) => {
-                let content = line;
-                let prefix = '';
-                if (list === 'bullets') prefix = '• ';
-                if (list === 'numbered') prefix = (lineIndex++) + '. ';
-                const textToDraw = prefix + content;
-                ctx.fillText(textToDraw, anchorX / scale, currentY);
-                if (underline) {
-                    const metrics = ctx.measureText(textToDraw);
-                    const w = metrics.width;
-                    let startX = anchorX / scale;
-                    if (ctx.textAlign === 'right') startX -= w;
-                    else if (ctx.textAlign === 'center') startX -= w/2;
-                    const uy = currentY + (fontSize * 0.85) / scale;
-                    ctx.beginPath();
-                    ctx.moveTo(startX, uy);
-                    ctx.lineTo(startX + w, uy);
-                    ctx.lineWidth = Math.max(1, fontSize * 0.06);
-                    ctx.strokeStyle = color;
-                    ctx.stroke();
+            if (type === 'rectangle') {
+                ctx.rect(start.x, start.y, width, height);
+            } else if (type === 'circle') {
+                ctx.ellipse(centerX, centerY, Math.abs(width) / 2, Math.abs(height) / 2, 0, 0, 2 * Math.PI);
+            } else if (type === 'arrow') {
+                const angle = Math.atan2(end.y - start.y, end.x - start.x);
+                const headLen = 15;
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.moveTo(end.x, end.y);
+                ctx.lineTo(end.x - headLen * Math.cos(angle - Math.PI / 6), end.y - headLen * Math.sin(angle - Math.PI / 6));
+                ctx.moveTo(end.x, end.y);
+                ctx.lineTo(end.x - headLen * Math.cos(angle + Math.PI / 6), end.y - headLen * Math.sin(angle + Math.PI / 6));
+            } else if (type === 'star') {
+                const spikes = 5;
+                const outerRadius = Math.min(Math.abs(width), Math.abs(height)) / 2;
+                const innerRadius = outerRadius / 2;
+                let rot = Math.PI / 2 * 3;
+                let x = centerX;
+                let y = centerY;
+                const step = Math.PI / spikes;
+                ctx.moveTo(centerX, centerY - outerRadius);
+                for (let i = 0; i < spikes; i++) {
+                    x = centerX + Math.cos(rot) * outerRadius;
+                    y = centerY + Math.sin(rot) * outerRadius;
+                    ctx.lineTo(x, y);
+                    rot += step;
+                    x = centerX + Math.cos(rot) * innerRadius;
+                    y = centerY + Math.sin(rot) * innerRadius;
+                    ctx.lineTo(x, y);
+                    rot += step;
                 }
-                currentY += (fontSize * 1.2) / scale;
-            });
-
-            ctx.restore();
-        }
-
-        function drawShapeAt(type, x, y, size, color, lineW, fill){
-            ctx.save();
-            ctx.strokeStyle = color;
-            ctx.fillStyle = color;
-            ctx.lineWidth = Math.max(2, lineW);
-            const r = size/2;
-            if (type === 'check'){
-                ctx.beginPath();
-                ctx.moveTo(x - r*0.6, y);
-                ctx.lineTo(x - r*0.2, y + r*0.5);
-                ctx.lineTo(x + r*0.7, y - r*0.6);
-                ctx.stroke();
-            } else if (type === 'cross'){
-                ctx.beginPath();
-                ctx.moveTo(x - r, y - r);
-                ctx.lineTo(x + r, y + r);
-                ctx.moveTo(x + r, y - r);
-                ctx.lineTo(x - r, y + r);
-                ctx.stroke();
-            } else if (type === 'circle'){
-                ctx.beginPath();
-                ctx.arc(x, y, r, 0, Math.PI*2);
-                if (fill) ctx.fill(); else ctx.stroke();
-            } else if (type === 'rect'){
-                if (fill) ctx.fillRect(x - r, y - r*0.6, size, r*1.2); else ctx.strokeRect(x - r, y - r*0.6, size, r*1.2);
-            } else if (type === 'arrow'){
-                ctx.beginPath();
-                ctx.moveTo(x - r, y);
-                ctx.lineTo(x + r*0.5, y);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(x + r*0.5, y);
-                ctx.lineTo(x + r*0.1, y - r*0.3);
-                ctx.lineTo(x + r, y);
-                ctx.lineTo(x + r*0.1, y + r*0.3);
+                ctx.lineTo(centerX, centerY - outerRadius);
                 ctx.closePath();
+            } else if (type === 'check') {
+                // Checkmark
+                const size = Math.min(Math.abs(width), Math.abs(height));
+                const pad = size * 0.2;
+                ctx.moveTo(start.x + pad, centerY);
+                ctx.lineTo(centerX, end.y - pad);
+                ctx.lineTo(end.x - pad, start.y + pad);
+            } else if (type === 'cross') {
+                // X mark
+                const pad = Math.min(Math.abs(width), Math.abs(height)) * 0.2;
+                ctx.moveTo(start.x + pad, start.y + pad);
+                ctx.lineTo(end.x - pad, end.y - pad);
+                ctx.moveTo(end.x - pad, start.y + pad);
+                ctx.lineTo(start.x + pad, end.y - pad);
+            }
+
+            if (fill && !['arrow', 'check', 'cross'].includes(type)) {
                 ctx.fill();
-            } else if (type === 'star'){
-                const points = 5;
-                const outer = r, inner = r*0.5;
-                let rot = Math.PI/2 * 3;
-                let ax = x, ay = y;
-                ctx.beginPath();
-                ctx.moveTo(ax, ay - outer);
-                for(let i=0;i<points;i++){
-                    ax = x + Math.cos(rot) * outer;
-                    ay = y + Math.sin(rot) * outer;
-                    ctx.lineTo(ax, ay);
-                    rot += Math.PI/points;
-                    ax = x + Math.cos(rot) * inner;
-                    ay = y + Math.sin(rot) * inner;
-                    ctx.lineTo(ax, ay);
-                    rot += Math.PI/points;
+            }
+            ctx.stroke();
+        };
+
+        // --- 2. COMPONENTS ---
+
+        const SessionModal = ({ isOpen, onClose, onConnect, isConnecting, initialRoomId }) => {
+            const [roomId, setRoomId] = useState(initialRoomId || '');
+            const [copied, setCopied] = useState(false);
+
+            useEffect(() => {
+                if (!roomId) {
+                    setRoomId(generateId());
                 }
-                ctx.lineTo(x, y - outer);
-                ctx.closePath();
-                if (fill) ctx.fill(); else ctx.stroke();
-            }
-            ctx.restore();
-        }
+            }, [roomId]);
 
-        // 14. وظيفة لمسح السبورة بالكامل
-        function clearCanvas(fromRemote = false) {
-            // مسح بالكامل
-            ctx.save(); 
-            ctx.setTransform(1, 0, 0, 1, 0, 0); 
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
-            ctx.restore(); 
-            
-            // إزالة الصورة المرفوعة وإعادة رسم الخلفية البيضاء
-            uploadedImage = null; 
-            resizeCanvas(); 
+            if (!isOpen) return null;
 
-            // مسح التاريخ بالكامل
-            history = [];
-            historyStep = -1;
-            saveState(); // حفظ حالة السبورة النظيفة
-            try{ if (!fromRemote) send('clear', {}); }catch(_){ }
-        }
-        
-        // 15. وظيفة مساعدة للحصول على إحداثيات الماوس أو اللمس
-        function getCoordinates(e, includeClient = false) {
-            const rect = canvas.getBoundingClientRect();
-            let clientX, clientY;
-
-            if (e.touches && e.touches.length > 0) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-            
-            // الإحداثيات بالنسبة للـ Canvas (مُقسمة على الـ DPI)
-            const scale = window.devicePixelRatio;
-            const x = (clientX - rect.left) / scale;
-            const y = (clientY - rect.top) / scale;
-            
-            if (includeClient) {
-                return { x, y, clientX, clientY };
-            }
-            return { x, y };
-        }
-
-        // 16. وظيفة معالجة رفع الصورة
-        function handleImageUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    uploadedImage = img;
-                    resizeCanvas(); // إعادة رسم السبورة مع الصورة الجديدة كخلفية
-                    saveState(); // حفظ الحالة الجديدة في التاريخ
-                    setMode('pen'); 
-                    try{ send('image', { dataURL: event.target.result }); }catch(_){ }
-                };
-                img.src = event.target.result;
+            const handleConnect = () => {
+                if (!roomId) {
+                    alert('من فضلك أدخل كود الجلسة أو استخدم الكود المقترح');
+                    return;
+                }
+                onConnect(roomId);
             };
-            reader.readAsDataURL(file);
-        }
 
-        // 17. وظيفة تصدير السبورة كملف PNG
-        function exportCanvas() {
-            // composite main + overlay to an offscreen canvas
-            const off = document.createElement('canvas');
-            off.width = canvas.width; // high-res
-            off.height = canvas.height;
-            const offctx = off.getContext('2d');
-            offctx.drawImage(canvas, 0, 0);
-            // scale overlayCanvas up to device pixels
-            offctx.drawImage(overlayCanvas, 0, 0, overlayCanvas.width, overlayCanvas.height, 0, 0, off.width, off.height);
-            const dataURL = off.toDataURL('image/png');
-            const a = document.createElement('a');
-            a.href = dataURL;
-            const t = (document.getElementById('fileTitle') && document.getElementById('fileTitle').value.trim()) || '';
-            const safe = t ? t.replace(/[^\u0600-\u06FF0-9A-Za-z-_ ]+/g,'').replace(/\s+/g,'-') : '';
-            a.download = (safe ? safe + '-' : '') + 'whiteboard-export-' + new Date().toISOString().slice(0, 10) + '.png';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
+            const handleCopyLink = async () => {
+                try {
+                    if (!roomId) return;
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('room', roomId);
+                    await navigator.clipboard.writeText(url.toString());
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                } catch (e) {
+                    alert('تعذر نسخ الرابط، يمكنك نسخه يدويًا من شريط العنوان.');
+                }
+            };
 
-        async function saveToCloud(){
-            try{
-                if (!supa){ alert('لا يمكن الاتصال بالسحابة حالياً'); return; }
-                // composite main + overlay before saving
-                const off = document.createElement('canvas');
-                off.width = canvas.width; off.height = canvas.height;
-                const offctx = off.getContext('2d');
-                offctx.drawImage(canvas, 0, 0);
-                offctx.drawImage(overlayCanvas, 0, 0, overlayCanvas.width, overlayCanvas.height, 0, 0, off.width, off.height);
-                const blob = await new Promise(res=> off.toBlob(res, 'image/png'));
-                if (!blob){ alert('تعذر إنشاء الصورة'); return; }
-                const dateStr = new Date().toISOString().replace(/[:.]/g,'-');
-                const sid = roomId || 'solo';
-                const ft = (document.getElementById('fileTitle') && document.getElementById('fileTitle').value) || '';
-                const title = ft || (document.getElementById('sessionTitle') && document.getElementById('sessionTitle').value) || '';
-                const safe = title ? title.replace(/[^\u0600-\u06FF0-9A-Za-z-_ ]+/g,'').replace(/\s+/g,'-') : '';
-                const fileNameAr = (safe ? safe + '-' : '') + `snapshot-${dateStr}.png`;
-                const asciiBase = (safe || 'snapshot').replace(/[^0-9A-Za-z-_ ]+/g,'').replace(/\s+/g,'-') || 'snapshot';
-                const fileNameAscii = `${asciiBase}-snapshot-${dateStr}.png`;
-                const buckets = ['whiteboards','uploads','files','documents','exports','public'];
-                let uploaded = false; let usedBucket = ''; let usedPath = ''; let lastErr = null;
-                for (let b of buckets){
-                    for (let name of [fileNameAr, fileNameAscii]){
-                        const p = `${userId || 'anonymous'}/${sid}/${name}`;
-                        try{
-                            const { error } = await supa.storage.from(b).upload(p, blob, { contentType: 'image/png', upsert: false });
-                            if (!error){ uploaded = true; usedBucket = b; usedPath = p; break; } else { lastErr = error; }
-                        }catch(e){ lastErr = e; }
+            return (
+                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" dir="rtl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-gray-800">إعدادات المشاركة الحية</h2>
+                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                                <LogOut size={20} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-700">
+                                الجلسات التعاونية تستخدم حساب Supabase الحقيقي الخاص بالمنصة.
+                                <br/>
+                                فقط أدخل كود الجلسة، ويمكنك مشاركته مع طلابك لينضموا إلى نفس الغرفة.
+                            </div>
+
+                            <div className="border-t pt-4 mt-2 space-y-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">معرف الغرفة (للإنشاء أو الانضمام)</label>
+                                <input type="text" value={roomId} onChange={e => setRoomId(e.target.value)} className="w-full border rounded-lg p-2 text-center font-mono tracking-widest" />
+
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <button 
+                                        onClick={handleConnect} 
+                                        disabled={isConnecting}
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-lg transition-transform active:scale-95 flex justify-center items-center gap-2"
+                                    >
+                                        {isConnecting ? <Loader2 className="animate-spin" /> : <Users size={20} />}
+                                        بدء / انضمام للجلسة
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyLink}
+                                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2.5 rounded-xl border border-gray-300 text-sm flex items-center justify-center gap-2"
+                                    >
+                                        <Link size={18} />
+                                        {copied ? 'تم نسخ الرابط' : 'نسخ رابط الجلسة'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Toolbar = ({ currentTool, setTool, onImageUpload }) => {
+            const tools = [
+                { id: 'pen', icon: <Pen size={20} />, label: 'قلم' },
+                { id: 'highlighter', icon: <Highlighter size={20} />, label: 'تظليل' },
+                { id: 'eraser', icon: <Eraser size={20} />, label: 'ممحاة' },
+                { id: 'text', icon: <Type size={20} />, label: 'نص' },
+                { id: 'shape', icon: <Square size={20} />, label: 'أشكال' },
+                { id: 'laser', icon: <Wand2 size={20} />, label: 'ليزر' },
+                { id: 'hand', icon: <Move size={20} />, label: 'تحريك' },
+            ];
+
+            return (
+                <div className="bg-white border-l border-slate-200 shadow-lg flex flex-col items-center py-4 w-16 gap-3 z-20 h-full overflow-y-auto hidden sm:flex no-scrollbar">
+                    {tools.map((tool) => (
+                        <button
+                            key={tool.id}
+                            onClick={() => setTool(tool.id)}
+                            title={tool.label}
+                            className={`p-3 rounded-xl transition-all duration-200 group relative ${
+                                currentTool === tool.id 
+                                ? 'bg-blue-600 text-white shadow-md scale-105' 
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-blue-600'
+                            }`}
+                        >
+                            {tool.icon}
+                        </button>
+                    ))}
+                    <div className="h-px w-10 bg-slate-200 my-1"></div>
+                    <label className="p-3 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-green-600 cursor-pointer transition-colors" title="إدراج صورة">
+                        <ImageIcon size={20} />
+                        <input type="file" accept="image/*" className="hidden" onChange={onImageUpload} />
+                    </label>
+                </div>
+            );
+        };
+
+        const MobileToolbar = ({ currentTool, setTool, onImageUpload }) => {
+            const tools = [
+                { id: 'pen', icon: <Pen size={18} /> },
+                { id: 'highlighter', icon: <Highlighter size={18} /> },
+                { id: 'eraser', icon: <Eraser size={18} /> },
+                { id: 'text', icon: <Type size={18} /> },
+                { id: 'shape', icon: <Square size={18} /> },
+                { id: 'laser', icon: <Wand2 size={18} /> },
+            ];
+
+            return (
+                <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] flex justify-around p-2 z-50 pb-safe">
+                    {tools.map((tool) => (
+                        <button
+                            key={tool.id}
+                            onClick={() => setTool(tool.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                                currentTool === tool.id 
+                                ? 'bg-blue-100 text-blue-600' 
+                                : 'text-slate-500'
+                            }`}
+                        >
+                            {tool.icon}
+                        </button>
+                    ))}
+                    <label className="p-2 rounded-lg text-slate-500 active:bg-slate-100">
+                        <ImageIcon size={18} />
+                        <input type="file" accept="image/*" className="hidden" onChange={onImageUpload}/>
+                    </label>
+                </div>
+            );
+        };
+
+        const COLORS = ['#000000', '#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7'];
+
+        const PropertiesBar = (props) => {
+            const { tool, settings, setSettings } = props;
+
+            return (
+                <div className="bg-white border-b border-slate-200 px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-y-2 z-20 shadow-sm min-h-[60px]">
+                    <div className="flex items-center gap-2 sm:gap-4 flex-wrap flex-1">
+                        {/* Colors */}
+                        {['pen', 'text', 'shape', 'highlighter', 'laser'].includes(tool) && (
+                            <div className="flex items-center gap-1">
+                                {COLORS.map(c => (
+                                    <button
+                                        key={c}
+                                        onClick={() => setSettings(s => ({ ...s, color: c }))}
+                                        className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-slate-200 transition-transform ${
+                                            settings.color === c ? 'scale-125 ring-2 ring-offset-1 ring-blue-500' : ''
+                                        }`}
+                                        style={{ backgroundColor: c }}
+                                    />
+                                ))}
+                                <input 
+                                    type="color" 
+                                    value={settings.color}
+                                    onChange={(e) => setSettings(s => ({ ...s, color: e.target.value }))}
+                                    className="w-7 h-7 p-0 border-0 rounded-full overflow-hidden cursor-pointer ml-1"
+                                />
+                            </div>
+                        )}
+
+                        {/* Thickness / Font Size */}
+                        {['pen', 'eraser', 'shape', 'highlighter', 'text'].includes(tool) && (
+                            <div className="flex items-center gap-2 border-r border-slate-200 pr-2 mr-2">
+                                <span className="hidden sm:inline text-xs text-slate-500 font-medium">
+                                    {tool === 'text' ? 'حجم الخط' : 'السمك'}
+                                </span>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max={tool === 'text' ? 60 : 50}
+                                    value={settings.thickness}
+                                    onChange={(e) => setSettings(s => ({ ...s, thickness: parseInt(e.target.value) }))}
+                                    className="w-16 sm:w-24 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                />
+                                {tool === 'text' && (
+                                    <select
+                                        value={settings.thickness}
+                                        onChange={(e) => setSettings(s => ({ ...s, thickness: parseInt(e.target.value) }))}
+                                        className="bg-slate-50 border border-slate-300 text-slate-900 text-xs rounded-lg p-1 ml-1"
+                                    >
+                                        <option value={10}>10px</option>
+                                        <option value={16}>16px</option>
+                                        <option value={24}>24px</option>
+                                        <option value={32}>32px</option>
+                                        <option value={48}>48px</option>
+                                        {!([10, 16, 24, 32, 48].includes(settings.thickness)) && <option value={settings.thickness} disabled hidden>مخصص</option>}
+                                    </select>
+                                )}
+                            </div>
+                        )}
+
+                        {tool === 'shape' && (
+                            <div className="flex items-center gap-1 border-r border-slate-200 pr-2 mr-2">
+                                <select 
+                                    value={props.shapeType}
+                                    onChange={(e) => props.setShapeType(e.target.value)}
+                                    className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg p-1.5"
+                                >
+                                    <option value="rectangle">مستطيل</option>
+                                    <option value="circle">دائرة</option>
+                                    <option value="arrow">سهم</option>
+                                    <option value="star">نجمة</option>
+                                    <option value="check">صح</option>
+                                    <option value="cross">خطأ</option>
+                                </select>
+                                <label className="flex items-center gap-1 text-sm text-slate-600 cursor-pointer select-none">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={settings.isFilled} 
+                                        onChange={(e) => setSettings(s => ({...s, isFilled: e.target.checked}))}
+                                        className="w-4 h-4 text-blue-600 rounded"
+                                    />
+                                    <span className="hidden sm:inline">تعبئة</span>
+                                </label>
+                            </div>
+                        )}
+                        
+                        {/* Background Selector */}
+                        <div className="hidden md:flex items-center gap-2 border-r border-slate-200 pr-2 mr-2">
+                           <select 
+                              value={props.backgroundType}
+                              onChange={(e) => props.setBackgroundType(e.target.value)}
+                              className="bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-lg p-1.5"
+                            >
+                              <option value="plain">خلفية بيضاء</option>
+                              <option value="grid">شبكة</option>
+                              <option value="lines">تسطير</option>
+                              <option value="dots">منقطة</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Pages Control */}
+                    <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1 mx-2">
+                        <button onClick={props.onPrevPage} disabled={props.pageIndex === 0} className="p-1 hover:bg-white rounded disabled:opacity-30">
+                          <ChevronRight size={18} />
+                        </button>
+                        <span className="text-xs font-bold text-slate-600 min-w-[3rem] text-center" dir="ltr">
+                          {props.pageIndex + 1} / {props.totalPages}
+                        </span>
+                        <button onClick={props.onNextPage} disabled={props.pageIndex === props.totalPages - 1} className="p-1 hover:bg-white rounded disabled:opacity-30">
+                          <ChevronLeft size={18} />
+                        </button>
+                        <div className="w-px h-4 bg-slate-300 mx-1"></div>
+                        <button onClick={props.onNewPage} title="صفحة جديدة" className="p-1 hover:bg-white rounded text-blue-600">
+                          <FilePlus size={18} />
+                        </button>
+                    </div>
+
+                    {/* Right Actions */}
+                    <div className="flex items-center gap-2">
+                         {/* Session Button */}
+                        <button 
+                            onClick={props.onSessionClick}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                props.isConnected 
+                                ? 'bg-green-100 text-green-700 border border-green-200' 
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                        >
+                            <Users size={16} />
+                            <span className="hidden sm:inline">{props.isConnected ? 'متصل' : 'جلسة'}</span>
+                        </button>
+
+                        <button onClick={props.onUndo} disabled={!props.canUndo} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30">
+                            <Undo2 size={20} />
+                        </button>
+                        <button onClick={props.onRedo} disabled={!props.canRedo} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30">
+                            <Redo2 size={20} />
+                        </button>
+                        <button onClick={props.onClear} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                            <Trash2 size={20} />
+                        </button>
+                        <button onClick={props.onExport} className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg">
+                            <Download size={20} />
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const Whiteboard = ({
+            tool,
+            settings,
+            shapeType,
+            backgroundType,
+            onSaveStep,
+            snapshot,
+            backgroundImage,
+            channelRef,
+            isConnected
+        }) => {
+            const containerRef = useRef(null);
+            const canvasRef = useRef(null);
+            const tempCanvasRef = useRef(null);
+            const [isDrawing, setIsDrawing] = useState(false);
+            const [startPoint, setStartPoint] = useState(null);
+            const [lastPoint, setLastPoint] = useState(null);
+            const [textInput, setTextInput] = useState(null);
+            const textAreaRef = useRef(null);
+            
+            // Laser
+            const laserPoints = useRef([]);
+            const laserReqRef = useRef(0);
+            
+            // Remote Cursors (Visual only)
+            const [remoteCursors, setRemoteCursors] = useState({});
+
+            const redrawMainCanvas = useCallback(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                // Clear
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                drawBackground(ctx, canvas.width, canvas.height, backgroundType);
+
+                if (backgroundImage) {
+                    const ratio = Math.min(canvas.width / backgroundImage.width, canvas.height / backgroundImage.height);
+                    const cx = (canvas.width - backgroundImage.width * ratio) / 2;
+                    const cy = (canvas.height - backgroundImage.height * ratio) / 2;
+                    ctx.drawImage(backgroundImage, 0, 0, backgroundImage.width, backgroundImage.height, cx, cy, backgroundImage.width * ratio, backgroundImage.height * ratio);
+                }
+
+                if (snapshot) {
+                    const img = new Image();
+                    img.src = snapshot;
+                    img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                }
+            }, [backgroundType, backgroundImage, snapshot]);
+
+            const initCanvas = useCallback(() => {
+                if (!containerRef.current || !canvasRef.current || !tempCanvasRef.current) return;
+                const { clientWidth, clientHeight } = containerRef.current;
+                
+                const setDims = (c) => {
+                    c.width = clientWidth;
+                    c.height = clientHeight;
+                };
+
+                setDims(canvasRef.current);
+                setDims(tempCanvasRef.current);
+                redrawMainCanvas();
+            }, [redrawMainCanvas]);
+
+            useEffect(() => {
+                window.addEventListener('resize', initCanvas);
+                initCanvas();
+                return () => window.removeEventListener('resize', initCanvas);
+            }, [initCanvas]);
+
+            useEffect(() => {
+                redrawMainCanvas();
+            }, [redrawMainCanvas]);
+
+            // Handle Remote Strokes
+            useEffect(() => {
+                if(!isConnected || !channelRef.current) return;
+                
+                const handleBroadcast = (payload) => {
+                    const canvas = canvasRef.current;
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    const w = canvas.width;
+                    const h = canvas.height;
+
+                    if (payload.type === 'draw') {
+                        ctx.beginPath();
+                        ctx.strokeStyle = payload.color;
+                        ctx.lineWidth = payload.thickness;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.globalAlpha = payload.opacity || 1;
+                        if(payload.tool === 'eraser') ctx.strokeStyle = '#fff'; 
+                        
+                        ctx.moveTo(payload.x0 * w, payload.y0 * h);
+                        ctx.lineTo(payload.x1 * w, payload.y1 * h);
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                    } else if (payload.type === 'cursor') {
+                        setRemoteCursors(prev => ({
+                            ...prev, 
+                            [payload.user]: { x: payload.x, y: payload.y, color: payload.color }
+                        }));
+                    } else if (payload.type === 'laser') {
+                         laserPoints.current.push({ x: payload.x * w, y: payload.y * h, time: Date.now(), remote: true });
+                    } else if (payload.type === 'shape') {
+                        ctx.beginPath();
+                        ctx.strokeStyle = payload.color;
+                        ctx.lineWidth = payload.thickness;
+                        ctx.fillStyle = payload.color;
+                        drawShape(ctx, 
+                            {x: payload.x0 * w, y: payload.y0 * h}, 
+                            {x: payload.x1 * w, y: payload.y1 * h}, 
+                            payload.shapeType, 
+                            payload.fill
+                        );
+                    } else if (payload.type === 'text') {
+                         ctx.save();
+                        ctx.font = `${payload.fontSize}px 'Cairo'`;
+                        ctx.fillStyle = payload.color;
+                        ctx.textBaseline = 'top';
+                        const lines = payload.text.split('\n');
+                        const lineHeight = payload.fontSize * 1.2;
+                        lines.forEach((line, i) => {
+                            ctx.fillText(line, payload.x * w, payload.y * h + (i * lineHeight));
+                        });
+                        ctx.restore();
+                    } else if (payload.type === 'clear') {
+                        redrawMainCanvas(); 
                     }
-                    if (uploaded) break;
+                };
+                
+                const channel = channelRef.current;
+                const sub = channel.on('broadcast', { event: 'wb' }, ({ payload }) => handleBroadcast(payload)).subscribe();
+
+                return () => {
+                   // Cleanup handled by App unmount or disconnect
+                };
+
+            }, [isConnected, redrawMainCanvas]);
+
+
+            const getCoords = (e) => {
+                if (!containerRef.current) return { x: 0, y: 0 };
+                const rect = containerRef.current.getBoundingClientRect();
+                let clientX = 0, clientY = 0;
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
                 }
-                if (!uploaded){ alert('تعذر الحفظ في السحابة' + (lastErr && lastErr.message ? ('\n'+lastErr.message) : '')); return; }
-                const { data } = supa.storage.from(usedBucket).getPublicUrl(usedPath);
-                const url = (data && data.publicUrl) || '';
-                try{ await supa.from('whiteboard_snapshots').insert({ session_id: sid, owner_id: userId || null, title: title || null, image_url: url || null }); }catch(_){ }
-                alert('تم الحفظ في السحابة' + (url ? `\n${url}` : ''));
-            }catch(_){ alert('تعذر الحفظ في السحابة'); }
-        }
-        
-        // ********** معالجات الأحداث **********
+                return { x: clientX - rect.left, y: clientY - rect.top, nx: (clientX - rect.left)/rect.width, ny: (clientY - rect.top)/rect.height };
+            };
 
-        // ضبط حجم اللوحة عند التحميل وتغيير الحجم
-        window.addEventListener('load', () => {
-            resizeCanvas();
-            setMode('pen');
-            saveState();
-            setupSupabaseAndRealtime();
-            try{ updatePageInfo(); }catch(_){ }
-        });
-        window.addEventListener('resize', resizeCanvas);
-
-        document.addEventListener('keydown', (e)=>{
-            if (e.ctrlKey && !e.shiftKey && !e.altKey){
-                if (e.key.toLowerCase() === 'b'){ e.preventDefault(); if (boldBtn) boldBtn.click(); }
-                if (e.key.toLowerCase() === 'i'){ e.preventDefault(); if (italicBtn) italicBtn.click(); }
-                if (e.key.toLowerCase() === 'u'){ e.preventDefault(); if (underlineBtn) underlineBtn.click(); }
-                if (e.key.toLowerCase() === 'z'){ e.preventDefault(); undoButton.click(); }
-                if (e.key.toLowerCase() === 'y'){ e.preventDefault(); redoButton.click(); }
-            }
-        });
-
-        // أحداث الرسم واللمس
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', (e)=>{
-            if (laserActive){
-                const rect = canvas.getBoundingClientRect();
-                const { clientX, clientY } = (e.touches && e.touches.length>0) ? { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY } : e;
-                const x = clientX - rect.left;
-                const y = clientY - rect.top;
-                addLaserDot(x, y, laserColor);
-                try{
-                    const xRatio = rect.width ? (x / rect.width) : 0;
-                    const yRatio = rect.height ? (y / rect.height) : 0;
-                    send('laser', { xRatio, yRatio, color: laserColor });
-                }catch(_){ }
-            }
-            draw(e);
-        });
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseout', stopDrawing);
-
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', (e)=>{
-            if (laserActive){
-                const rect = canvas.getBoundingClientRect();
-                const tx = e.touches && e.touches[0];
-                if (tx){
-                    const x = tx.clientX - rect.left; const y = tx.clientY - rect.top;
-                    addLaserDot(x, y, laserColor);
-                    try{ const xRatio = rect.width ? (x / rect.width) : 0; const yRatio = rect.height ? (y / rect.height) : 0; send('laser', { xRatio, yRatio, color: laserColor }); }catch(_){ }
+            const broadcast = (data) => {
+                if (isConnected && channelRef.current) {
+                    channelRef.current.send({
+                        type: 'broadcast',
+                        event: 'wb',
+                        payload: data
+                    });
                 }
-            }
-            draw(e);
-        });
-        canvas.addEventListener('touchend', stopDrawing);
-        canvas.addEventListener('touchcancel', stopDrawing);
+            };
 
-        // صفحات
-        const newPageBtn = document.getElementById('newPageBtn');
-        const prevPageBtn = document.getElementById('prevPageBtn');
-        const nextPageBtn = document.getElementById('nextPageBtn');
-        const pageInfo = document.getElementById('pageInfo');
+            const startDrawing = (e) => {
+                if (tool === 'hand') return;
+                const coords = getCoords(e);
+                
+                if (tool === 'text') {
+                    if (textInput?.visible) {
+                        finishText();
+                    } else {
+                        setTextInput({ x: coords.x, y: coords.y, nx: coords.nx, ny: coords.ny, visible: true, value: '' });
+                    }
+                    return;
+                }
 
-        function updatePageInfo(){ if (pageInfo) pageInfo.textContent = `صفحة ${pageIndex+1} / ${Math.max(1, pages.length || 1)}`; }
+                setIsDrawing(true);
+                setStartPoint(coords);
+                setLastPoint(coords);
 
-        function saveCurrentPage(){ try{ pages[pageIndex] = canvas.toDataURL('image/png'); }catch(_){ } }
+                if (['pen', 'eraser', 'highlighter'].includes(tool)) {
+                    const ctx = canvasRef.current?.getContext('2d');
+                    if (ctx) {
+                        ctx.beginPath();
+                        ctx.moveTo(coords.x, coords.y);
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.lineWidth = settings.thickness;
+                        ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : settings.color;
+                        ctx.globalAlpha = tool === 'highlighter' ? 0.3 : 1.0;
+                        if(tool === 'highlighter') ctx.lineWidth = settings.thickness * 2;
+                    }
+                }
+            };
 
-        function loadPage(i){
-            const displayWidth = canvas.parentElement.clientWidth;
-            const displayHeight = canvas.parentElement.clientHeight;
-            ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.restore();
-            if (uploadedImage) { drawBackgroundImage(displayWidth, displayHeight); } else { drawBaseBackground(displayWidth, displayHeight); }
-            const data = pages[i];
-            if (data){
-                const img = new Image();
-                img.onload = ()=>{ ctx.drawImage(img, 0, 0, displayWidth, displayHeight); saveState(); };
-                img.src = data;
-            } else {
-                saveState();
-            }
-            pageIndex = i;
-            updatePageInfo();
-        }
+            const draw = (e) => {
+                const coords = getCoords(e);
 
-        function gotoPage(i){ if (i<0) return; saveCurrentPage(); if (i>= (pages.length||1)){ pages.push(null); } loadPage(i); try{ send('page', { index: i, image: pages[i]||null }); }catch(_){ } }
-        function newPage(){ gotoPage((pages.length||0)); }
-        function prevPage(){ gotoPage(Math.max(0, pageIndex-1)); }
-        function nextPage(){ gotoPage(pageIndex+1); }
+                if(isConnected) {
+                    // Rate limit cursor updates
+                    if(Math.random() > 0.5) broadcast({ type: 'cursor', x: coords.nx, y: coords.ny, color: settings.color, user: 'me' });
+                }
 
-        function applyRemotePage(p){ try{ const i = (p&&p.index)|0; const img = p&&p.image; if (img!=null) pages[i] = img; loadPage(i); }catch(_){ } }
+                if (tool === 'laser') {
+                    laserPoints.current.push({ x: coords.x, y: coords.y, time: Date.now() });
+                    if(isConnected) broadcast({ type: 'laser', x: coords.nx, y: coords.ny });
+                    return;
+                }
 
-        if (newPageBtn) newPageBtn.addEventListener('click', newPage);
-        if (prevPageBtn) prevPageBtn.addEventListener('click', prevPage);
-        if (nextPageBtn) nextPageBtn.addEventListener('click', nextPage);
+                if (!isDrawing || !lastPoint) return;
 
-        // أزرار التراجع والإعادة
-        undoButton.addEventListener('click', () => {
-            if (historyStep > 0) {
-                restoreState(historyStep - 1);
-            }
-        });
-        redoButton.addEventListener('click', () => {
-            if (historyStep < history.length - 1) {
-                restoreState(historyStep + 1);
-            }
-        });
+                if (['pen', 'eraser', 'highlighter'].includes(tool)) {
+                    const ctx = canvasRef.current?.getContext('2d');
+                    if (ctx) {
+                        ctx.beginPath();
+                        ctx.moveTo(lastPoint.x, lastPoint.y);
+                        ctx.lineTo(coords.x, coords.y);
+                        ctx.stroke();
+                        
+                        if(isConnected) {
+                            broadcast({
+                                type: 'draw',
+                                tool: tool,
+                                x0: lastPoint.nx, y0: lastPoint.ny,
+                                x1: coords.nx, y1: coords.ny,
+                                color: settings.color,
+                                thickness: tool === 'highlighter' ? settings.thickness * 2 : settings.thickness,
+                                opacity: tool === 'highlighter' ? 0.3 : 1
+                            });
+                        }
+                        setLastPoint(coords);
+                    }
+                } else if (tool === 'shape') {
+                    const tempCtx = tempCanvasRef.current?.getContext('2d');
+                    if (tempCtx && startPoint) {
+                        tempCtx.clearRect(0, 0, tempCanvasRef.current.width, tempCanvasRef.current.height);
+                        tempCtx.strokeStyle = settings.color;
+                        tempCtx.lineWidth = settings.thickness;
+                        tempCtx.fillStyle = settings.color;
+                        drawShape(tempCtx, startPoint, coords, shapeType, settings.isFilled);
+                    }
+                }
+            };
 
-        // تبديل الوضع
-        penModeButton.addEventListener('click', () => setMode('pen'));
-        eraserModeButton.addEventListener('click', () => setMode('eraser'));
-        textModeButton.addEventListener('click', () => setMode('text'));
-        
-        // معالجة رفع الصورة
-        imageUpload.addEventListener('change', handleImageUpload);
-        
-        // زر المسح والتصدير
-        clearButton.addEventListener('click', ()=> clearCanvas(false));
-        exportButton.addEventListener('click', exportCanvas);
+            const stopDrawing = (e) => {
+                if (!isDrawing) return;
+                setIsDrawing(false);
 
-        const createSessionBtn = document.getElementById('createSessionBtn');
-        const joinSessionBtn = document.getElementById('joinSessionBtn');
-        const copyLinkBtn = document.getElementById('copyLinkBtn');
-        const saveCloudBtn = document.getElementById('saveCloudBtn');
-        const roomIdInput = document.getElementById('roomIdInput');
-        if (createSessionBtn){ createSessionBtn.addEventListener('click', ()=>{ const id = cryptoRandomId(); joinRoom(id); }); }
-        if (joinSessionBtn){ joinSessionBtn.addEventListener('click', ()=>{ const id = (roomIdInput && roomIdInput.value && roomIdInput.value.trim()) || ''; if (id) joinRoom(id.trim()); }); }
-        if (copyLinkBtn){ copyLinkBtn.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(window.location.href); alert('تم نسخ الرابط'); }catch(_){ } }); }
-        if (saveCloudBtn){ saveCloudBtn.addEventListener('click', saveToCloud); }
+                if (tool === 'shape' && startPoint) {
+                     const coords = getCoords(e); 
+                     
+                     const ctx = canvasRef.current?.getContext('2d');
+                     const tempCtx = tempCanvasRef.current?.getContext('2d');
+                     if(ctx && tempCtx) {
+                         ctx.drawImage(tempCanvasRef.current, 0, 0);
+                         tempCtx.clearRect(0, 0, tempCanvasRef.current.width, tempCanvasRef.current.height);
+                         
+                         if(isConnected) {
+                             broadcast({
+                                 type: 'shape',
+                                 shapeType: shapeType,
+                                 x0: startPoint.nx, y0: startPoint.ny,
+                                 x1: coords.nx, y1: coords.ny,
+                                 color: settings.color,
+                                 thickness: settings.thickness,
+                                 fill: settings.isFilled
+                             });
+                         }
+                         ctx.globalAlpha = 1;
+                     }
+                }
 
-        const boldBtn = document.getElementById('boldBtn');
-        const italicBtn = document.getElementById('italicBtn');
-        const underlineBtn = document.getElementById('underlineBtn');
-        const bulletsBtn = document.getElementById('bulletsBtn');
-        const numberedBtn = document.getElementById('numberedBtn');
-        const alignRightBtn = document.getElementById('alignRightBtn');
-        const alignCenterBtn = document.getElementById('alignCenterBtn');
-        const alignLeftBtn = document.getElementById('alignLeftBtn');
-        const highlighterBtn = document.getElementById('highlighterBtn');
-        const bgSelect = document.getElementById('bgSelect');
-        const shapeSelect = document.getElementById('shapeSelect');
-        const laserBtn = document.getElementById('laserBtn');
-        const highlighterColors = document.querySelectorAll('[data-hi-color]');
-        const shapeFill = document.getElementById('shapeFill');
-        if (boldBtn) boldBtn.addEventListener('click', ()=>{ textBold = !textBold; boldBtn.classList.toggle('bg-gray-800'); boldBtn.classList.toggle('text-white'); });
-        if (italicBtn) italicBtn.addEventListener('click', ()=>{ textItalic = !textItalic; italicBtn.classList.toggle('bg-gray-800'); italicBtn.classList.toggle('text-white'); });
-        if (underlineBtn) underlineBtn.addEventListener('click', ()=>{ textUnderline = !textUnderline; underlineBtn.classList.toggle('bg-gray-800'); underlineBtn.classList.toggle('text-white'); });
-        if (bulletsBtn) bulletsBtn.addEventListener('click', ()=>{ listType = (listType==='bullets'?'none':'bullets'); bulletsBtn.classList.toggle('bg-gray-800'); bulletsBtn.classList.toggle('text-white'); if (listType==='bullets'){ numberedBtn.classList.remove('bg-gray-800','text-white'); } });
-        if (numberedBtn) numberedBtn.addEventListener('click', ()=>{ listType = (listType==='numbered'?'none':'numbered'); numberedBtn.classList.toggle('bg-gray-800'); numberedBtn.classList.toggle('text-white'); if (listType==='numbered'){ bulletsBtn.classList.remove('bg-gray-800','text-white'); } });
-        if (alignRightBtn) alignRightBtn.addEventListener('click', ()=>{ textAlignMode='right'; alignRightBtn.classList.add('bg-gray-800','text-white'); alignCenterBtn.classList.remove('bg-gray-800','text-white'); alignLeftBtn.classList.remove('bg-gray-800','text-white'); });
-        if (alignCenterBtn) alignCenterBtn.addEventListener('click', ()=>{ textAlignMode='center'; alignCenterBtn.classList.add('bg-gray-800','text-white'); alignRightBtn.classList.remove('bg-gray-800','text-white'); alignLeftBtn.classList.remove('bg-gray-800','text-white'); });
-        if (alignLeftBtn) alignLeftBtn.addEventListener('click', ()=>{ textAlignMode='left'; alignLeftBtn.classList.add('bg-gray-800','text-white'); alignRightBtn.classList.remove('bg-gray-800','text-white'); alignCenterBtn.classList.remove('bg-gray-800','text-white'); });
-        if (highlighterBtn) highlighterBtn.addEventListener('click', ()=>{ highlighterActive = !highlighterActive; if (highlighterActive){ setMode('highlighter'); highlighterBtn.classList.add('bg-yellow-500','text-white'); } else { setMode('pen'); highlighterBtn.classList.remove('bg-yellow-500','text-white'); } });
-        if (bgSelect) bgSelect.addEventListener('change', ()=>{ bgType = bgSelect.value || 'plain'; applyBackground(bgType); try{ send('bg', { type: bgType }); }catch(_){ } });
-        if (shapeSelect) shapeSelect.addEventListener('change', ()=>{ shapeType = shapeSelect.value || 'none'; if (shapeType==='none') setMode('pen'); else setMode('shape'); });
-        if (shapeFill) shapeFill.addEventListener('change', ()=>{ shapeFillFlag = !!shapeFill.checked; });
-        if (laserBtn) laserBtn.addEventListener('click', ()=>{ laserActive = !laserActive; if (laserActive){ laserColor = colorPicker.value; laserBtn.classList.add('bg-red-600','text-white'); if (!laserRAF) startLaserRAF(); } else { laserBtn.classList.remove('bg-red-600','text-white'); } });
-        if (highlighterColors) highlighterColors.forEach(btn=> btn.addEventListener('click', ()=>{ const c = btn.getAttribute('data-hi-color'); if (c){ colorPicker.value = c; setMode('highlighter'); highlighterActive = true; highlighterBtn.classList.add('bg-yellow-500','text-white'); } }));
+                if(canvasRef.current) {
+                    onSaveStep(canvasRef.current.toDataURL());
+                }
+                setStartPoint(null);
+                setLastPoint(null);
+            };
 
-        // تغيير اللون والسمك
-        colorPicker.addEventListener('input', (e) => {
-            ctx.strokeStyle = e.target.value;
-            if (laserActive) laserColor = e.target.value;
-        });
+            const finishText = () => {
+                if (!textInput || !textInput.visible || !textInput.value) {
+                    setTextInput(null);
+                    return;
+                }
+                const ctx = canvasRef.current?.getContext('2d');
+                if (ctx) {
+                    ctx.save();
+                    ctx.font = `${settings.thickness}px 'Cairo'`;
+                    ctx.fillStyle = settings.color;
+                    ctx.textBaseline = 'top';
+                    const lines = textInput.value.split('\n');
+                    const lineHeight = settings.thickness * 1.2;
+                    lines.forEach((line, i) => {
+                        ctx.fillText(line, textInput.x, textInput.y + (i * lineHeight));
+                    });
+                    ctx.restore();
+                    
+                    if(isConnected) {
+                        broadcast({
+                            type: 'text',
+                            text: textInput.value,
+                            x: textInput.nx, y: textInput.ny,
+                            color: settings.color,
+                            fontSize: settings.thickness
+                        });
+                    }
 
-        thicknessRange.addEventListener('input', (e) => {
-            thicknessValue.textContent = e.target.value;
-            ctx.lineWidth = e.target.value;
-        });
+                    onSaveStep(canvasRef.current.toDataURL());
+                }
+                setTextInput(null);
+            };
 
+            // Laser Loop
+            useEffect(() => {
+                const animate = () => {
+                    const tempCtx = tempCanvasRef.current?.getContext('2d');
+                    if (!tempCtx || !tempCanvasRef.current) return;
+
+                    // Only clear if we are not drawing a shape
+                    if(!isDrawing || tool !== 'shape') {
+                        tempCtx.clearRect(0, 0, tempCanvasRef.current.width, tempCanvasRef.current.height);
+                    }
+
+                    // Draw Remote Cursors
+                    Object.values(remoteCursors).forEach(c => {
+                         const cx = c.x * tempCanvasRef.current.width;
+                         const cy = c.y * tempCanvasRef.current.height;
+                         tempCtx.beginPath();
+                         tempCtx.fillStyle = c.color || 'red';
+                         tempCtx.arc(cx, cy, 5, 0, Math.PI * 2);
+                         tempCtx.fill();
+                         tempCtx.font = '10px Cairo';
+                         tempCtx.fillText('User', cx + 8, cy);
+                    });
+
+                    const now = Date.now();
+                    laserPoints.current = laserPoints.current.filter(p => now - p.time < 800);
+
+                    if (laserPoints.current.length > 0) {
+                        tempCtx.lineCap = 'round';
+                        tempCtx.lineJoin = 'round';
+                        for(let i = 1; i < laserPoints.current.length; i++) {
+                            const p1 = laserPoints.current[i-1];
+                            const p2 = laserPoints.current[i];
+                            if(Math.abs(p1.x - p2.x) > 50) continue; 
+
+                            const age = now - p2.time;
+                            const opacity = 1 - (age / 800);
+                            tempCtx.beginPath();
+                            tempCtx.moveTo(p1.x, p1.y);
+                            tempCtx.lineTo(p2.x, p2.y);
+                            tempCtx.lineWidth = 4;
+                            tempCtx.strokeStyle = `rgba(239, 68, 68, ${opacity})`;
+                            tempCtx.stroke();
+                        }
+                    }
+                    laserReqRef.current = requestAnimationFrame(animate);
+                };
+                laserReqRef.current = requestAnimationFrame(animate);
+                return () => cancelAnimationFrame(laserReqRef.current);
+            }, [tool, isDrawing, remoteCursors]);
+
+            useEffect(() => {
+                if (textInput?.visible && textAreaRef.current) {
+                    textAreaRef.current.focus();
+                }
+            }, [textInput?.visible]);
+
+            return (
+                <div 
+                    ref={containerRef} 
+                    className={`relative w-full h-full bg-white overflow-hidden touch-none ${
+                        tool === 'text' ? 'cursor-text' : 
+                        tool === 'hand' ? 'cursor-grab' : 
+                        tool === 'eraser' ? 'cursor-eraser' : 'cursor-pen'
+                    }`}
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    onTouchStart={startDrawing}
+                    onTouchMove={draw}
+                    onTouchEnd={stopDrawing}
+                >
+                    <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0 pointer-events-none" />
+                    <canvas ref={tempCanvasRef} className="absolute top-0 left-0 w-full h-full z-10 pointer-events-none" />
+                    {textInput?.visible && (
+                        <textarea
+                            ref={textAreaRef}
+                            value={textInput.value}
+                            onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
+                            onBlur={finishText}
+                            className="absolute z-50 bg-white/80 border border-blue-500 rounded p-1 outline-none resize-none shadow-xl"
+                            style={{
+                                left: textInput.x,
+                                top: textInput.y,
+                                fontSize: `${settings.thickness}px`,
+                                color: settings.color,
+                                fontFamily: 'Cairo',
+                                minWidth: '150px',
+                                minHeight: '1.5em'
+                            }}
+                            placeholder="اكتب..."
+                            dir="auto"
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [currentTool, setCurrentTool] = useState('pen');
+            const [settings, setSettings] = useState({ color: '#000000', thickness: 3, isFilled: false });
+            const [shapeType, setShapeType] = useState('rectangle');
+            const [backgroundType, setBackgroundType] = useState('plain');
+            const [pages, setPages] = useState(['']);
+            const [currentPageIndex, setCurrentPageIndex] = useState(0);
+            const [history, setHistory] = useState([]);
+            const [historyStep, setHistoryStep] = useState(-1);
+            const [backgroundImage, setBackgroundImage] = useState(null);
+            
+            // Session State
+            const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
+            const [isConnected, setIsConnected] = useState(false);
+            const [supabaseClient, setSupabaseClient] = useState(null);
+            const channelRef = useRef(null);
+            const [roomId, setRoomId] = useState(null);
+
+            // Auto-join if ?room= is present in URL
+            useEffect(() => {
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    const qRoom = params.get('room');
+                    if (qRoom && !isConnected && !roomId) {
+                        handleConnectSession(qRoom);
+                    }
+                } catch (e) {}
+            }, [isConnected, roomId]);
+
+            const handleConnectSession = async (room) => {
+                try {
+                    const client = window.supabaseClient || (window.initializeSupabase && window.initializeSupabase());
+                    if (!client) throw new Error('تعذر تهيئة اتصال Supabase');
+                    setSupabaseClient(client);
+                    setRoomId(room);
+                    
+                    const channel = client.channel(`whiteboard:${room}`, { config: { broadcast: { self: false } } });
+                    channel.subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            setIsConnected(true);
+                            setIsSessionModalOpen(false);
+                        }
+                    });
+                    channelRef.current = channel;
+                } catch (e) {
+                    alert('فشل الاتصال: ' + e.message);
+                }
+            };
+
+            const saveToHistory = useCallback((dataURL) => {
+                const newHistory = history.slice(0, historyStep + 1);
+                newHistory.push(dataURL);
+                if (newHistory.length > 20) newHistory.shift();
+                setHistory(newHistory);
+                setHistoryStep(newHistory.length - 1);
+                const newPages = [...pages];
+                newPages[currentPageIndex] = dataURL;
+                setPages(newPages);
+            }, [history, historyStep, pages, currentPageIndex]);
+
+            const handleUndo = () => {
+                if (historyStep > 0) setHistoryStep(prev => prev - 1);
+            };
+
+            const handleRedo = () => {
+                if (historyStep < history.length - 1) setHistoryStep(prev => prev + 1);
+            };
+
+            const handleClear = () => {
+                if (window.confirm('مسح السبورة؟')) {
+                    saveToHistory('');
+                    setHistory(['']);
+                    setHistoryStep(0);
+                    setBackgroundImage(null);
+                    if(isConnected && channelRef.current) {
+                        channelRef.current.send({ type: 'broadcast', event: 'wb', payload: { type: 'clear' } });
+                    }
+                }
+            };
+
+             const handleImageUpload = (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        setBackgroundImage(img);
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const handleExport = () => {
+                const link = document.createElement('a');
+                link.download = `whiteboard-${Date.now()}.png`;
+                if (history[historyStep]) {
+                    link.href = history[historyStep];
+                    link.click();
+                } else {
+                    alert("لا يوجد محتوى للحفظ");
+                }
+            };
+
+            // Page Management
+            const handleNextPage = () => {
+                 if (currentPageIndex < pages.length - 1) {
+                     loadPage(currentPageIndex + 1);
+                 }
+            };
+            const handlePrevPage = () => {
+                if (currentPageIndex > 0) {
+                    loadPage(currentPageIndex - 1);
+                }
+            };
+            const handleNewPage = () => {
+                  const newPages = [...pages, ''];
+                  setPages(newPages);
+                  loadPage(newPages.length - 1);
+            };
+            const loadPage = (index) => {
+                  setCurrentPageIndex(index);
+                  const pageData = pages[index] || '';
+                  setHistory([pageData]);
+                  setHistoryStep(0);
+            };
+
+            return (
+                <div className="flex flex-col h-screen w-full bg-slate-50 overflow-hidden">
+                    <PropertiesBar 
+                        tool={currentTool}
+                        settings={settings}
+                        setSettings={setSettings}
+                        shapeType={shapeType}
+                        setShapeType={setShapeType}
+                        backgroundType={backgroundType}
+                        setBackgroundType={setBackgroundType}
+                        canUndo={historyStep > 0}
+                        canRedo={historyStep < history.length - 1}
+                        onUndo={handleUndo}
+                        onRedo={handleRedo}
+                        onClear={handleClear}
+                        onExport={handleExport}
+                        onSessionClick={() => setIsSessionModalOpen(true)}
+                        isConnected={isConnected}
+                        pageIndex={currentPageIndex}
+                        totalPages={pages.length}
+                        onNextPage={handleNextPage}
+                        onPrevPage={handlePrevPage}
+                        onNewPage={handleNewPage}
+                    />
+                    
+                    <div className="flex flex-1 overflow-hidden relative">
+                        <Toolbar currentTool={currentTool} setTool={setCurrentTool} onImageUpload={handleImageUpload} />
+                        
+                        <main className="flex-1 relative bg-white sm:m-4 sm:rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                            {isConnected && (
+                                <div className="absolute top-2 left-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs z-30 flex items-center gap-2 opacity-80 pointer-events-none">
+                                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                    بث مباشر: {roomId}
+                                </div>
+                            )}
+                            <Whiteboard 
+                                tool={currentTool}
+                                settings={settings}
+                                shapeType={shapeType}
+                                backgroundType={backgroundType}
+                                onSaveStep={saveToHistory}
+                                snapshot={history[historyStep] || null}
+                                backgroundImage={backgroundImage}
+                                channelRef={channelRef}
+                                isConnected={isConnected}
+                            />
+                        </main>
+                    </div>
+
+                    <MobileToolbar currentTool={currentTool} setTool={setCurrentTool} onImageUpload={handleImageUpload} />
+                    
+                    <SessionModal 
+                        isOpen={isSessionModalOpen} 
+                        onClose={() => setIsSessionModalOpen(false)}
+                        onConnect={handleConnectSession}
+                        isConnecting={false}
+                        initialRoomId={roomId}
+                    />
+                </div>
+            );
+        };
+
+        const rootElement = document.getElementById('root');
+        if (!rootElement) throw new Error("Root not found");
+        const root = createRoot(rootElement);
+        root.render(<App />);
     </script>
 </body>
 </html>
