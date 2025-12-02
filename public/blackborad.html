@@ -337,7 +337,7 @@
         const COLORS = ['#000000', '#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7'];
 
         const PropertiesBar = (props) => {
-            const { tool, settings, setSettings } = props;
+            const { tool, settings, setSettings, shapeType, setShapeType, backgroundType, setBackgroundType, canUndo, canRedo, onUndo, onRedo, onClear, onExport, onSessionClick, isConnected, isTeacher, studentsCanWrite, onToggleStudentsWrite, pageIndex, totalPages, onNextPage, onPrevPage, onNewPage } = props;
 
             return (
                 <div className="bg-white border-b border-slate-200 px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-y-2 z-20 shadow-sm min-h-[60px]">
@@ -398,8 +398,8 @@
                         {tool === 'shape' && (
                             <div className="flex items-center gap-1 border-r border-slate-200 pr-2 mr-2">
                                 <select 
-                                    value={props.shapeType}
-                                    onChange={(e) => props.setShapeType(e.target.value)}
+                                    value={shapeType}
+                                    onChange={(e) => setShapeType(e.target.value)}
                                     className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg p-1.5"
                                 >
                                     <option value="rectangle">مستطيل</option>
@@ -424,8 +424,8 @@
                         {/* Background Selector */}
                         <div className="hidden md:flex items-center gap-2 border-r border-slate-200 pr-2 mr-2">
                            <select 
-                              value={props.backgroundType}
-                              onChange={(e) => props.setBackgroundType(e.target.value)}
+                              value={backgroundType}
+                              onChange={(e) => setBackgroundType(e.target.value)}
                               className="bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-lg p-1.5"
                             >
                               <option value="plain">خلفية بيضاء</option>
@@ -438,17 +438,17 @@
 
                     {/* Pages Control */}
                     <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1 mx-2">
-                        <button onClick={props.onPrevPage} disabled={props.pageIndex === 0} className="p-1 hover:bg-white rounded disabled:opacity-30">
+                        <button onClick={onPrevPage} disabled={pageIndex === 0} className="p-1 hover:bg-white rounded disabled:opacity-30">
                           <ChevronRight size={18} />
                         </button>
                         <span className="text-xs font-bold text-slate-600 min-w-[3rem] text-center" dir="ltr">
-                          {props.pageIndex + 1} / {props.totalPages}
+                          {pageIndex + 1} / {totalPages}
                         </span>
-                        <button onClick={props.onNextPage} disabled={props.pageIndex === props.totalPages - 1} className="p-1 hover:bg-white rounded disabled:opacity-30">
+                        <button onClick={onNextPage} disabled={pageIndex === totalPages - 1} className="p-1 hover:bg-white rounded disabled:opacity-30">
                           <ChevronLeft size={18} />
                         </button>
                         <div className="w-px h-4 bg-slate-300 mx-1"></div>
-                        <button onClick={props.onNewPage} title="صفحة جديدة" className="p-1 hover:bg-white rounded text-blue-600">
+                        <button onClick={onNewPage} title="صفحة جديدة" className="p-1 hover:bg-white rounded text-blue-600">
                           <FilePlus size={18} />
                         </button>
                     </div>
@@ -457,27 +457,41 @@
                     <div className="flex items-center gap-2">
                          {/* Session Button */}
                         <button 
-                            onClick={props.onSessionClick}
+                            onClick={onSessionClick}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                props.isConnected 
+                                isConnected 
                                 ? 'bg-green-100 text-green-700 border border-green-200' 
                                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                             }`}
                         >
                             <Users size={16} />
-                            <span className="hidden sm:inline">{props.isConnected ? 'متصل' : 'جلسة'}</span>
+                            <span className="hidden sm:inline">{isConnected ? 'متصل' : 'جلسة'}</span>
                         </button>
 
-                        <button onClick={props.onUndo} disabled={!props.canUndo} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30">
+                        {isTeacher && (
+                            <button
+                                onClick={onToggleStudentsWrite}
+                                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                                    studentsCanWrite
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}
+                                title="التحكم في سماح الطلاب بالكتابة"
+                            >
+                                {studentsCanWrite ? 'الطلاب يمكنهم الكتابة' : 'الطلاب للعرض فقط'}
+                            </button>
+                        )}
+
+                        <button onClick={onUndo} disabled={!canUndo} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30">
                             <Undo2 size={20} />
                         </button>
-                        <button onClick={props.onRedo} disabled={!props.canRedo} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30">
+                        <button onClick={onRedo} disabled={!canRedo} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30">
                             <Redo2 size={20} />
                         </button>
-                        <button onClick={props.onClear} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                        <button onClick={onClear} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
                             <Trash2 size={20} />
                         </button>
-                        <button onClick={props.onExport} className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg">
+                        <button onClick={onExport} className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg">
                             <Download size={20} />
                         </button>
                     </div>
@@ -494,7 +508,8 @@
             snapshot,
             backgroundImage,
             channelRef,
-            isConnected
+            isConnected,
+            canWrite
         }) => {
             const containerRef = useRef(null);
             const canvasRef = useRef(null);
@@ -565,7 +580,7 @@
             useEffect(() => {
                 if(!isConnected || !channelRef.current) return;
                 
-                const handleBroadcast = (payload) => {
+                function handleBroadcast(payload) {
                     const canvas = canvasRef.current;
                     if (!canvas) return;
                     const ctx = canvas.getContext('2d');
@@ -614,6 +629,26 @@
                             ctx.fillText(line, payload.x * w, payload.y * h + (i * lineHeight));
                         });
                         ctx.restore();
+                    } else if (payload.type === 'image' && payload.dataUrl) {
+                        const img = new Image();
+                        img.onload = () => {
+                            // ارسم الخلفية البيضاء + النمط الحالي أولاً
+                            drawBackground(ctx, w, h, payload.backgroundType || 'plain');
+                            // رسم الصورة بنفس منطق الخلفية المحلية (cover مع الحفاظ على النسبة)
+                            const ratio = Math.min(w / img.width, h / img.height);
+                            const cw = img.width * ratio;
+                            const ch = img.height * ratio;
+                            const cx = (w - cw) / 2;
+                            const cy = (h - ch) / 2;
+                            ctx.drawImage(img, 0, 0, img.width, img.height, cx, cy, cw, ch);
+                            // حفظ الحالة في التاريخ حتى تعمل خاصية التصدير
+                            try {
+                                if (typeof onSaveStep === 'function') {
+                                    onSaveStep(canvas.toDataURL());
+                                }
+                            } catch (_) {}
+                        };
+                        img.src = payload.dataUrl;
                     } else if (payload.type === 'clear') {
                         redrawMainCanvas(); 
                     }
@@ -654,7 +689,7 @@
             };
 
             const startDrawing = (e) => {
-                if (tool === 'hand') return;
+                if (!canWrite || tool === 'hand') return;
                 const coords = getCoords(e);
                 
                 if (tool === 'text') {
@@ -691,6 +726,10 @@
                 if(isConnected) {
                     // Rate limit cursor updates
                     if(Math.random() > 0.5) broadcast({ type: 'cursor', x: coords.nx, y: coords.ny, color: settings.color, user: 'me' });
+                }
+
+                if (!canWrite && tool !== 'laser') {
+                    return;
                 }
 
                 if (tool === 'laser') {
@@ -862,9 +901,15 @@
                 <div 
                     ref={containerRef} 
                     className={`relative w-full h-full bg-white overflow-hidden touch-none ${
-                        tool === 'text' ? 'cursor-text' : 
-                        tool === 'hand' ? 'cursor-grab' : 
-                        tool === 'eraser' ? 'cursor-eraser' : 'cursor-pen'
+                        !canWrite
+                            ? 'cursor-not-allowed'
+                            : tool === 'text'
+                                ? 'cursor-text'
+                                : tool === 'hand'
+                                    ? 'cursor-grab'
+                                    : tool === 'eraser'
+                                        ? 'cursor-eraser'
+                                        : 'cursor-pen'
                     }`}
                     onMouseDown={startDrawing}
                     onMouseMove={draw}
@@ -917,6 +962,19 @@
             const [supabaseClient, setSupabaseClient] = useState(null);
             const channelRef = useRef(null);
             const [roomId, setRoomId] = useState(null);
+            const [isTeacher, setIsTeacher] = useState(false);
+            const [studentsCanWrite, setStudentsCanWrite] = useState(true);
+
+            // Detect role from URL (role=teacher => محاضر)
+            useEffect(() => {
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    const role = params.get('role');
+                    if (role === 'teacher') {
+                        setIsTeacher(true);
+                    }
+                } catch (e) {}
+            }, []);
 
             // Auto-join if ?room= is present in URL
             useEffect(() => {
@@ -985,11 +1043,26 @@
                 if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (event) => {
+                    const dataUrl = event.target.result;
                     const img = new Image();
                     img.onload = () => {
                         setBackgroundImage(img);
+                        // عند وجود جلسة، أرسل الصورة لباقي المشاركين
+                        if (isConnected && channelRef.current) {
+                            try {
+                                channelRef.current.send({
+                                    type: 'broadcast',
+                                    event: 'wb',
+                                    payload: {
+                                        type: 'image',
+                                        dataUrl,
+                                        backgroundType
+                                    }
+                                });
+                            } catch (_) {}
+                        }
                     };
-                    img.src = event.target.result;
+                    img.src = dataUrl;
                 };
                 reader.readAsDataURL(file);
             };
@@ -1028,6 +1101,37 @@
                   setHistoryStep(0);
             };
 
+            const handleToggleStudentsWrite = () => {
+                const next = !studentsCanWrite;
+                setStudentsCanWrite(next);
+                if (isConnected && channelRef.current) {
+                    try {
+                        channelRef.current.send({
+                            type: 'broadcast',
+                            event: 'control',
+                            payload: { type: 'permissions', studentsCanWrite: next }
+                        });
+                    } catch (_) {}
+                }
+            };
+
+            // Listen for teacher control messages (permissions)
+            useEffect(() => {
+                if (!isConnected || !channelRef.current) return;
+                const channel = channelRef.current;
+                const sub = channel
+                    .on('broadcast', { event: 'control' }, ({ payload }) => {
+                        if (payload && payload.type === 'permissions') {
+                            setStudentsCanWrite(!!payload.studentsCanWrite);
+                        }
+                    })
+                    .subscribe();
+
+                return () => {
+                    // cleanup handled elsewhere if needed
+                };
+            }, [isConnected]);
+
             return (
                 <div className="flex flex-col h-screen w-full bg-slate-50 overflow-hidden">
                     <PropertiesBar 
@@ -1046,6 +1150,9 @@
                         onExport={handleExport}
                         onSessionClick={() => setIsSessionModalOpen(true)}
                         isConnected={isConnected}
+                        isTeacher={isTeacher}
+                        studentsCanWrite={studentsCanWrite}
+                        onToggleStudentsWrite={handleToggleStudentsWrite}
                         pageIndex={currentPageIndex}
                         totalPages={pages.length}
                         onNextPage={handleNextPage}
@@ -1073,6 +1180,7 @@
                                 backgroundImage={backgroundImage}
                                 channelRef={channelRef}
                                 isConnected={isConnected}
+                                canWrite={isTeacher || studentsCanWrite}
                             />
                         </main>
                     </div>
