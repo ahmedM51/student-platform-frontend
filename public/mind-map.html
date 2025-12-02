@@ -54,7 +54,7 @@
         window.process = {
             env: {
                 // NEW API KEY ADDED HERE
-                API_KEY: "AIzaSyDtxJua1aDcZHqMPA5z92VAPEFy0LA5YZs-",
+                API_KEY: "AIzaSyDtxJua1aDcZHqMPA5z92VAPEFy0LA5YZs",
                 REACT_APP_SUPABASE_URL: "",
                 REACT_APP_SUPABASE_ANON_KEY: ""
             }
@@ -532,7 +532,6 @@
                     nodes,
                     edges
                 };
-
                 try {
                     const json = JSON.stringify(exportData, null, 2);
                     const blob = new Blob([json], { type: 'application/json' });
