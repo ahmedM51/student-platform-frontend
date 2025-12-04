@@ -746,7 +746,7 @@
         }
         // Gemini API Configuration
         // تأكد من أن هذا المفتاح صحيح لضمان عمل النموذج 'الحقيقي'
-        const GEMINI_API_KEY ="AIzaSyAyGhPjjVZthIa8NGbHOXU2xcSDiHjc-Zc";
+        const GEMINI_API_KEY ="AIzaSyDDMWosrWAkzBD1CarRdr-dLO_sBjuR0Bc";
         
         let currentUser = null;
         let currentQuiz = null;
@@ -1384,7 +1384,7 @@ ${original}`;
         function buildComprehensivePrompt(q){
             try{
                 const base = (q || '').trim();
-                const addon = `\n\nرجاءً قدّم الإجابة مقسّمة ومنظمة بالعناوين التالية (إن وُجدت معلومات لكل جزء):\n\nشرح:\n[شرح مفصل ومبسّط للنص/الموضوع]\n\nملخص:\n[تلخيص واضح بالنقاط]\n\nبحث شامل:\n[عرض موسّع مع معلومات داعمة ومراجع إن أمكن]\n\nتحليل الورقة (إن وُجدت ورقة PDF):\n[تحليل المنهجية والنتائج والنقاش]\n\nإعادة صياغة:\n[إعادة صياغة محكمة للفقرة/النص]\n\nثغرات بحثية:\n[قائمة بالثغرات والفرص البحثية]\n\nتوصيات:\n[نصائح عملية وخطوات تالية]`;
+                const addon = `\n\nرجاءً قدّم الإجابة مقسّمة ومنظمة بالعناوين التالية (إن وُجدت معلومات لكل جزء)، مع دعم العربية والإنجليزية حسب لغة المحتوى:\n\n1) إذا كان المحتوى أو السؤال باللغة الإنجليزية أو يغلب عليه الإنجليزي:\n- اكتب أولاً شرحاً كاملاً وواضحاً باللغة الإنجليزية.\n- ثم تحته مباشرة اكتب نفس الشرح مترجماً ومفسَّراً باللغة العربية (ليس ترجمة حرفية فقط، بل شرح مبسّط).\n- حافظ على نفس العناوين والأقسام في اللغتين.\n\n2) إذا كان المحتوى أو السؤال باللغة العربية فقط:\n- اجعل الإجابة بالكامل بالعربية كما هي، مع توضيح وتنظيم جيد.\n\nاستخدم الهيكل التالي قدر الإمكان:\n\nشرح / Explanation:\n[شرح مفصل ومبسّط للنص/الموضوع، بالإنجليزي ثم العربي إذا كان النص إنجليزي]\n\nملخص / Summary:\n[تلخيص واضح بالنقاط، بالإنجليزي ثم العربي إذا كان النص إنجليزي]\n\nبحث شامل / Detailed Study:\n[عرض موسّع مع معلومات داعمة ومراجع إن أمكن]\n\nتحليل الورقة (إن وُجدت ورقة PDF) / Paper Analysis:\n[تحليل المنهجية والنتائج والنقاش]\n\nإعادة صياغة / Paraphrasing:\n[إعادة صياغة محكمة للفقرة/النص]\n\nثغرات بحثية / Research Gaps:\n[قائمة بالثغرات والفرص البحثية]\n\nتوصيات / Recommendations:\n[نصائح عملية وخطوات تالية]`;
                 return base + addon;
             }catch(_){ return q || ''; }
         }
@@ -2212,13 +2212,25 @@ ${original}`;
                 pageFrame.style.color = '#111827';
                 pageFrame.style.fontFamily = "'Cairo', Arial, sans-serif";
 
-                // مساحة عنوان علوية فارغة (يمكن استخدامه للشعار/العنوان عند الحاجة)
+                // استخرج أول سطر من أول رسالة مساعد ليكون عنوانًا رئيسيًا في أعلى الصفحة
+                let mainTitle = '';
+                try {
+                    const firstMsgText = (allAiMessages[0].innerText || '').trim();
+                    if (firstMsgText) {
+                        const lines = firstMsgText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                        if (lines.length) mainTitle = lines[0];
+                    }
+                } catch(_) {}
+
+                // مساحة عنوان علوية (تحتوي على العنوان المستخرج من أول سطر)
                 const header = document.createElement('div');
                 header.style.textAlign = 'center';
-                header.style.marginBottom = '16px';
-                header.style.fontSize = '14pt';
-                header.style.fontWeight = '600';
-                header.textContent = '';
+                header.style.marginBottom = '12px';
+                header.style.fontSize = '18pt';
+                header.style.fontWeight = '700';
+                header.style.color = '#1d4ed8';
+                header.style.whiteSpace = 'pre-wrap';
+                header.textContent = mainTitle || '';
                 pageFrame.appendChild(header);
 
                 // المحتوى الأساسي: كل رسائل المساعد كفقرات متتابعة منسقة مثل مستند Word
@@ -2232,7 +2244,39 @@ ${original}`;
                     section.style.wordBreak = 'break-word';
                     section.style.overflowWrap = 'anywhere';
                     section.style.marginTop = index === 0 ? '0' : '24px';
-                    section.innerHTML = sanitizeForPdf(msgEl.innerHTML || '');
+
+                    // لأول رسالة فقط: احذف السطر الأول من النص (المستخدم كعنوان) لمنع التكرار والفراغ الكبير
+                    if (index === 0 && mainTitle) {
+                        try {
+                            const rawText = (msgEl.innerText || '').replace(/\r/g, '');
+                            const lines = rawText.split(/\n/);
+                            const remaining = [];
+                            let skipped = false;
+                            for (let ln of lines) {
+                                const t = (ln || '').trim();
+                                if (!skipped && t) { skipped = true; continue; }
+                                if (skipped) remaining.push(ln);
+                            }
+                            const restText = remaining.join('\n').trim();
+                            if (restText) {
+                                // حوّل الأسطر المتبقية إلى فقرات بسيطة باستخدام <br> للحفاظ على البنية
+                                const htmlFromText = restText
+                                    .split(/\n{2,}/)
+                                    .map(block => block.trim())
+                                    .filter(Boolean)
+                                    .map(block => block.replace(/\n/g, '<br>'))
+                                    .join('<br><br>');
+                                section.innerHTML = sanitizeForPdf(htmlFromText);
+                            } else {
+                                section.innerHTML = sanitizeForPdf(msgEl.innerHTML || '');
+                            }
+                        } catch(_) {
+                            section.innerHTML = sanitizeForPdf(msgEl.innerHTML || '');
+                        }
+                    } else {
+                        section.innerHTML = sanitizeForPdf(msgEl.innerHTML || '');
+                    }
+
                     preparePdfContent(section);
                     pageFrame.appendChild(section);
                 });
