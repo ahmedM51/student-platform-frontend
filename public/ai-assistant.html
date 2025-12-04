@@ -746,7 +746,7 @@
         }
         // Gemini API Configuration
         // تأكد من أن هذا المفتاح صحيح لضمان عمل النموذج 'الحقيقي'
-        const GEMINI_API_KEY ="AIzaSyDp4q4i_8XgQquDWX6XQlqT6G4sx1vbfH4";
+        const GEMINI_API_KEY ="AIzaSyD3erQHrydOjwcFM6K8gM4iWWLRO2iuHS4";
         
         let currentUser = null;
         let currentQuiz = null;
@@ -1595,8 +1595,7 @@ ${original}`;
                 if (!url){
                     // Fallback to single-shot or multi-chunk neutral TTS
                     if (dialogue.length <= 1200){
-                        const BACKEND_BASE = 'https://student-platform-backend-one.vercel.app';
-                        const j = await postJsonWithFallback(`${BACKEND_BASE}/api/tts`, { text: dialogue });
+                        const j = await postJsonWithFallback('/api/tts', { text: dialogue });
                         if (j){
                             url = j.audio || j.audioUrl || j.url || '';
                             if (!url && j.base64) url = `data:audio/mpeg;base64,${j.base64}`;
@@ -2187,29 +2186,58 @@ ${original}`;
         async function exportMessageToPdf(messageDiv, fileName) {
             try {
                 if (!window.html2pdf) { showNotification('ميزة PDF غير متاحة حالياً', 'error'); return; }
-                const msg = messageDiv.querySelector('.ai-message') || messageDiv;
+                // اجمع كل رسائل المساعد في المحادثة
+                const allAiMessages = Array.from(document.querySelectorAll('#chatArea .ai-message'));
+                if (!allAiMessages.length) { showNotification('لا توجد رسائل للمساعد لتصديرها', 'warning'); return; }
+
+                // حاوية خارجية تمثل خلفية الصفحة الكاملة
                 const container = document.createElement('div');
                 container.dir = 'rtl';
-                container.style.padding = '24px';
-                container.style.paddingBottom = '40px';
-                container.style.maxWidth = '794px';
-                container.style.width = '794px';
+                container.style.padding = '20px';
                 container.style.boxSizing = 'border-box';
-                container.style.background = '#ffffff';
-                container.style.color = '#111827';
-                container.style.fontFamily = "'Cairo', Arial, sans-serif";
-                const content = document.createElement('div');
-                content.style.whiteSpace = 'pre-wrap';
-                content.style.textAlign = 'justify';
-                content.style.textJustify = 'inter-word';
-                content.style.lineHeight = '1.9';
-                content.style.fontSize = '16pt';
-                content.style.wordBreak = 'break-word';
-                content.style.overflowWrap = 'anywhere';
-                content.style.margin = '0';
-                content.innerHTML = sanitizeForPdf(msg.innerHTML || '');
-                preparePdfContent(content);
-                container.appendChild(content);
+                container.style.background = '#f9fafb';
+                container.style.width = '100%';
+                container.style.display = 'flex';
+                container.style.justifyContent = 'center';
+
+                // إطار الورقة الداخلي (برواز أزرق كما في نموذج الامتحان)
+                const pageFrame = document.createElement('div');
+                pageFrame.style.maxWidth = '794px';
+                pageFrame.style.width = '794px';
+                pageFrame.style.minHeight = '1123px';
+                pageFrame.style.border = '2px solid #1d4ed8';
+                pageFrame.style.padding = '24px 28px 40px 28px';
+                pageFrame.style.background = '#ffffff';
+                pageFrame.style.boxSizing = 'border-box';
+                pageFrame.style.color = '#111827';
+                pageFrame.style.fontFamily = "'Cairo', Arial, sans-serif";
+
+                // مساحة عنوان علوية فارغة (يمكن استخدامه للشعار/العنوان عند الحاجة)
+                const header = document.createElement('div');
+                header.style.textAlign = 'center';
+                header.style.marginBottom = '16px';
+                header.style.fontSize = '14pt';
+                header.style.fontWeight = '600';
+                header.textContent = '';
+                pageFrame.appendChild(header);
+
+                // المحتوى الأساسي: كل رسائل المساعد كفقرات متتابعة منسقة مثل مستند Word
+                allAiMessages.forEach((msgEl, index) => {
+                    const section = document.createElement('div');
+                    section.style.whiteSpace = 'pre-wrap';
+                    section.style.textAlign = 'justify';
+                    section.style.textJustify = 'inter-word';
+                    section.style.lineHeight = '1.9';
+                    section.style.fontSize = '16pt';
+                    section.style.wordBreak = 'break-word';
+                    section.style.overflowWrap = 'anywhere';
+                    section.style.marginTop = index === 0 ? '0' : '24px';
+                    section.innerHTML = sanitizeForPdf(msgEl.innerHTML || '');
+                    preparePdfContent(section);
+                    pageFrame.appendChild(section);
+                });
+
+                container.appendChild(pageFrame);
                 document.body.appendChild(container);
                 const opt = { margin: 12, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'], avoid: ['table','tr','td','th','p','li','ul','ol','pre','code','h1','h2','h3','h4'] } };
                 const worker = html2pdf().set(opt).from(container).toPdf();
@@ -2219,13 +2247,12 @@ ${original}`;
                     const pageHeight = pdf.internal.pageSize.getHeight();
                     for (let i = 1; i <= total; i++) {
                         pdf.setPage(i);
-                        // draw white footer bar to avoid visual overlap
-                        pdf.setFillColor(255, 255, 255);
-                        pdf.rect(0, pageHeight - 14, pageWidth, 14, 'F');
-                        // page number on top of footer bar
-                        pdf.setTextColor(17, 24, 39);
-                        pdf.setFontSize(12);
-                        pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+                        // شريط سفلي أزرق مع رقم الصفحة في المنتصف
+                        pdf.setFillColor(29, 78, 216); // أزرق داكن
+                        pdf.rect(0, pageHeight - 12, pageWidth, 12, 'F');
+                        pdf.setTextColor(255, 255, 255);
+                        pdf.setFontSize(11);
+                        pdf.text(`${i} / ${total}`, pageWidth / 2, pageHeight - 4.5, { align: 'center' });
                     }
                 });
                 await worker.save();
@@ -2556,19 +2583,20 @@ ${original}`;
         async function ensurePptxLoaded(){
             try{
                 if (getPptxCtor()) return true;
+                // حاول أولاً تحميل النسخة المحلية إن وُجدت ضمن المشروع
+                const localOk = await loadScriptOnce('js/pptxgen.bundle.js');
+                if (localOk && getPptxCtor()) return true;
                 const cdns = [
                     'https://cdn.jsdelivr.net/npm/pptxgenjs@3.16.0/dist/pptxgen.bundle.js',
-                    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.14.0/dist/pptxgen.bundle.js',
                     'https://unpkg.com/pptxgenjs@3.16.0/dist/pptxgen.bundle.js',
-                    'https://unpkg.com/pptxgenjs@3.14.0/dist/pptxgen.bundle.js',
-                    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.16.0/dist/pptxgen.min.js',
-                    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.14.0/dist/pptxgen.min.js'
+                    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.14.0/dist/pptxgen.bundle.js',
+                    'https://unpkg.com/pptxgenjs@3.14.0/dist/pptxgen.bundle.js'
                 ];
                 for (const url of cdns){
                     const ok = await loadScriptOnce(url);
                     if (ok && getPptxCtor()) return true;
                 }
-                return false;
+                return !!getPptxCtor();
             }catch(_){ return false; }
         }
         function getPptxCtor(){
