@@ -175,7 +175,7 @@
 
     <!-- Main Logic Script -->
     <script>
-        const apiKey = "AIzaSyBkOSDJ4x_q-1IwBzFiFhRIGuYuv1e9xpY"; 
+        const apiKey = "AIzaSyDp4q4i_8XgQquDWX6XQlqT6G4sx1vbfH4"; 
         const GEMINI_MODEL = 'gemini-2.5-flash-preview-09-2025';
 
         // --- حالة التطبيق ---
@@ -456,8 +456,8 @@
                 return;
             }
 
-            if (finalFile.size > 15 * 1024 * 1024) {
-                showToast("حجم الملف كبير جداً (الحد الأقصى 15 ميجابايت)", "error");
+            if (finalFile.size > 50 * 1024 * 1024) {
+                showToast("حجم الملف كبير جداً (الحد الأقصى 50 ميجابايت)", "error");
                 return;
             }
 
@@ -523,6 +523,14 @@
     </script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-white min-h-screen transition-colors duration-300">
+    <script>
+        try {
+            var plan = localStorage.getItem('subscriptionPlan');
+            if (!plan) {
+                localStorage.setItem('subscriptionPlan', 'free');
+            }
+        } catch (e) {}
+    </script>
 
     <!-- Loading Screen -->
     <div id="loading-screen" class="fixed inset-0 bg-white dark:bg-gray-900 z-50 flex flex-col items-center justify-center">
