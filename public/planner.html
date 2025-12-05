@@ -932,7 +932,8 @@
             const [h, m] = timeStr.split(':').map(Number);
             const hour = ((h % 12) || 12);
             const suffix = h < 12 ? 'AM' : 'PM';
-            return `${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${suffix}`;
+            // تنسيق مع بادئة AM/PM قبل الوقت: مثال "PM 02:00"
+            return `${suffix} ${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         }
 
         // Build task time label from available fields
