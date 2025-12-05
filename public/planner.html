@@ -565,6 +565,7 @@
             const subject = document.getElementById('taskSubject').value;
             
             const desc = (time && endTime) ? `من ${formatTime12(time)} إلى ${formatTime12(endTime)}` : description;
+            let lastReminderTime = null;
             
             try {
                 if (window.supabaseDB && currentUser) {
@@ -582,10 +583,28 @@
                         completed: false,
                         type: 'manual'
                     };
+                    // للمهمات اليدوية: اجعل وقت التذكير هو نفس وقت بداية المهمة
+                    const baseStart = payload.start_time || payload.time || '09:00';
+                    payload.reminder_time = baseStart;
+
                     const result = await window.supabaseDB.tasks.create(payload);
                     if (result?.error) throw result.error;
                     try {
                         const created = result?.data;
+                        // جدولة إشعار المتصفح للمهمة الجديدة (اليوم فقط)
+                        if (created) {
+                            lastReminderTime = created.reminder_time || payload.reminder_time || null;
+                            scheduleTaskNotification({
+                                id: created.id,
+                                title: created.title,
+                                due_date: created.due_date,
+                                start_time: created.start_time || created.time,
+                                end_time: created.end_time,
+                                reminder_time: created.reminder_time || payload.reminder_time
+                            });
+                        }
+
+                        // إنشاء إشعارات البريد/الجدولة في جدول notifications إن وُجد
                         if (created && window.supabaseDB && window.supabaseDB.notifications && currentUser?.email) {
                             const start = created.reminder_time || created.start_time || created.time || '09:00';
                             if (created.due_date) {
@@ -632,13 +651,41 @@
                         completed: false,
                         created_at: new Date().toISOString()
                     };
+                    // للمهمات اليدوية في التخزين المحلي: وقت التذكير = وقت بداية المهمة
+                    const baseStartLocal = task.start_time || task.time || '09:00';
+                    task.reminder_time = baseStartLocal;
+                    lastReminderTime = task.reminder_time;
                     tasks.push(task);
                     await saveTasks();
+                    // جدولة إشعار المتصفح لهذه المهمة أيضاً
+                    scheduleTaskNotification({
+                        id: task.id,
+                        title: task.title,
+                        due_date: task.date,
+                        start_time: task.start_time || task.time,
+                        end_time: task.end_time,
+                        reminder_time: task.reminder_time
+                    });
                 }
                 await loadTasks();
                 updateCalendar();
                 closeModal();
-                showNotification('تمت إضافة المهمة بنجاح', 'success');
+
+                // تمرير تلقائي إلى قسم مهام اليوم بعد إضافة المهمة
+                try {
+                    const todayListEl = document.getElementById('todayTasksList');
+                    if (todayListEl) {
+                        todayListEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                } catch(_){}
+
+                let extraTimeMsg = '';
+                try {
+                    if (lastReminderTime) {
+                        extraTimeMsg = ` سيتم تذكيرك في ${formatTime12(lastReminderTime)}.`;
+                    }
+                } catch(_){}
+                showNotification('تمت إضافة المهمة بنجاح' + extraTimeMsg, 'success');
                 try{ logActivity('task_created', `تم إنشاء مهمة: ${title}`, 'tasks'); }catch(_){ }
             } catch (e) {
                 console.error('Error adding task:', e);
@@ -694,6 +741,23 @@
                     }
                     renderTasks();
                     updateStats();
+
+                    // جدولة الإشعارات للمهام القادمة غير المكتملة (من التخزين المحلي)
+                    try {
+                        tasks.filter(t => !t.completed).forEach(t => {
+                            const d = t.date || t.due_date;
+                            if (!d) return;
+                            scheduleTaskNotification({
+                                id: t.id,
+                                title: t.title,
+                                due_date: d,
+                                start_time: t.start_time || t.time,
+                                end_time: t.end_time,
+                                reminder_time: t.reminder_time || calculateReminderTime((t.start_time || t.time || '09:00'))
+                            });
+                        });
+                    } catch(_){}
+
                     return;
                 }
 
@@ -705,6 +769,22 @@
                 tasks = result.data || [];
                 renderTasks();
                 updateStats();
+
+                // جدولة الإشعارات للمهام القادمة غير المكتملة (من Supabase)
+                try {
+                    tasks.filter(t => !t.completed).forEach(t => {
+                        const d = t.date || t.due_date;
+                        if (!d) return;
+                        scheduleTaskNotification({
+                            id: t.id,
+                            title: t.title,
+                            due_date: d,
+                            start_time: t.start_time || t.time,
+                            end_time: t.end_time,
+                            reminder_time: t.reminder_time || calculateReminderTime((t.start_time || t.time || '09:00'))
+                        });
+                    });
+                } catch(_){}
                 
             } catch (error) {
                 console.error('Error loading tasks:', error);
@@ -715,6 +795,21 @@
                 }
                 renderTasks();
                 updateStats();
+
+                try {
+                    tasks.filter(t => !t.completed).forEach(t => {
+                        const d = t.date || t.due_date;
+                        if (!d) return;
+                        scheduleTaskNotification({
+                            id: t.id,
+                            title: t.title,
+                            due_date: d,
+                            start_time: t.start_time || t.time,
+                            end_time: t.end_time,
+                            reminder_time: t.reminder_time || calculateReminderTime((t.start_time || t.time || '09:00'))
+                        });
+                    });
+                } catch(_){}
             }
         }
 
@@ -765,13 +860,25 @@
                             <div class="flex-1">
                                 <h4 class="font-semibold ${task.completed ? 'line-through text-gray-500' : ''}">${task.title}</h4>
                                 ${ task.description ? `<p class="text-sm text-gray-600 mt-1">${task.description}</p>` : '' }
-                                <div class="flex items-center mt-2 text-xs text-gray-500">
-                                    <i class="fas fa-calendar ml-1"></i>
-                                    <span class="ml-3">
-                                        ${formatArabicDate(task.date || task.due_date)}
-                                        ${getTaskTimeLabel(task) ? ' — ' + getTaskTimeLabel(task) : ''}
+                                <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-calendar ml-1"></i>
+                                        <span>
+                                            ${formatArabicDate(task.date || task.due_date)}
+                                        </span>
                                     </span>
-                                    ${task.subject || task.subject_id ? `<i class="fas fa-book ml-1"></i><span>${task.subject || ''}</span>` : ''}
+                                    ${ getTaskTimeLabel(task) ? `
+                                        <span class="flex items-center">
+                                            <i class="fas fa-clock ml-1"></i>
+                                            <span>من ${getTaskTimeLabel(task).includes(' - ') ? getTaskTimeLabel(task).split(' - ')[0] : getTaskTimeLabel(task)}${getTaskTimeLabel(task).includes(' - ') ? ` إلى ${getTaskTimeLabel(task).split(' - ')[1]}` : ''}</span>
+                                        </span>
+                                    ` : '' }
+                                    ${ task.subject || task.subject_id ? `
+                                        <span class="flex items-center">
+                                            <i class="fas fa-book ml-1"></i>
+                                            <span>${task.subject || ''}</span>
+                                        </span>
+                                    ` : '' }
                                 </div>
                             </div>
                         </div>
@@ -1272,10 +1379,10 @@
             return plan;
         }
 
-        // Calculate reminder time (15 minutes before start)
+        // Calculate reminder time (5 minutes before start)
         function calculateReminderTime(startTime) {
             const [hour, minute] = startTime.split(':').map(Number);
-            const reminderMinute = minute - 15;
+            const reminderMinute = minute - 5;
             
             if (reminderMinute >= 0) {
                 return `${hour.toString().padStart(2, '0')}:${reminderMinute.toString().padStart(2, '0')}`;
