@@ -412,6 +412,22 @@
                         <option value="geography">الجغرافيا</option>
                     </select>
                 </div>
+                <div id="taskQuickPreview" class="mt-2 p-3 bg-gray-50 rounded-lg text-sm text-gray-700 hidden">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="flex items-center">
+                            <i class="fas fa-calendar ml-1"></i>
+                            <span id="previewDateText"></span>
+                        </span>
+                        <span id="previewTimeWrap" class="flex items-center" style="display:none;">
+                            <i class="fas fa-clock ml-1"></i>
+                            <span id="previewTimeText"></span>
+                        </span>
+                        <span id="previewSubjectWrap" class="flex items-center" style="display:none;">
+                            <i class="fas fa-book ml-1"></i>
+                            <span id="previewSubjectText"></span>
+                        </span>
+                    </div>
+                </div>
                 
                 <div class="flex justify-end space-x-3 space-x-reverse">
                     <button type="button" onclick="closeModal()" 
@@ -477,6 +493,16 @@
                 initializeCalendar();
                 
                 console.log('✅ Planner page initialized successfully');
+                try {
+                    ['taskDate','taskTime','taskEndTime','taskSubject'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            el.addEventListener('input', updateTaskPreview);
+                            el.addEventListener('change', updateTaskPreview);
+                        }
+                    });
+                    updateTaskPreview();
+                } catch(_){}
                 
             } catch (error) {
                 console.error('❌ Error initializing planner:', error);
@@ -546,6 +572,7 @@
         // Modal functions
         function showAddTaskModal() {
             document.getElementById('addTaskModal').style.display = 'block';
+            try { if (typeof updateTaskPreview === 'function') updateTaskPreview(); } catch(_){}
         }
 
         function closeModal() {
@@ -583,9 +610,9 @@
                         completed: false,
                         type: 'manual'
                     };
-                    // للمهمات اليدوية: اجعل وقت التذكير هو نفس وقت بداية المهمة
+                    // تذكير قبل 5 دقائق من وقت البداية (موحّد لكل المهام اليدوية)
                     const baseStart = payload.start_time || payload.time || '09:00';
-                    payload.reminder_time = baseStart;
+                    payload.reminder_time = calculateReminderTime(baseStart);
 
                     const result = await window.supabaseDB.tasks.create(payload);
                     if (result?.error) throw result.error;
@@ -651,9 +678,9 @@
                         completed: false,
                         created_at: new Date().toISOString()
                     };
-                    // للمهمات اليدوية في التخزين المحلي: وقت التذكير = وقت بداية المهمة
+                    // للمهمات اليدوية في التخزين المحلي: تذكير قبل 5 دقائق من وقت البداية
                     const baseStartLocal = task.start_time || task.time || '09:00';
-                    task.reminder_time = baseStartLocal;
+                    task.reminder_time = calculateReminderTime(baseStartLocal);
                     lastReminderTime = task.reminder_time;
                     tasks.push(task);
                     await saveTasks();
@@ -915,6 +942,56 @@
             if (start && end) return `${formatTime12(start)} - ${formatTime12(end)}`;
             if (single) return `${formatTime12(single)}`;
             return '';
+        }
+        function updateTaskPreview(){
+            try{
+                const date = document.getElementById('taskDate')?.value || '';
+                const time = document.getElementById('taskTime')?.value || '';
+                const endTime = document.getElementById('taskEndTime')?.value || '';
+                const subjectSel = document.getElementById('taskSubject');
+                const subjectText = subjectSel && subjectSel.selectedIndex >= 0 ? subjectSel.options[subjectSel.selectedIndex].text : '';
+
+                const preview = document.getElementById('taskQuickPreview');
+                const dateTextEl = document.getElementById('previewDateText');
+                const timeWrap = document.getElementById('previewTimeWrap');
+                const timeTextEl = document.getElementById('previewTimeText');
+                const subjectWrap = document.getElementById('previewSubjectWrap');
+                const subjectTextEl = document.getElementById('previewSubjectText');
+
+                if (!preview) return;
+                let hasAny = false;
+
+                if (date && dateTextEl){
+                    dateTextEl.textContent = formatArabicDate(date);
+                    hasAny = true;
+                } else if (dateTextEl){
+                    dateTextEl.textContent = '';
+                }
+
+                if (timeWrap && timeTextEl){
+                    if (time){
+                        const startLabel = formatTime12(time);
+                        const endLabel = endTime ? ` إلى ${formatTime12(endTime)}` : '';
+                        timeTextEl.textContent = endTime ? `من ${startLabel}${endLabel}` : `${startLabel}`;
+                        timeWrap.style.display = 'inline-flex';
+                        hasAny = true;
+                    } else {
+                        timeWrap.style.display = 'none';
+                    }
+                }
+
+                if (subjectWrap && subjectTextEl){
+                    if (subjectSel && subjectSel.value){
+                        subjectTextEl.textContent = subjectText || subjectSel.value;
+                        subjectWrap.style.display = 'inline-flex';
+                        hasAny = true;
+                    } else {
+                        subjectWrap.style.display = 'none';
+                    }
+                }
+
+                preview.classList.toggle('hidden', !hasAny);
+            }catch(_){ }
         }
 
         // Update statistics
