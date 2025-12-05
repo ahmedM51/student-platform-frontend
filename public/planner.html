@@ -698,11 +698,13 @@
                 updateCalendar();
                 closeModal();
 
-                // تمرير تلقائي إلى قسم مهام اليوم بعد إضافة المهمة
+                // تمرير تلقائي بعد إضافة المهمة: اليوم أو جميع المهام حسب التاريخ
                 try {
-                    const todayListEl = document.getElementById('todayTasksList');
-                    if (todayListEl) {
-                        todayListEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const listId = (date === todayStr) ? 'todayTasksList' : 'tasksList';
+                    const targetEl = document.getElementById(listId);
+                    if (targetEl) {
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 } catch(_){}
 
