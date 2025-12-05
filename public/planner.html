@@ -887,24 +887,24 @@
                             <div class="flex-1">
                                 <h4 class="font-semibold ${task.completed ? 'line-through text-gray-500' : ''}">${task.title}</h4>
                                 ${ task.description ? `<p class="text-sm text-gray-600 mt-1">${task.description}</p>` : '' }
-                                <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500">
-                                    <span class="flex items-center">
-                                        <i class="fas fa-calendar ml-1"></i>
-                                        <span>
-                                            ${formatArabicDate(task.date || task.due_date)}
-                                        </span>
-                                    </span>
+                                <div class="mt-2 text-xs text-gray-600 space-y-1">
                                     ${ getTaskTimeLabel(task) ? `
-                                        <span class="flex items-center">
+                                        <div class="flex items-center">
                                             <i class="fas fa-clock ml-1"></i>
-                                            <span>من ${getTaskTimeLabel(task).includes(' - ') ? getTaskTimeLabel(task).split(' - ')[0] : getTaskTimeLabel(task)}${getTaskTimeLabel(task).includes(' - ') ? ` إلى ${getTaskTimeLabel(task).split(' - ')[1]}` : ''}</span>
-                                        </span>
+                                            <span>${getTaskTimeLabel(task).includes(' - ') ? `من ${getTaskTimeLabel(task).split(' - ')[0]} إلى ${getTaskTimeLabel(task).split(' - ')[1]}` : `${getTaskTimeLabel(task)}`}</span>
+                                        </div>
+                                    ` : '' }
+                                    ${ (task.date || task.due_date) ? `
+                                        <div class="flex items-center">
+                                            <i class="fas fa-calendar ml-1"></i>
+                                            <span>${formatArabicDate(task.date || task.due_date)}</span>
+                                        </div>
                                     ` : '' }
                                     ${ task.subject || task.subject_id ? `
-                                        <span class="flex items-center">
+                                        <div class="flex items-center">
                                             <i class="fas fa-book ml-1"></i>
                                             <span>${task.subject || ''}</span>
-                                        </span>
+                                        </div>
                                     ` : '' }
                                 </div>
                             </div>
