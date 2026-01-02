@@ -4,506 +4,269 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>موقت المذاكرة - منصة الطالب الذكي</title>
-    <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Cairo', sans-serif; }
+        body { font-family: 'Cairo', sans-serif; transition: all 0.3s ease; }
         .timer-circle-svg { transform: rotate(-90deg); }
         .progress-ring { transition: stroke-dashoffset 0.35s; transform-origin: 50% 50%; }
-        .animate-pulse-slow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+        .hidden-app { display: none; }
+        .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
 
-    <!-- Header -->
-    <header class="bg-white border-b sticky top-0 z-40 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <button class="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                    <i class="fas fa-arrow-right text-lg"></i>
-                </button>
-                <h1 class="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent">
-                    موقت المذاكرة
-                </h1>
-            </div>
-            
-            <div class="flex items-center gap-3">
-                <select id="langSelect" class="bg-slate-100 border-none rounded-lg px-2 py-1 text-sm outline-none cursor-pointer">
-                    <option value="ar">العربية</option>
-                    <option value="en">English</option>
-                </select>
-                <button class="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors text-sm font-semibold">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span class="hidden sm:inline">خروج</span>
-                </button>
-            </div>
-        </div>
-    </header>
+    <!-- شاشة التحميل والتأكد من تسجيل الدخول -->
+    <div id="loadingOverlay" class="loader-container">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-600 mb-4"></div>
+        <p class="text-slate-500 font-bold" id="statusMessage">جاري التحقق من الهوية...</p>
+    </div>
 
-    <main class="max-w-7xl mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            <!-- Main Timer Column -->
-            <div class="lg:col-span-2 space-y-6">
-                <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 overflow-hidden border border-slate-100">
-                    <!-- Timer Header Area -->
-                    <div id="timerHeader" class="p-6 bg-gradient-to-r from-blue-500 to-indigo-600 text-white flex justify-between items-center transition-colors duration-500">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-white/20 rounded-xl backdrop-blur-md">
-                                <i class="fas fa-clock text-xl"></i>
-                            </div>
-                            <div>
-                                <h2 id="sessionTitle" class="font-bold text-lg">جلسة دراسة</h2>
-                                <p id="sessionSubTitle" class="text-white/80 text-xs">وقت التركيز العالي</p>
-                            </div>
-                        </div>
-                        <div id="sessionBadge" class="bg-white/20 px-4 py-1.5 rounded-full text-sm font-bold backdrop-blur-md">
-                            الجلسة 1
-                        </div>
+    <!-- واجهة التطبيق الرئيسية -->
+    <div id="appContainer" class="hidden-app">
+        <!-- Header -->
+        <header class="bg-white border-b sticky top-0 z-40 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent" data-i18n="appTitle">موقت المذاكرة</h1>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="hidden md:flex flex-col items-end mr-2">
+                        <span id="userNameDisplay" class="text-sm font-bold text-slate-700">--</span>
+                        <span id="userEmailDisplay" class="text-[10px] text-slate-400">--</span>
                     </div>
+                    <select id="langSelect" onchange="window.changeLanguage(this.value)" class="bg-slate-100 rounded-lg px-2 py-1 text-sm font-bold outline-none cursor-pointer">
+                        <option value="ar">العربية</option>
+                        <option value="en">English</option>
+                    </select>
+                    <button onclick="window.handleLogout()" class="text-red-600 font-bold text-sm bg-red-50 px-4 py-2 rounded-xl hover:bg-red-100 transition-colors">
+                        <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">خروج</span>
+                    </button>
+                </div>
+            </div>
+        </header>
 
-                    <div class="p-10 flex flex-col items-center">
-                        <!-- Subject Selector -->
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Timer Section -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white rounded-3xl shadow-xl p-10 flex flex-col items-center border border-slate-100">
                         <div class="w-full max-w-sm mb-10">
-                            <select id="subjectSelect" class="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer text-center font-bold">
-                                <option value="">اختر المادة للدراسة...</option>
-                                <option value="1">الرياضيات</option>
-                                <option value="2">الفيزياء</option>
-                                <option value="3">اللغة العربية</option>
+                            <label class="block text-center text-xs text-slate-400 mb-2" data-i18n="selectSubjectLabel">المادة الحالية</label>
+                            <select id="subjectSelect" class="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-orange-500 outline-none text-center font-bold appearance-none cursor-pointer">
+                                <option value="" data-i18n="chooseSubject">جاري تحميل موادك...</option>
                             </select>
                         </div>
-
-                        <!-- Circular Timer Visual -->
+                        
                         <div class="relative w-72 h-72 mb-10">
                             <svg class="timer-circle-svg w-full h-full" viewBox="0 0 100 100">
                                 <circle class="text-slate-100" stroke="currentColor" stroke-width="6" fill="transparent" r="45" cx="50" cy="50"/>
-                                <circle id="progressRing" class="progress-ring text-blue-500 transition-all duration-1000" stroke="currentColor" stroke-width="6" stroke-linecap="round" fill="transparent" r="45" cx="50" cy="50" stroke-dasharray="282.7" stroke-dashoffset="0"/>
+                                <circle id="progressRing" class="progress-ring text-orange-500" stroke="currentColor" stroke-width="6" stroke-linecap="round" fill="transparent" r="45" cx="50" cy="50" stroke-dasharray="282.7" stroke-dashoffset="0"/>
                             </svg>
                             <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="timeText" class="text-6xl font-black tracking-tight mb-2 text-slate-800">25:00</span>
-                                <span id="modeText" class="text-slate-400 font-bold uppercase tracking-widest text-xs">وقت الدراسة</span>
+                                <span id="timeText" class="text-6xl font-black text-slate-800">25:00</span>
+                                <span id="modeText" class="text-slate-400 font-bold uppercase text-xs" data-i18n="studyMode">وقت التركيز</span>
                             </div>
                         </div>
 
-                        <!-- Controls -->
                         <div class="flex items-center gap-4">
-                            <button onclick="resetTimer()" class="p-4 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-2xl transition-all">
-                                <i class="fas fa-redo-alt text-2xl"></i>
-                            </button>
-                            <button id="toggleBtn" onclick="toggleTimer()" class="px-12 py-4 bg-orange-600 rounded-2xl text-white font-bold text-lg shadow-lg shadow-orange-200 transition-all flex items-center gap-3 transform active:scale-95">
-                                <i id="toggleIcon" class="fas fa-play"></i>
-                                <span id="toggleText">ابدأ</span>
-                            </button>
-                            <button id="soundBtn" onclick="toggleSound()" class="p-4 rounded-2xl transition-all text-blue-500 bg-blue-50">
-                                <i id="soundIcon" class="fas fa-volume-up text-2xl"></i>
+                            <button id="toggleBtn" onclick="window.toggleTimer()" class="px-16 py-4 bg-orange-600 rounded-2xl text-white font-bold text-lg shadow-lg hover:bg-orange-700 transition-all transform active:scale-95">
+                                <span id="toggleText" data-i18n="start">ابدأ المذاكرة</span>
                             </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- History Card -->
-                <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-6 border border-slate-100">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold flex items-center gap-2">
-                            <i class="fas fa-history text-orange-500"></i>
-                            جلسات اليوم
+                    <!-- History Section -->
+                    <div class="bg-white rounded-3xl shadow-xl p-6 border border-slate-100">
+                        <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+                            <i class="fas fa-history text-orange-500"></i> <span data-i18n="todaySessions">سجلك الشخصي اليوم</span>
                         </h3>
-                        <span id="historyCount" class="text-xs text-slate-400 font-semibold">0 جلسات</span>
-                    </div>
-                    
-                    <div id="historyList" class="space-y-3">
-                        <div class="text-center py-12 text-slate-400">
-                            <div class="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i class="fas fa-history text-3xl"></i>
-                            </div>
-                            <p>لم تبدأ أي جلسة بعد</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sidebar -->
-            <div class="space-y-6">
-                <!-- Stats Card -->
-                <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl shadow-indigo-200">
-                    <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
-                        <i class="fas fa-chart-line"></i>
-                        إحصائيات اليوم
-                    </h3>
-                    <div class="space-y-5">
-                        <div class="flex justify-between items-center p-3 rounded-2xl bg-white/10 border border-white/5 backdrop-blur-sm">
-                            <span class="text-indigo-100 text-sm">الجلسات المكتملة</span>
-                            <span id="statCompleted" class="font-black">0</span>
-                        </div>
-                        <div class="flex justify-between items-center p-3 rounded-2xl bg-white/10 border border-white/5 backdrop-blur-sm">
-                            <span class="text-indigo-100 text-sm">إجمالي وقت الدراسة</span>
-                            <span id="statTotalTime" class="font-black">0 د</span>
-                        </div>
-                        <div class="flex justify-between items-center p-3 rounded-2xl bg-white/10 border border-white/5 backdrop-blur-sm">
-                            <span class="text-indigo-100 text-sm">المادة الأكثر دراسة</span>
-                            <span id="statTopSubject" class="font-black">-</span>
-                        </div>
-                        <div class="flex justify-between items-center p-3 rounded-2xl bg-white/10 border border-white/5 backdrop-blur-sm">
-                            <span class="text-indigo-100 text-sm">معدل التركيز</span>
-                            <span id="statFocus" class="font-black">0%</span>
-                        </div>
+                        <div id="historyList" class="space-y-3"></div>
                     </div>
                 </div>
 
-                <!-- Presets Grid -->
-                <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-6 border border-slate-100">
-                    <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
-                        <i class="fas fa-cog text-blue-500"></i>
-                        أوقات محددة مسبقاً
-                    </h3>
-                    <div class="grid grid-cols-1 gap-3">
-                        <button onclick="applyPreset(25, 5, 'blue')" class="preset-btn w-full p-4 rounded-2xl flex items-center justify-between transition-all border-2 border-transparent bg-blue-50 text-blue-700">
-                            <div>
-                                <p class="font-bold text-sm">بومودورو كلاسيكي</p>
-                                <p class="text-[10px] opacity-70">25/5 دقائق</p>
+                <!-- Stats Sidebar -->
+                <div class="space-y-6">
+                    <div class="bg-indigo-600 rounded-3xl p-6 text-white shadow-xl">
+                        <h3 class="text-lg font-bold mb-4" data-i18n="todayStats">إحصائياتك</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between border-b border-white/10 pb-2">
+                                <span data-i18n="statCompleted">الجلسات المكتملة</span>
+                                <span id="statCompleted" class="font-bold text-xl">0</span>
                             </div>
-                            <div class="w-8 h-8 rounded-full bg-white/50 flex items-center justify-center">
-                                <i class="fas fa-stopwatch"></i>
-                            </div>
-                        </button>
-                        <button onclick="applyPreset(50, 10, 'green')" class="preset-btn w-full p-4 rounded-2xl flex items-center justify-between transition-all border-2 border-transparent bg-emerald-50 text-emerald-700">
-                            <div>
-                                <p class="font-bold text-sm">جلسة مكثفة</p>
-                                <p class="text-[10px] opacity-70">50/10 دقائق</p>
-                            </div>
-                            <div class="w-8 h-8 rounded-full bg-white/50 flex items-center justify-center">
-                                <i class="fas fa-bolt"></i>
-                            </div>
-                        </button>
-                        <button onclick="applyPreset(15, 3, 'yellow')" class="preset-btn w-full p-4 rounded-2xl flex items-center justify-between transition-all border-2 border-transparent bg-amber-50 text-amber-700">
-                            <div>
-                                <p class="font-bold text-sm">جلسة سريعة</p>
-                                <p class="text-[10px] opacity-70">15/3 دقائق</p>
-                            </div>
-                            <div class="w-8 h-8 rounded-full bg-white/50 flex items-center justify-center">
-                                <i class="fas fa-wind"></i>
-                            </div>
-                        </button>
-                        <button onclick="applyPreset(90, 20, 'purple')" class="preset-btn w-full p-4 rounded-2xl flex items-center justify-between transition-all border-2 border-transparent bg-purple-50 text-purple-700">
-                            <div>
-                                <p class="font-bold text-sm">جلسة عميقة</p>
-                                <p class="text-[10px] opacity-70">90/20 دقائق</p>
-                            </div>
-                            <div class="w-8 h-8 rounded-full bg-white/50 flex items-center justify-center">
-                                <i class="fas fa-brain"></i>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Quick Settings -->
-                <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-6 border border-slate-100">
-                    <h3 class="text-lg font-bold mb-4">إعدادات سريعة</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="text-xs font-bold text-slate-400 mb-2 block">وقت الدراسة (دقائق)</label>
-                            <input type="range" id="studyRange" min="5" max="90" step="5" value="25" class="w-full accent-orange-500 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer">
-                            <div class="flex justify-between mt-1 text-[10px] font-bold text-slate-500">
-                                <span>5د</span>
-                                <span id="rangeVal" class="text-orange-600">25د</span>
-                                <span>90د</span>
+                            <div class="flex justify-between">
+                                <span data-i18n="statTotalTime">إجمالي الدقائق</span>
+                                <span id="statTotalTime" class="font-bold text-xl">0</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
-
-    <!-- Notification Toast -->
-    <div id="notification" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 transform translate-y-20 opacity-0 transition-all duration-300">
-        <div id="notifContent" class="px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border bg-white">
-            <i id="notifIcon" class="fas fa-check-circle"></i>
-            <span id="notifText" class="font-bold"></span>
-        </div>
+        </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="py-8 text-center text-slate-400 text-sm">
-        <p>© <span id="year"></span> منصة الطالب الذكي - جميع الحقوق محفوظة</p>
-    </footer>
+    <script type="module">
+        // إعدادات Supabase (نفس المستخدمة في صفحة auth.html)
+        const SUPABASE_URL = "https://pxmhwwovxrnefiryywva.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4bWh3d292eHJuZWZpcnl5d3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0MzgzNjQsImV4cCI6MjA3MjAxNDM2NH0.FqzkWel93icaJ781ZCPhvzfVJu4iwqCa3hxV3AKuRlA";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    <script>
-        // State Management
-        let timerInterval = null;
-        let isRunning = false;
-        let isBreak = false;
-        let currentTime = 25 * 60;
-        let studyDuration = 25;
-        let breakDuration = 5;
-        let longBreakDuration = 15;
-        let sessionCount = 0;
-        let soundEnabled = true;
-        let history = [];
-        let currentPresetColor = 'blue';
-
-        // Elements
-        const timeText = document.getElementById('timeText');
-        const progressRing = document.getElementById('progressRing');
-        const toggleBtn = document.getElementById('toggleBtn');
-        const toggleIcon = document.getElementById('toggleIcon');
-        const toggleText = document.getElementById('toggleText');
-        const modeText = document.getElementById('modeText');
-        const timerHeader = document.getElementById('timerHeader');
-        const sessionTitle = document.getElementById('sessionTitle');
-        const sessionSubTitle = document.getElementById('sessionSubTitle');
-        const sessionBadge = document.getElementById('sessionBadge');
-        const historyList = document.getElementById('historyList');
-        const soundIcon = document.getElementById('soundIcon');
-        const soundBtn = document.getElementById('soundBtn');
-
-        // Initialization
-        window.onload = () => {
-            document.getElementById('year').textContent = new Date().getFullYear();
-            updateDisplay();
-            loadFromLocalStorage();
+        const i18n = {
+            ar: { appTitle: "موقت المذاكرة", logout: "خروج", chooseSubject: "اختر المادة...", start: "ابدأ المذاكرة", stop: "توقف", studyMode: "وقت التركيز", todaySessions: "سجلك الشخصي اليوم", todayStats: "إحصائياتك", statCompleted: "الجلسات المكتملة", statTotalTime: "إجمالي الدقائق", selectSubjectLabel: "المادة الحالية", min: "د", selectAlert: "يرجى اختيار مادة أولاً" },
+            en: { appTitle: "Study Timer", logout: "Logout", chooseSubject: "Choose subject...", start: "Start Study", stop: "Stop", studyMode: "Focus Time", todaySessions: "Your Personal History", todayStats: "Your Stats", statCompleted: "Completed Sessions", statTotalTime: "Total Minutes", selectSubjectLabel: "Current Subject", min: "m", selectAlert: "Please select a subject first" }
         };
+
+        let currentUser = null;
+        let isRunning = false;
+        let currentTime = 25 * 60;
+        let timerInterval = null;
+        let currentLang = localStorage.getItem('lang') || 'ar';
+
+        // --- 1. التحقق من الهوية (الارتباط بصفحة auth.html) ---
+        async function checkAuth() {
+            const { data: { session }, error } = await supabaseClient.auth.getSession();
+            
+            if (session && session.user) {
+                currentUser = session.user;
+                // عرض بيانات المستخدم في الهيدر
+                document.getElementById('userNameDisplay').textContent = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+                document.getElementById('userEmailDisplay').textContent = currentUser.email;
+                
+                // إظهار التطبيق وإخفاء اللودر
+                document.getElementById('loadingOverlay').classList.add('hidden-app');
+                document.getElementById('appContainer').classList.remove('hidden-app');
+                
+                fetchUserData();
+            } else {
+                // إذا لم يتم العثور على جلسة، يتم تحويل المستخدم لصفحة الدخول
+                document.getElementById('statusMessage').textContent = "لم يتم تسجيل الدخول، جاري تحويلك...";
+                setTimeout(() => {
+                    window.location.href = 'auth.html';
+                }, 2000);
+            }
+        }
+
+        window.handleLogout = async () => {
+            await supabaseClient.auth.signOut();
+            window.location.href = 'auth.html';
+        };
+
+        // --- 2. جلب البيانات الخاصة بالمستخدم فقط ---
+        async function fetchUserData() {
+            if (!currentUser) return;
+
+            // جلب المواد المرتبطة بهذا المستخدم فقط
+            const { data: subjects } = await supabaseClient
+                .from('subjects')
+                .select('*')
+                .eq('user_id', currentUser.id);
+
+            const select = document.getElementById('subjectSelect');
+            select.innerHTML = `<option value="">${i18n[currentLang].chooseSubject}</option>` + 
+                (subjects || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+            // جلب سجل الجلسات المرتبط بهذا المستخدم فقط
+            const { data: sessions } = await supabaseClient
+                .from('timer_sessions')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            renderHistory(sessions || []);
+        }
+
+        // --- 3. محرك الموقت ---
+        window.toggleTimer = () => {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                document.getElementById('toggleText').textContent = i18n[currentLang].start;
+            } else {
+                const subId = document.getElementById('subjectSelect').value;
+                if (!subId) {
+                    alert(i18n[currentLang].selectAlert);
+                    return;
+                }
+                timerInterval = setInterval(() => {
+                    if (currentTime > 0) {
+                        currentTime--;
+                        updateDisplay();
+                    } else {
+                        completeSession();
+                    }
+                }, 1000);
+                document.getElementById('toggleText').textContent = i18n[currentLang].stop;
+            }
+            isRunning = !isRunning;
+        };
+
+        async function completeSession() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            const sel = document.getElementById('subjectSelect');
+            
+            // حفظ الجلسة مع الـ user_id الخاص بالمستخدم الحالي
+            await supabaseClient.from('timer_sessions').insert([{
+                user_id: currentUser.id,
+                subject_name: sel.options[sel.selectedIndex].text,
+                duration: 25
+            }]);
+            
+            fetchUserData();
+            resetTimer();
+        }
+
+        function resetTimer() {
+            currentTime = 25 * 60;
+            updateDisplay();
+            document.getElementById('toggleText').textContent = i18n[currentLang].start;
+        }
 
         function updateDisplay() {
             const m = Math.floor(currentTime / 60);
             const s = currentTime % 60;
-            timeText.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            
-            // Progress Ring Calculation
-            const total = isBreak ? (sessionCount % 4 === 0 ? longBreakDuration : breakDuration) * 60 : studyDuration * 60;
-            const progress = (currentTime / total) * 282.7;
-            progressRing.style.strokeDashoffset = 282.7 - progress;
+            document.getElementById('timeText').textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            const progress = (currentTime / (25 * 60)) * 282.7;
+            document.getElementById('progressRing').style.strokeDashoffset = 282.7 - progress;
         }
 
-        function toggleTimer() {
-            const subject = document.getElementById('subjectSelect').value;
-            if (!subject && !isBreak) {
-                showNotification("يرجى اختيار مادة أولاً", "error");
-                return;
-            }
-
-            if (isRunning) {
-                clearInterval(timerInterval);
-                toggleIcon.className = "fas fa-play";
-                toggleText.textContent = "ابدأ";
-                toggleBtn.className = "px-12 py-4 bg-orange-600 rounded-2xl text-white font-bold text-lg shadow-lg shadow-orange-200 transition-all flex items-center gap-3 transform active:scale-95";
-                timeText.classList.remove('animate-pulse-slow');
+        function renderHistory(data) {
+            const list = document.getElementById('historyList');
+            if (data.length === 0) {
+                list.innerHTML = `<p class="text-center text-slate-400 py-4">لا توجد سجلات اليوم</p>`;
             } else {
-                timerInterval = setInterval(tick, 1000);
-                toggleIcon.className = "fas fa-pause";
-                toggleText.textContent = "توقف";
-                toggleBtn.className = "px-12 py-4 bg-amber-500 rounded-2xl text-white font-bold text-lg shadow-lg shadow-amber-200 transition-all flex items-center gap-3 transform active:scale-95";
-                timeText.classList.add('animate-pulse-slow');
-            }
-            isRunning = !isRunning;
-        }
-
-        function tick() {
-            if (currentTime > 0) {
-                currentTime--;
-                updateDisplay();
-            } else {
-                handleComplete();
-            }
-        }
-
-        function handleComplete() {
-            clearInterval(timerInterval);
-            isRunning = false;
-            playSound();
-
-            if (!isBreak) {
-                sessionCount++;
-                const subjectName = document.getElementById('subjectSelect').options[document.getElementById('subjectSelect').selectedIndex].text;
-                const entry = {
-                    id: Date.now(),
-                    subject: subjectName,
-                    duration: studyDuration,
-                    time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
-                };
-                history.unshift(entry);
-                updateHistoryUI();
-                updateStats();
-
-                isBreak = true;
-                currentTime = (sessionCount % 4 === 0 ? longBreakDuration : breakDuration) * 60;
-                
-                showNotification("أحسنت! انتهت الجلسة بنجاح", "success");
-                setTimerUIStyle('break');
-            } else {
-                isBreak = false;
-                currentTime = studyDuration * 60;
-                showNotification("انتهت الاستراحة، لنعد للدراسة!", "info");
-                setTimerUIStyle('study');
-            }
-
-            updateDisplay();
-            toggleIcon.className = "fas fa-play";
-            toggleText.textContent = "ابدأ";
-            toggleBtn.className = "px-12 py-4 bg-orange-600 rounded-2xl text-white font-bold text-lg shadow-lg shadow-orange-200 transition-all flex items-center gap-3 transform active:scale-95";
-            timeText.classList.remove('animate-pulse-slow');
-        }
-
-        function setTimerUIStyle(mode) {
-            if (mode === 'break') {
-                timerHeader.className = "p-6 bg-gradient-to-r from-emerald-500 to-teal-600 text-white flex justify-between items-center transition-colors duration-500";
-                sessionTitle.textContent = "وقت الراحة";
-                sessionSubTitle.textContent = "استراحة مستحقة";
-                modeText.textContent = "وقت الراحة";
-                progressRing.className = "progress-ring text-emerald-500 transition-all duration-1000";
-            } else {
-                const colors = {
-                    blue: 'from-blue-500 to-indigo-600',
-                    green: 'from-emerald-500 to-teal-600',
-                    yellow: 'from-amber-500 to-orange-600',
-                    purple: 'from-purple-500 to-pink-600'
-                };
-                const ringColors = { blue: 'text-blue-500', green: 'text-emerald-500', yellow: 'text-amber-500', purple: 'text-purple-500' };
-                
-                timerHeader.className = `p-6 bg-gradient-to-r ${colors[currentPresetColor]} text-white flex justify-between items-center transition-colors duration-500`;
-                sessionTitle.textContent = "جلسة دراسة";
-                sessionSubTitle.textContent = "وقت التركيز العالي";
-                modeText.textContent = "وقت الدراسة";
-                progressRing.className = `progress-ring ${ringColors[currentPresetColor]} transition-all duration-1000`;
-            }
-            sessionBadge.textContent = `الجلسة ${sessionCount + 1}`;
-        }
-
-        function resetTimer() {
-            clearInterval(timerInterval);
-            isRunning = false;
-            isBreak = false;
-            currentTime = studyDuration * 60;
-            updateDisplay();
-            setTimerUIStyle('study');
-            toggleIcon.className = "fas fa-play";
-            toggleText.textContent = "ابدأ";
-            timeText.classList.remove('animate-pulse-slow');
-        }
-
-        function applyPreset(s, b, color) {
-            if (isRunning) return;
-            studyDuration = s;
-            breakDuration = b;
-            currentPresetColor = color;
-            currentTime = s * 60;
-            
-            // Visual feedback for buttons
-            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('border-indigo-400', 'bg-indigo-50/50'));
-            event.currentTarget.classList.add('border-indigo-400', 'bg-indigo-50/50');
-            
-            document.getElementById('studyRange').value = s;
-            document.getElementById('rangeVal').textContent = s + 'د';
-            
-            resetTimer();
-        }
-
-        function updateHistoryUI() {
-            document.getElementById('historyCount').textContent = `${history.length} جلسات`;
-            if (history.length === 0) return;
-
-            historyList.innerHTML = history.map(item => `
-                <div class="group flex items-center justify-between p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-orange-500 font-bold text-sm">
-                            ${item.duration}د
-                        </div>
+                list.innerHTML = data.map(h => `
+                    <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-slate-100">
                         <div>
-                            <p class="font-bold text-slate-800">${item.subject}</p>
-                            <p class="text-xs text-slate-400">${item.time}</p>
+                            <p class="font-bold text-sm text-slate-700">${h.subject_name}</p>
+                            <p class="text-[10px] text-slate-400">${new Date(h.created_at).toLocaleTimeString()}</p>
                         </div>
+                        <span class="font-bold text-orange-600">${h.duration} ${i18n[currentLang].min}</span>
                     </div>
-                    <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function updateStats() {
-            const totalMin = history.reduce((acc, curr) => acc + curr.duration, 0);
-            document.getElementById('statCompleted').textContent = history.length;
-            document.getElementById('statTotalTime').textContent = `${totalMin} د`;
-            
-            // Simple logic for focus rate
-            const rate = Math.min(Math.round((history.length / 8) * 100), 100);
-            document.getElementById('statFocus').textContent = `${rate}%`;
-            
-            // Find top subject
-            const counts = {};
-            history.forEach(h => counts[h.subject] = (counts[h.subject] || 0) + 1);
-            const top = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b, '-');
-            document.getElementById('statTopSubject').textContent = top;
-        }
-
-        function showNotification(msg, type) {
-            const notif = document.getElementById('notification');
-            const icon = document.getElementById('notifIcon');
-            const text = document.getElementById('notifText');
-            const content = document.getElementById('notifContent');
-
-            text.textContent = msg;
-            if (type === 'error') {
-                content.className = "px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border bg-red-50 text-red-700 border-red-100";
-                icon.className = "fas fa-exclamation-circle";
-            } else if (type === 'success') {
-                content.className = "px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border bg-emerald-50 text-emerald-700 border-emerald-100";
-                icon.className = "fas fa-check-circle";
-            } else {
-                content.className = "px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border bg-blue-50 text-blue-700 border-blue-100";
-                icon.className = "fas fa-info-circle";
+                `).join('');
             }
-
-            notif.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => notif.classList.add('translate-y-20', 'opacity-0'), 3000);
+            document.getElementById('statCompleted').textContent = data.length;
+            document.getElementById('statTotalTime').textContent = data.reduce((a,b) => a + b.duration, 0);
         }
 
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
-            soundIcon.className = soundEnabled ? "fas fa-volume-up text-2xl" : "fas fa-volume-mute text-2xl";
-            soundBtn.className = soundEnabled ? "p-4 rounded-2xl transition-all text-blue-500 bg-blue-50" : "p-4 rounded-2xl transition-all text-slate-400 bg-slate-100";
-        }
-
-        function playSound() {
-            if (!soundEnabled) return;
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const g = ctx.createGain();
-                osc.connect(g); g.connect(ctx.destination);
-                osc.frequency.setValueAtTime(880, ctx.currentTime);
-                g.gain.setValueAtTime(0.1, ctx.currentTime);
-                osc.start(); osc.stop(ctx.currentTime + 0.5);
-            } catch (e) {}
-        }
-
-        // Settings Listeners
-        document.getElementById('studyRange').oninput = function() {
-            studyDuration = parseInt(this.value);
-            document.getElementById('rangeVal').textContent = this.value + 'د';
-            if (!isRunning && !isBreak) {
-                currentTime = studyDuration * 60;
-                updateDisplay();
-            }
+        window.changeLanguage = (lang) => {
+            currentLang = lang;
+            localStorage.setItem('lang', lang);
+            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[lang][key]) el.innerText = i18n[lang][key];
+            });
+            fetchUserData();
         };
 
-        function loadFromLocalStorage() {
-            const saved = localStorage.getItem('study_timer_history');
-            if (saved) {
-                history = JSON.parse(saved);
-                updateHistoryUI();
-                updateStats();
-            }
-        }
-
-        // Auto-save history
-        window.onbeforeunload = () => {
-            localStorage.setItem('study_timer_history', JSON.stringify(history));
-        };
+        // بدء التشغيل عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            window.changeLanguage(currentLang);
+        });
     </script>
 </body>
 </html>
