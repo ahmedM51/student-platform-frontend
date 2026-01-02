@@ -3,104 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>موقت المذاكرة - منصة الطالب الذكي</title>
+    <title>موقت المذاكرة الاحترافي - منصة الطالب الذكي</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Cairo', sans-serif; transition: all 0.3s ease; }
-        .timer-circle-svg { transform: rotate(-90deg); }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background-attachment: fixed;
+        }
+        
+        /* خلفية بنمط ناعم */
+        .bg-pattern {
+            background-color: #f8fafc;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236366f1' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2v-4h4v-2H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+
+        .timer-circle-svg { transform: rotate(-90deg); filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.2)); }
         .progress-ring { transition: stroke-dashoffset 0.35s; transform-origin: 50% 50%; }
-        .hidden-app { display: none; }
-        .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; }
+        
+        .tab-active { 
+            background: linear-gradient(to right, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            border-bottom: 3px solid #6366f1; 
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+        }
+
+        [dir="ltr"] .timer-circle-svg { transform: rotate(-90deg) scaleX(-1); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="bg-pattern min-h-screen text-slate-900">
 
-    <!-- شاشة التحميل والتأكد من تسجيل الدخول -->
-    <div id="loadingOverlay" class="loader-container">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-600 mb-4"></div>
-        <p class="text-slate-500 font-bold" id="statusMessage">جاري التحقق من الهوية...</p>
-    </div>
-
-    <!-- واجهة التطبيق الرئيسية -->
-    <div id="appContainer" class="hidden-app">
+    <div id="appContainer" class="relative z-10">
         <!-- Header -->
-        <header class="bg-white border-b sticky top-0 z-40 shadow-sm">
+        <header class="bg-white/70 backdrop-blur-md border-b sticky top-0 z-40 shadow-sm">
             <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                    <h1 class="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent" data-i18n="appTitle">موقت المذاكرة</h1>
+                    <div class="btn-primary text-white p-2 rounded-xl">
+                        <i class="fas fa-brain text-xl"></i>
+                    </div>
+                    <h1 class="text-xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent" data-i18n="appTitle">موقت المذاكرة الذكي</h1>
                 </div>
+                
                 <div class="flex items-center gap-3">
-                    <div class="hidden md:flex flex-col items-end mr-2">
+                    <div class="hidden md:flex flex-col items-end border-l px-4 border-slate-200">
                         <span id="userNameDisplay" class="text-sm font-bold text-slate-700">--</span>
                         <span id="userEmailDisplay" class="text-[10px] text-slate-400">--</span>
                     </div>
-                    <select id="langSelect" onchange="window.changeLanguage(this.value)" class="bg-slate-100 rounded-lg px-2 py-1 text-sm font-bold outline-none cursor-pointer">
+                    
+                    <select id="langSelect" onchange="window.changeLanguage(this.value)" class="bg-slate-100 rounded-lg px-2 py-1 text-sm font-bold outline-none cursor-pointer border-none ring-1 ring-slate-200 focus:ring-indigo-500">
                         <option value="ar">العربية</option>
                         <option value="en">English</option>
                     </select>
-                    <button onclick="window.handleLogout()" class="text-red-600 font-bold text-sm bg-red-50 px-4 py-2 rounded-xl hover:bg-red-100 transition-colors">
-                        <i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">خروج</span>
+
+                    <button onclick="window.handleLogout()" class="text-slate-400 hover:text-red-600 transition-colors p-2 bg-slate-50 rounded-lg">
+                        <i class="fas fa-power-off text-lg"></i>
                     </button>
                 </div>
             </div>
         </header>
 
         <main class="max-w-7xl mx-auto px-4 py-8">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 
-                <!-- Timer Section -->
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="bg-white rounded-3xl shadow-xl p-10 flex flex-col items-center border border-slate-100">
-                        <div class="w-full max-w-sm mb-10">
-                            <label class="block text-center text-xs text-slate-400 mb-2" data-i18n="selectSubjectLabel">المادة الحالية</label>
-                            <select id="subjectSelect" class="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-orange-500 outline-none text-center font-bold appearance-none cursor-pointer">
-                                <option value="" data-i18n="chooseSubject">جاري تحميل موادك...</option>
-                            </select>
-                        </div>
-                        
-                        <div class="relative w-72 h-72 mb-10">
-                            <svg class="timer-circle-svg w-full h-full" viewBox="0 0 100 100">
-                                <circle class="text-slate-100" stroke="currentColor" stroke-width="6" fill="transparent" r="45" cx="50" cy="50"/>
-                                <circle id="progressRing" class="progress-ring text-orange-500" stroke="currentColor" stroke-width="6" stroke-linecap="round" fill="transparent" r="45" cx="50" cy="50" stroke-dasharray="282.7" stroke-dashoffset="0"/>
-                            </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span id="timeText" class="text-6xl font-black text-slate-800">25:00</span>
-                                <span id="modeText" class="text-slate-400 font-bold uppercase text-xs" data-i18n="studyMode">وقت التركيز</span>
+                <!-- Left Column: Controls & Stats -->
+                <div class="lg:col-span-4 space-y-6">
+                    <!-- Target & Progress -->
+                    <div class="glass-card rounded-3xl p-6">
+                        <h3 class="font-bold mb-4 flex items-center gap-2 text-indigo-700">
+                            <i class="fas fa-fire"></i> <span data-i18n="dailyRate">معدل الإنجاز اليومي</span>
+                        </h3>
+                        <div class="relative pt-1">
+                            <div class="flex mb-2 items-center justify-between">
+                                <div>
+                                    <span id="progressPercent" class="text-xs font-bold inline-block py-1 px-3 uppercase rounded-full text-indigo-700 bg-indigo-100">0%</span>
+                                </div>
+                                <div class="text-right">
+                                    <span id="progressText" class="text-xs font-bold inline-block text-indigo-700">0 / 300 <span data-i18n="min">دقيقة</span></span>
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="flex items-center gap-4">
-                            <button id="toggleBtn" onclick="window.toggleTimer()" class="px-16 py-4 bg-orange-600 rounded-2xl text-white font-bold text-lg shadow-lg hover:bg-orange-700 transition-all transform active:scale-95">
-                                <span id="toggleText" data-i18n="start">ابدأ المذاكرة</span>
-                            </button>
+                            <div class="overflow-hidden h-3 mb-4 text-xs flex rounded-full bg-slate-200">
+                                <div id="progressBar" style="width:0%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700"></div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- History Section -->
-                    <div class="bg-white rounded-3xl shadow-xl p-6 border border-slate-100">
-                        <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
-                            <i class="fas fa-history text-orange-500"></i> <span data-i18n="todaySessions">سجلك الشخصي اليوم</span>
+                    <!-- Settings -->
+                    <div class="glass-card rounded-3xl p-6">
+                        <h3 class="font-bold mb-4 flex items-center gap-2 text-slate-600">
+                            <i class="fas fa-sliders-h"></i> <span data-i18n="timeSettings">إعدادات الوقت</span>
                         </h3>
-                        <div id="historyList" class="space-y-3"></div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs text-slate-500 font-bold block mb-1" data-i18n="studyTimeLabel">وقت المذاكرة (دقيقة)</label>
+                                <input type="number" id="studyInput" value="25" onchange="updateSettings()" class="w-full p-3 bg-white/50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500 font-bold block mb-1" data-i18n="breakTimeLabel">وقت الراحة (دقيقة)</label>
+                                <input type="number" id="breakInput" value="5" onchange="updateSettings()" class="w-full p-3 bg-white/50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Stats Sidebar -->
-                <div class="space-y-6">
-                    <div class="bg-indigo-600 rounded-3xl p-6 text-white shadow-xl">
-                        <h3 class="text-lg font-bold mb-4" data-i18n="todayStats">إحصائياتك</h3>
-                        <div class="space-y-4">
-                            <div class="flex justify-between border-b border-white/10 pb-2">
-                                <span data-i18n="statCompleted">الجلسات المكتملة</span>
-                                <span id="statCompleted" class="font-bold text-xl">0</span>
+                <!-- Center Column: Timer -->
+                <div class="lg:col-span-8 space-y-6">
+                    <div class="glass-card rounded-[2.5rem] p-8 relative overflow-hidden">
+                        <div class="absolute -top-10 -right-10 w-40 h-40 bg-indigo-100/50 rounded-full blur-3xl"></div>
+                        <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-100/50 rounded-full blur-3xl"></div>
+
+                        <!-- Mode Tabs -->
+                        <div class="flex justify-center gap-12 mb-10 relative z-10">
+                            <button id="studyTab" onclick="setMode('study')" class="pb-3 px-2 font-black transition-all tab-active text-lg" data-i18n="studyTab">وقت المذاكرة</button>
+                            <button id="breakTab" onclick="setMode('break')" class="pb-3 px-2 font-black text-slate-400 transition-all text-lg" data-i18n="breakTab">وقت الراحة</button>
+                        </div>
+
+                        <div class="flex flex-col items-center relative z-10">
+                            <div class="w-full max-w-sm mb-10">
+                                <select id="subjectSelect" class="w-full p-4 bg-white/50 border border-slate-200 rounded-2xl text-center font-black text-lg outline-none appearance-none cursor-pointer focus:ring-4 focus:ring-indigo-100 transition-all">
+                                    <option value="" data-i18n="chooseSubject">اختر المادة للمذاكرة...</option>
+                                </select>
                             </div>
-                            <div class="flex justify-between">
-                                <span data-i18n="statTotalTime">إجمالي الدقائق</span>
-                                <span id="statTotalTime" class="font-bold text-xl">0</span>
+
+                            <div class="relative w-80 h-80 mb-10">
+                                <svg class="timer-circle-svg w-full h-full" viewBox="0 0 100 100">
+                                    <circle class="text-slate-200/50" stroke="currentColor" stroke-width="3" fill="transparent" r="48" cx="50" cy="50"/>
+                                    <circle id="progressRing" class="progress-ring text-indigo-600" stroke="currentColor" stroke-width="4" stroke-linecap="round" fill="transparent" r="48" cx="50" cy="50" stroke-dasharray="301.6" stroke-dashoffset="0"/>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span id="timeText" class="text-8xl font-black text-slate-800 tabular-nums tracking-tighter">25:00</span>
+                                    <div class="bg-indigo-100 text-indigo-700 px-4 py-1 rounded-full font-black text-sm mt-3" id="modeLabel" data-i18n="focusMode">تركيز كامل</div>
+                                </div>
                             </div>
+
+                            <div class="flex items-center gap-6">
+                                <button onclick="resetTimer()" class="w-16 h-16 flex items-center justify-center rounded-2xl bg-white text-slate-400 hover:text-indigo-600 hover:shadow-lg transition-all border border-slate-100">
+                                    <i class="fas fa-undo-alt text-xl"></i>
+                                </button>
+                                <button id="toggleBtn" onclick="toggleTimer()" class="btn-primary px-20 py-5 text-white rounded-[2rem] font-black text-2xl transform active:scale-95 transition-all">
+                                    <span id="toggleText" data-i18n="startNow">ابدأ الآن</span>
+                                </button>
+                                <button onclick="skipSession()" class="w-16 h-16 flex items-center justify-center rounded-2xl bg-white text-slate-400 hover:text-indigo-600 hover:shadow-lg transition-all border border-slate-100">
+                                    <i class="fas fa-forward text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Today's Log -->
+                    <div class="glass-card rounded-3xl p-8">
+                        <div class="flex justify-between items-center mb-8">
+                            <h3 class="font-black text-xl flex items-center gap-3 text-slate-700">
+                                <i class="fas fa-medal text-yellow-500"></i> <span data-i18n="studyLog">سجل المذاكرة اليوم</span>
+                            </h3>
+                            <span id="totalTimeBadge" class="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-md shadow-indigo-100">0 <span data-i18n="min">دقيقة</span> <span data-i18n="today">اليوم</span></span>
+                        </div>
+                        <div id="historyList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <p class="col-span-full text-center text-slate-400 font-bold py-10" data-i18n="loading">جاري التحميل...</p>
                         </div>
                     </div>
                 </div>
@@ -108,44 +186,39 @@
         </main>
     </div>
 
+    <audio id="finishSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+
     <script type="module">
-        // إعدادات Supabase (نفس المستخدمة في صفحة auth.html)
         const SUPABASE_URL = "https://pxmhwwovxrnefiryywva.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4bWh3d292eHJuZWZpcnl5d3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0MzgzNjQsImV4cCI6MjA3MjAxNDM2NH0.FqzkWel93icaJ781ZCPhvzfVJu4iwqCa3hxV3AKuRlA";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const i18n = {
-            ar: { appTitle: "موقت المذاكرة", logout: "خروج", chooseSubject: "اختر المادة...", start: "ابدأ المذاكرة", stop: "توقف", studyMode: "وقت التركيز", todaySessions: "سجلك الشخصي اليوم", todayStats: "إحصائياتك", statCompleted: "الجلسات المكتملة", statTotalTime: "إجمالي الدقائق", selectSubjectLabel: "المادة الحالية", min: "د", selectAlert: "يرجى اختيار مادة أولاً" },
-            en: { appTitle: "Study Timer", logout: "Logout", chooseSubject: "Choose subject...", start: "Start Study", stop: "Stop", studyMode: "Focus Time", todaySessions: "Your Personal History", todayStats: "Your Stats", statCompleted: "Completed Sessions", statTotalTime: "Total Minutes", selectSubjectLabel: "Current Subject", min: "m", selectAlert: "Please select a subject first" }
+            ar: {
+                appTitle: "موقت المذاكرة الذكي", dailyRate: "معدل الإنجاز اليومي", timeSettings: "إعدادات الوقت", studyTimeLabel: "وقت المذاكرة (دقيقة)", breakTimeLabel: "وقت الراحة (دقيقة)", studyTab: "وقت المذاكرة", breakTab: "وقت الراحة", chooseSubject: "اختر المادة للمذاكرة...", focusMode: "تركيز كامل", breakMode: "وقت الراحة", startNow: "ابدأ الآن", resume: "استئناف", stop: "إيقاف مؤقت", studyLog: "سجل المذاكرة اليوم", min: "دقيقة", today: "اليوم", loading: "جاري التحميل...", noSessions: "لا توجد جلسات مسجلة اليوم.", selectAlert: "يرجى اختيار مادة أولاً لبدء وقت المذاكرة", skipConfirm: "تخطي هذه الجلسة؟", finishStudy: "أحسنت! انتهى وقت المذاكرة، خذ قسطاً من الراحة.", finishBreak: "انتهت الراحة، هل أنت مستعد للعودة للمذاكرة؟", resetConfirm: "هل تريد إلغاء الجلسة الحالية وتغيير النمط؟"
+            },
+            en: {
+                appTitle: "Smart Study Timer", dailyRate: "Daily Achievement", timeSettings: "Time Settings", studyTimeLabel: "Study Time (min)", breakTimeLabel: "Break Time (min)", studyTab: "Study Time", breakTab: "Break Time", chooseSubject: "Choose subject to study...", focusMode: "Deep Focus", breakMode: "Break Time", startNow: "Start Now", resume: "Resume", stop: "Pause", studyLog: "Today's Study Log", min: "min", today: "Today", loading: "Loading...", noSessions: "No sessions recorded today.", selectAlert: "Please select a subject first to start studying", skipConfirm: "Skip this session?", finishStudy: "Well done! Study time is over, take a break.", finishBreak: "Break over, ready to go back to studying?", resetConfirm: "Do you want to cancel the current session and change mode?"
+            }
         };
 
         let currentUser = null;
         let isRunning = false;
-        let currentTime = 25 * 60;
-        let timerInterval = null;
+        let currentMode = 'study'; 
         let currentLang = localStorage.getItem('lang') || 'ar';
+        let timerSeconds = 25 * 60;
+        let timerInterval = null;
+        let settings = { study: 25, break: 5, dailyTarget: 300 };
 
-        // --- 1. التحقق من الهوية (الارتباط بصفحة auth.html) ---
         async function checkAuth() {
-            const { data: { session }, error } = await supabaseClient.auth.getSession();
-            
-            if (session && session.user) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session?.user) {
                 currentUser = session.user;
-                // عرض بيانات المستخدم في الهيدر
                 document.getElementById('userNameDisplay').textContent = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
                 document.getElementById('userEmailDisplay').textContent = currentUser.email;
-                
-                // إظهار التطبيق وإخفاء اللودر
-                document.getElementById('loadingOverlay').classList.add('hidden-app');
-                document.getElementById('appContainer').classList.remove('hidden-app');
-                
-                fetchUserData();
+                fetchData();
             } else {
-                // إذا لم يتم العثور على جلسة، يتم تحويل المستخدم لصفحة الدخول
-                document.getElementById('statusMessage').textContent = "لم يتم تسجيل الدخول، جاري تحويلك...";
-                setTimeout(() => {
-                    window.location.href = 'auth.html';
-                }, 2000);
+                window.location.href = 'auth.html';
             }
         }
 
@@ -154,118 +227,152 @@
             window.location.href = 'auth.html';
         };
 
-        // --- 2. جلب البيانات الخاصة بالمستخدم فقط ---
-        async function fetchUserData() {
+        async function fetchData() {
             if (!currentUser) return;
-
-            // جلب المواد المرتبطة بهذا المستخدم فقط
-            const { data: subjects } = await supabaseClient
-                .from('subjects')
-                .select('*')
-                .eq('user_id', currentUser.id);
-
+            const { data: subjects } = await supabaseClient.from('subjects').select('*').eq('user_id', currentUser.id);
             const select = document.getElementById('subjectSelect');
             select.innerHTML = `<option value="">${i18n[currentLang].chooseSubject}</option>` + 
                 (subjects || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
-            // جلب سجل الجلسات المرتبط بهذا المستخدم فقط
-            const { data: sessions } = await supabaseClient
-                .from('timer_sessions')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false });
-
+            const today = new Date().toISOString().split('T')[0];
+            const { data: sessions } = await supabaseClient.from('timer_sessions').select('*').eq('user_id', currentUser.id).gte('created_at', today).order('created_at', { ascending: false });
             renderHistory(sessions || []);
-        }
-
-        // --- 3. محرك الموقت ---
-        window.toggleTimer = () => {
-            if (isRunning) {
-                clearInterval(timerInterval);
-                document.getElementById('toggleText').textContent = i18n[currentLang].start;
-            } else {
-                const subId = document.getElementById('subjectSelect').value;
-                if (!subId) {
-                    alert(i18n[currentLang].selectAlert);
-                    return;
-                }
-                timerInterval = setInterval(() => {
-                    if (currentTime > 0) {
-                        currentTime--;
-                        updateDisplay();
-                    } else {
-                        completeSession();
-                    }
-                }, 1000);
-                document.getElementById('toggleText').textContent = i18n[currentLang].stop;
-            }
-            isRunning = !isRunning;
-        };
-
-        async function completeSession() {
-            clearInterval(timerInterval);
-            isRunning = false;
-            const sel = document.getElementById('subjectSelect');
-            
-            // حفظ الجلسة مع الـ user_id الخاص بالمستخدم الحالي
-            await supabaseClient.from('timer_sessions').insert([{
-                user_id: currentUser.id,
-                subject_name: sel.options[sel.selectedIndex].text,
-                duration: 25
-            }]);
-            
-            fetchUserData();
-            resetTimer();
-        }
-
-        function resetTimer() {
-            currentTime = 25 * 60;
-            updateDisplay();
-            document.getElementById('toggleText').textContent = i18n[currentLang].start;
-        }
-
-        function updateDisplay() {
-            const m = Math.floor(currentTime / 60);
-            const s = currentTime % 60;
-            document.getElementById('timeText').textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            const progress = (currentTime / (25 * 60)) * 282.7;
-            document.getElementById('progressRing').style.strokeDashoffset = 282.7 - progress;
-        }
-
-        function renderHistory(data) {
-            const list = document.getElementById('historyList');
-            if (data.length === 0) {
-                list.innerHTML = `<p class="text-center text-slate-400 py-4">لا توجد سجلات اليوم</p>`;
-            } else {
-                list.innerHTML = data.map(h => `
-                    <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-slate-100">
-                        <div>
-                            <p class="font-bold text-sm text-slate-700">${h.subject_name}</p>
-                            <p class="text-[10px] text-slate-400">${new Date(h.created_at).toLocaleTimeString()}</p>
-                        </div>
-                        <span class="font-bold text-orange-600">${h.duration} ${i18n[currentLang].min}</span>
-                    </div>
-                `).join('');
-            }
-            document.getElementById('statCompleted').textContent = data.length;
-            document.getElementById('statTotalTime').textContent = data.reduce((a,b) => a + b.duration, 0);
         }
 
         window.changeLanguage = (lang) => {
             currentLang = lang;
             localStorage.setItem('lang', lang);
             document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+            document.documentElement.lang = lang;
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if (i18n[lang][key]) el.innerText = i18n[lang][key];
             });
-            fetchUserData();
+            updateTimerTexts();
+            fetchData();
         };
 
-        // بدء التشغيل عند تحميل الصفحة
+        function updateTimerTexts() {
+            if (isRunning) {
+                document.getElementById('toggleText').textContent = i18n[currentLang].stop;
+            } else if (timerSeconds < settings[currentMode] * 60) {
+                document.getElementById('toggleText').textContent = i18n[currentLang].resume;
+            } else {
+                document.getElementById('toggleText').textContent = i18n[currentLang].startNow;
+            }
+            document.getElementById('modeLabel').textContent = currentMode === 'study' ? i18n[currentLang].focusMode : i18n[currentLang].breakMode;
+        }
+
+        window.updateSettings = () => {
+            settings.study = parseInt(document.getElementById('studyInput').value) || 25;
+            settings.break = parseInt(document.getElementById('breakInput').value) || 5;
+            if (!isRunning) resetTimer();
+        };
+
+        window.setMode = (mode) => {
+            if (isRunning) if(!confirm(i18n[currentLang].resetConfirm)) return;
+            currentMode = mode;
+            isRunning = false;
+            clearInterval(timerInterval);
+            document.getElementById('studyTab').className = mode === 'study' ? 'pb-3 px-2 font-black transition-all tab-active text-lg' : 'pb-3 px-2 font-black text-slate-400 transition-all text-lg';
+            document.getElementById('breakTab').className = mode === 'break' ? 'pb-3 px-2 font-black transition-all tab-active text-lg' : 'pb-3 px-2 font-black text-slate-400 transition-all text-lg';
+            const ring = document.getElementById('progressRing');
+            if (mode === 'study') { ring.classList.remove('text-green-500'); ring.classList.add('text-indigo-600'); }
+            else { ring.classList.remove('text-indigo-600'); ring.classList.add('text-green-500'); }
+            resetTimer();
+            updateTimerTexts();
+        };
+
+        window.toggleTimer = () => {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                updateTimerTexts();
+                isRunning = false;
+            } else {
+                if (currentMode === 'study' && !document.getElementById('subjectSelect').value) {
+                    alert(i18n[currentLang].selectAlert);
+                    return;
+                }
+                timerInterval = setInterval(() => {
+                    if (timerSeconds > 0) { timerSeconds--; updateUI(); }
+                    else { finishSession(); }
+                }, 1000);
+                document.getElementById('toggleText').textContent = i18n[currentLang].stop;
+                isRunning = true;
+            }
+        };
+
+        window.resetTimer = () => {
+            clearInterval(timerInterval);
+            isRunning = false;
+            timerSeconds = settings[currentMode] * 60;
+            updateTimerTexts();
+            updateUI();
+        };
+
+        window.skipSession = () => {
+            if (confirm(i18n[currentLang].skipConfirm)) setMode(currentMode === 'study' ? 'break' : 'study');
+        };
+
+        function updateUI() {
+            const m = Math.floor(timerSeconds / 60);
+            const s = timerSeconds % 60;
+            document.getElementById('timeText').textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            const total = settings[currentMode] * 60;
+            const offset = 301.6 - ((timerSeconds / total) * 301.6);
+            document.getElementById('progressRing').style.strokeDashoffset = offset;
+        }
+
+        async function finishSession() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            document.getElementById('finishSound').play();
+            if (currentMode === 'study') {
+                const subEl = document.getElementById('subjectSelect');
+                await supabaseClient.from('timer_sessions').insert([{
+                    user_id: currentUser.id, subject_name: subEl.options[subEl.selectedIndex].text, duration: settings.study
+                }]);
+                fetchData();
+                alert(i18n[currentLang].finishStudy);
+                setMode('break');
+            } else {
+                alert(i18n[currentLang].finishBreak);
+                setMode('study');
+            }
+        }
+
+        function renderHistory(data) {
+            const list = document.getElementById('historyList');
+            const totalMinutes = data.reduce((acc, curr) => acc + curr.duration, 0);
+            const percent = Math.min(Math.round((totalMinutes / settings.dailyTarget) * 100), 100);
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressPercent').textContent = percent + '%';
+            document.getElementById('progressText').innerHTML = `${totalMinutes} / ${settings.dailyTarget} ${i18n[currentLang].min}`;
+            document.getElementById('totalTimeBadge').innerHTML = `${totalMinutes} ${i18n[currentLang].min} ${i18n[currentLang].today}`;
+            if (data.length === 0) {
+                list.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10 font-bold">${i18n[currentLang].noSessions}</p>`;
+                return;
+            }
+            list.innerHTML = data.map(s => `
+                <div class="flex items-center justify-between p-5 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-black text-slate-700">${s.subject_name}</h4>
+                            <p class="text-[10px] font-bold text-slate-400">${new Date(s.created_at).toLocaleTimeString(currentLang === 'ar' ? 'ar-EG' : 'en-US', {hour: '2-digit', minute:'2-digit'})}</p>
+                        </div>
+                    </div>
+                    <span class="bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-xl text-xs font-black shadow-inner">+${s.duration} ${i18n[currentLang].min.charAt(0)}</span>
+                </div>
+            `).join('');
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             window.changeLanguage(currentLang);
+            document.getElementById('langSelect').value = currentLang;
         });
     </script>
 </body>
